@@ -30,129 +30,17 @@ import type {
   SquadSDKConfig,
 } from '../packages/squad-sdk/src/builders/types.js';
 
-// ⚠️ When the real builder functions exist, replace this block with:
-//   import {
-//     defineTeam, defineAgent, defineRouting, defineCeremony,
-//     defineHooks, defineCasting, defineTelemetry,
-//   } from '../packages/squad-sdk/src/builders/index.js';
-//
-// ============================================================================
-// Local stubs — implement the PRD contract so tests are runnable today.
-// These will be deleted once the real module lands.
-// ============================================================================
-
-class BuilderValidationError extends Error {
-  constructor(
-    public readonly builder: string,
-    public readonly field: string,
-    message: string,
-  ) {
-    super(`${builder}: ${message}`);
-    this.name = 'BuilderValidationError';
-  }
-}
-
-function defineTeam(config: TeamDefinition): TeamDefinition {
-  if (!config.name || typeof config.name !== 'string' || config.name.trim() === '') {
-    throw new BuilderValidationError('defineTeam', 'name', 'team name is required and must be a non-empty string');
-  }
-  if (!Array.isArray(config.members) || config.members.length === 0) {
-    throw new BuilderValidationError('defineTeam', 'members', 'team must have at least one member');
-  }
-  for (const member of config.members) {
-    if (typeof member !== 'string' || member.trim() === '') {
-      throw new BuilderValidationError('defineTeam', 'members', `invalid member reference: "${member}"`);
-    }
-  }
-  return config;
-}
-
-function defineAgent(config: AgentDefinition): AgentDefinition {
-  if (!config.name || typeof config.name !== 'string' || config.name.trim() === '') {
-    throw new BuilderValidationError('defineAgent', 'name', 'agent name is required and must be a non-empty string');
-  }
-  if (!/^[a-z][a-z0-9-]*$/.test(config.name)) {
-    throw new BuilderValidationError('defineAgent', 'name', `agent name must be kebab-case: "${config.name}"`);
-  }
-  if (!config.role || typeof config.role !== 'string' || config.role.trim() === '') {
-    throw new BuilderValidationError('defineAgent', 'role', 'agent role is required and must be a non-empty string');
-  }
-  return config;
-}
-
-function defineRouting(config: RoutingDefinition): RoutingDefinition {
-  if (!Array.isArray(config.rules)) {
-    throw new BuilderValidationError('defineRouting', 'rules', 'routing rules must be an array');
-  }
-  // Check for duplicate patterns (warning-level)
-  const patterns = config.rules.map((r) => r.pattern);
-  const seen = new Set<string>();
-  const duplicates: string[] = [];
-  for (const p of patterns) {
-    if (seen.has(p)) duplicates.push(p);
-    seen.add(p);
-  }
-  if (duplicates.length > 0) {
-    // Per PRD: "actionable error messages" — warn on duplicate patterns.
-    // The real implementation may use a warning channel or throw.
-    throw new BuilderValidationError(
-      'defineRouting',
-      'rules',
-      `duplicate routing patterns detected: ${duplicates.join(', ')}`,
-    );
-  }
-  for (const rule of config.rules) {
-    if (!rule.pattern || typeof rule.pattern !== 'string') {
-      throw new BuilderValidationError('defineRouting', 'rules.pattern', 'each routing rule must have a non-empty pattern');
-    }
-    if (!Array.isArray(rule.agents) || rule.agents.length === 0) {
-      throw new BuilderValidationError('defineRouting', 'rules.agents', `rule "${rule.pattern}" must route to at least one agent`);
-    }
-  }
-  return config;
-}
-
-function defineCeremony(config: CeremonyDefinition): CeremonyDefinition {
-  if (!config.name || typeof config.name !== 'string' || config.name.trim() === '') {
-    throw new BuilderValidationError('defineCeremony', 'name', 'ceremony name is required and must be a non-empty string');
-  }
-  return config;
-}
-
-function defineHooks(config: HooksDefinition): HooksDefinition {
-  // Apply defaults
-  return {
-    scrubPii: config.scrubPii ?? false,
-    reviewerLockout: config.reviewerLockout ?? true,
-    maxAskUser: config.maxAskUser ?? 3,
-    ...config,
-  };
-}
-
-function defineCasting(config: CastingDefinition): CastingDefinition {
-  if (
-    config.allowlistUniverses !== undefined &&
-    Array.isArray(config.allowlistUniverses) &&
-    config.allowlistUniverses.length === 0
-  ) {
-    throw new BuilderValidationError(
-      'defineCasting',
-      'allowlistUniverses',
-      'universe list must not be empty when provided — omit the field for no restriction',
-    );
-  }
-  return config;
-}
-
-function defineTelemetry(config: TelemetryDefinition): TelemetryDefinition {
-  return {
-    endpoint: config.endpoint ?? 'http://localhost:4317',
-    enabled: config.enabled ?? true,
-    serviceName: config.serviceName ?? 'squad',
-    sampleRate: config.sampleRate ?? 1.0,
-    ...config,
-  };
-}
+// Real implementation — now available in the codebase
+import {
+  defineTeam,
+  defineAgent,
+  defineRouting,
+  defineCeremony,
+  defineHooks,
+  defineCasting,
+  defineTelemetry,
+  BuilderValidationError,
+} from '../packages/squad-sdk/src/builders/index.js';
 
 // ============================================================================
 // defineTeam()

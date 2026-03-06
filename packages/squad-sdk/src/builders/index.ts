@@ -49,8 +49,8 @@ class BuilderValidationError extends Error {
 }
 
 function assertNonEmptyString(value: unknown, field: string, builder: string): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new BuilderValidationError(builder, `"${field}" must be a non-empty string`);
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new BuilderValidationError(builder, `"${field}" is required and must be a non-empty string`);
   }
 }
 
@@ -122,8 +122,15 @@ export function defineTeam(config: TeamDefinition): TeamDefinition {
   assertOptionalString(config.description, 'description', 'defineTeam');
   assertOptionalString(config.projectContext, 'projectContext', 'defineTeam');
   assertArray(config.members, 'members', 'defineTeam');
+  
+  if (config.members.length === 0) {
+    throw new BuilderValidationError('defineTeam', 'team must have at least one member');
+  }
+  
   for (const member of config.members) {
-    assertNonEmptyString(member, 'members[]', 'defineTeam');
+    if (typeof member !== 'string' || member.trim().length === 0) {
+      throw new BuilderValidationError('defineTeam', `invalid member reference: "${member}"`);
+    }
   }
   return config;
 }
@@ -154,6 +161,11 @@ const CAPABILITY_LEVELS = ['expert', 'proficient', 'basic'] as const;
 export function defineAgent(config: AgentDefinition): AgentDefinition {
   assertObject(config, 'defineAgent');
   assertNonEmptyString(config.name, 'name', 'defineAgent');
+  
+  if (!/^[a-z][a-z0-9-]*$/.test(config.name)) {
+    throw new BuilderValidationError('defineAgent', `"name" must be kebab-case: "${config.name}"`);
+  }
+  
   assertNonEmptyString(config.role, 'role', 'defineAgent');
   assertOptionalString(config.description, 'description', 'defineAgent');
   assertOptionalString(config.charter, 'charter', 'defineAgent');
@@ -206,10 +218,29 @@ export function defineRouting(config: RoutingDefinition): RoutingDefinition {
     assertStringUnion(config.fallback, FALLBACK_BEHAVIORS, 'fallback', 'defineRouting');
   }
 
+  const patterns = config.rules.map((r) => r.pattern);
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+  for (const p of patterns) {
+    if (seen.has(p)) duplicates.push(p);
+    seen.add(p);
+  }
+  if (duplicates.length > 0) {
+    throw new BuilderValidationError(
+      'defineRouting',
+      `duplicate routing patterns detected: ${duplicates.join(', ')}`,
+    );
+  }
+
   for (const rule of config.rules) {
     assertObject(rule, 'defineRouting');
     assertNonEmptyString(rule.pattern, 'rules[].pattern', 'defineRouting');
     assertArray(rule.agents, 'rules[].agents', 'defineRouting');
+    
+    if (rule.agents.length === 0) {
+      throw new BuilderValidationError('defineRouting', `rule "${rule.pattern}" must route to at least one agent`);
+    }
+    
     for (const agent of rule.agents) {
       assertNonEmptyString(agent, 'rules[].agents[]', 'defineRouting');
     }
@@ -277,7 +308,12 @@ export function defineHooks(config: HooksDefinition): HooksDefinition {
   assertOptionalBoolean(config.scrubPii, 'scrubPii', 'defineHooks');
   assertOptionalBoolean(config.reviewerLockout, 'reviewerLockout', 'defineHooks');
 
-  return config;
+  return {
+    scrubPii: config.scrubPii ?? false,
+    reviewerLockout: config.reviewerLockout ?? true,
+    maxAskUser: config.maxAskUser ?? 3,
+    ...config,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +336,17 @@ const OVERFLOW_STRATEGIES = ['reject', 'generic', 'rotate'] as const;
 export function defineCasting(config: CastingDefinition): CastingDefinition {
   assertObject(config, 'defineCasting');
   assertOptionalArray(config.allowlistUniverses, 'allowlistUniverses', 'defineCasting');
+
+  if (
+    config.allowlistUniverses !== undefined &&
+    Array.isArray(config.allowlistUniverses) &&
+    config.allowlistUniverses.length === 0
+  ) {
+    throw new BuilderValidationError(
+      'defineCasting',
+      'universe list must not be empty when provided — omit the field for no restriction',
+    );
+  }
 
   if (config.overflowStrategy !== undefined) {
     assertStringUnion(config.overflowStrategy, OVERFLOW_STRATEGIES, 'overflowStrategy', 'defineCasting');
@@ -349,7 +396,13 @@ export function defineTelemetry(config: TelemetryDefinition): TelemetryDefinitio
     throw new BuilderValidationError('defineTelemetry', '"sampleRate" must be between 0.0 and 1.0');
   }
 
-  return config;
+  return {
+    endpoint: config.endpoint ?? 'http://localhost:4317',
+    enabled: config.enabled ?? true,
+    serviceName: config.serviceName ?? 'squad',
+    sampleRate: config.sampleRate ?? 1.0,
+    ...config,
+  };
 }
 
 // ---------------------------------------------------------------------------
