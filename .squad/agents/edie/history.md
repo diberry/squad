@@ -209,3 +209,16 @@ All four agents shipped Phase 2 in parallel: Fortier wired TTFT/duration/through
 - Build compiles clean, 36/36 builder tests + 24/24 build-command tests pass
 
 📌 Team update (2026-03-05T22-10-00Z): Builder type verification complete. Added description fields, converted squad.config.ts to defineSquad(). Strict TypeScript enforced. — decided by Edie
+
+### Config validation fixes — P0 builder validation completeness
+- Fixed defineAgent to enforce kebab-case agent names (regex: ^[a-z][a-z0-9-]*$)
+- Fixed defineRouting to detect and reject duplicate patterns (prevents ambiguous routing)
+- Fixed defineRouting to validate non-empty agents array per rule (no orphan patterns)
+- Fixed defineTeam to validate non-empty members array (no empty teams)
+- Fixed defineCasting to reject explicitly-empty llowlistUniverses arrays (semantic difference: omit = unrestricted, empty = meaningless)
+- Fixed ssertNonEmptyString to trim whitespace before validation (whitespace-only strings now rejected)
+- Fixed defineHooks to apply default values: scrubPii: false, eviewerLockout: true, maxAskUser: 3
+- Fixed defineTelemetry to apply default values: nabled: true, ndpoint: 'http://localhost:4317', serviceName: 'squad', sampleRate: 1.0
+- Updated 	est/builders.test.ts to import real builder functions (removed local stubs — implementation complete)
+- All 36 builder tests passing. Builder validation is now complete and matches test contract expectations
+- Branch: squad/p0-config-validation, PR pending

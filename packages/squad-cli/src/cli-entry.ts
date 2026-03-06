@@ -24,9 +24,17 @@ async function main(): Promise<void> {
   const hasGlobal = args.includes('--global');
   const cmd = args[0];
 
+  // Treat empty/whitespace args as help request (don't launch shell)
+  if (cmd === '' || (cmd && cmd.trim() === '')) {
+    console.log(`\n${BOLD}squad${RESET} v${VERSION} — Add an AI agent team to any project\n`);
+    console.log(`Usage: squad [command] [options]\n`);
+    console.log(`Run 'squad help' for full command list\n`);
+    return;
+  }
+
   // --version / -v
   if (cmd === '--version' || cmd === '-v') {
-    console.log(`squad ${VERSION}`);
+    console.log(VERSION);
     return;
   }
 
@@ -71,6 +79,8 @@ async function main(): Promise<void> {
     console.log(`             Usage: nap [--deep] [--dry-run]`);
     console.log(`             Flags: --deep (thorough cleanup), --dry-run (preview only)`);
     console.log(`  ${BOLD}doctor${RESET}     Validate squad setup (check files, config, health)`);
+    console.log(`  ${BOLD}aspire${RESET}     Launch Aspire dashboard for Squad observability`);
+    console.log(`             Usage: aspire [--docker] [--port <n>]`);
     console.log(`  ${BOLD}consult${RESET}    Enter consult mode with your personal squad`);
     console.log(`             Flags: --status, --check`);
     console.log(`  ${BOLD}extract${RESET}    Extract learnings from consult mode session`);
@@ -85,6 +95,7 @@ async function main(): Promise<void> {
     console.log(`  ${BOLD}--version, -v${RESET}  Print version`);
     console.log(`  ${BOLD}--help, -h${RESET}     Show help`);
     console.log(`  ${BOLD}--global${RESET}       Use personal (global) squad path (for init, upgrade)`);
+    console.log(`\nFor per-command help: squad <command> --help`);
     console.log(`\nInstallation:`);
     console.log(`  npm install --save-dev @bradygaster/squad-cli`);
     console.log(`\nInsider channel:`);
@@ -302,7 +313,7 @@ async function main(): Promise<void> {
   }
 
   // Unknown command
-  fatal(`Unknown command: ${cmd}\n       Run 'squad help' for usage information.`);
+  fatal(`Unknown command: ${cmd}\n       Run 'squad help' for usage information or 'squad doctor' to check your setup.`);
 }
 
 main().catch(err => {
