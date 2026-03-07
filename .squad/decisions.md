@@ -3542,3 +3542,95 @@ Two issues warrant discussion but aren't blockers:
 **Prepared by:** Keaton (Lead)  
 **Decision Record:** .squad/decisions/inbox/keaton-next-wave-triage.md
 
+
+
+### 2026-03-06: Animation interval floors for terminal UI
+**By:** Fenster (Core Dev)
+**What:** Spinner animations must use ≥120ms intervals, pulsing indicators ≥500ms, and elapsed-time counters ≥1000ms. The `\x1b[3J` (clear scrollback) escape code must not be used during normal rendering — only on explicit user-triggered `/clear`.
+**Why:** Multiple high-frequency timers compound into excessive Ink re-renders, causing terminal blink/flicker (#206). Scrollback clearing resets the user's scroll position.
+
+# Decision: CLI command wiring audit pattern
+
+**Date:** 2026-03-07
+**Author:** Fenster
+**Issue:** #237
+**PR:** #244
+
+## Context
+
+Six CLI commands existed in `packages/squad-cli/src/cli/commands/` but were not all routed in `cli-entry.ts`. This is a recurring bug class — commands get implemented but the wiring step is missed.
+
+## Decision
+
+1. Every file in `commands/` MUST have a corresponding `if (cmd === '...')` block in `cli-entry.ts` AND a help text entry.
+2. Utility modules in `commands/` (like `rc-tunnel.ts`, `copilot-bridge.ts`) that don't export a `run*` function should still be wired as diagnostic/check commands.
+3. The `cli-wiring` skill document is the canonical checklist for this pattern.
+
+## Consequences
+
+- New commands must follow the checklist in `.squad/skills/cli-wiring/SKILL.md`
+- PRs adding command files should be checked for both routing AND help text
+
+### 2026-03-07: squad init --no-workflows flag for opt-in workflow installation
+**By:** Fenster (Core Dev)
+**What:** `squad init` now accepts `--no-workflows` to skip GitHub workflow installation. Default remains `true` (framework workflows are installed). The `RunInitOptions` interface accepts `includeWorkflows?: boolean`.
+**Why:** Users in repos with existing CI/CD should be able to skip Squad's framework workflow installation. The 4 framework workflows are safe, but user control matters.
+**Impact:** CLI help text updated, `RunInitOptions` extended, `initSquad` respects the flag.
+
+# Decision: Structured Model Preference in SDK Config
+
+**Date:** 2026-03-08
+**Author:** Fenster (Core Dev)
+**Issue:** #223
+**PR:** #245
+
+## Context
+
+Model preferences set via `defineAgent({ model: '...' })` were not reliably applied because the build pipeline emitted a flat `**Model:** value` line, but the charter-compiler expected a `## Model` section with `**Preferred:** value` format.
+
+## Decision
+
+1. **`AgentDefinition.model` accepts `string | ModelPreference`** — backwards compatible. A plain string is normalized to `{ preferred: string }` internally.
+2. **`ModelPreference` interface** has three fields: `preferred` (required), `rationale` (optional), `fallback` (optional).
+3. **Squad-level defaults** via `config.defaults.model` — applied to any agent that doesn't specify its own model preference.
+4. **Charter output** uses the `## Model` section format with `**Preferred:**`, `**Rationale:**`, `**Fallback:**` lines — matching what the charter-compiler already parses.
+
+## Impact
+
+- All agents: charter generation now reliably round-trips model preferences.
+- Verbal/Keaton: the 4-layer model selection hierarchy documented in squad.agent.md is now supported at the SDK config level.
+- Anyone adding new config fields: use the `assertModelPreference()` pattern (accept string-or-object, normalize internally) for fields that need simple and rich config shapes.
+
+# Decision: Runtime ExperimentalWarning suppression via process.emit hook
+
+**Date:** 2026-03-07
+**Author:** Fenster (Core Dev)
+**Context:** PR #233 CI failure — 4 tests failed
+
+## Problem
+
+PR #233 (CLI wiring fixes for #226, #229, #201, #202) passed all 74 tests locally but failed 4 tests in CI:
+
+- `test/cli-p0-regressions.test.ts` — bare semver test (expected 1 line, got 3)
+- `test/speed-gates.test.ts` — version outputs one line (expected 1, got 3)
+- `test/ux-gates.test.ts` — no overflow beyond 80 chars (ExperimentalWarning line >80)
+- `test/ux-gates.test.ts` — version bare semver (expected 1 line, got 3)
+
+Root cause: `node:sqlite` import triggers Node.js `ExperimentalWarning` that leaks to stderr. The existing `process.env.NODE_NO_WARNINGS = '1'` in cli-entry.ts was ineffective because Node only reads that env var at process startup, not when set at runtime.
+
+The warning likely didn't appear locally because the local Node.js version may have already suppressed it or the env var was set in the shell.
+
+## Decision
+
+Added a `process.emit` override in cli-entry.ts that intercepts `warning` events with `name === 'ExperimentalWarning'` and swallows them. This is placed:
+- After `process.env.NODE_NO_WARNINGS = '1'` (which still helps child processes)
+- Before the `await import('node:sqlite')` pre-flight check
+
+This is the standard Node.js pattern for runtime warning suppression when you can't control the process launch flags.
+
+## Impact
+
+- **cli-entry.ts**: 12 lines added (comment + override function)
+- **Tests**: All 4 previously failing tests now pass; no regressions in structural tests (#624)
+- **Behavior**: ExperimentalWarning messages no longer appear in CLI output; other warnings (DeprecationWarning, etc.) are unaffected
+
