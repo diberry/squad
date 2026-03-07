@@ -198,3 +198,64 @@ Brady requested evaluation of reducing Actions usage by migrating automation to 
 - Deprecation path is gradual (1+ release cycles notice)
 
 **Timeline:** Can proceed with CLI command implementation immediately (v1.0 target); old workflows coexist during transition.
+
+### 2026-03-16: npm Publish Automation via GitHub Actions (COMPLETE)
+
+**AUTOMATION IMPLEMENTED: npm publishing now handled by GitHub Actions.**
+
+Brady requested automated npm publishing instead of manual local publishes. Assessment complete, workflow consolidated.
+
+#### Changes Made
+
+1. **Updated `publish.yml` workflow:**
+   - Trigger on `release.published` event (automatic when GitHub Release created)
+   - Added manual `workflow_dispatch` trigger for ad-hoc publishes
+   - Publishes SDK first, then CLI (correct dependency order)
+   - Added version verification (ensures package.json matches release tag)
+   - Added npm publication verification (confirms packages published successfully)
+   - Uses `NPM_TOKEN` secret for authentication
+   - Includes npm provenance attestation for supply chain security
+
+2. **Deprecated `squad-publish.yml`:**
+   - Renamed to `.deprecated` (old workflow had redundant functionality)
+   - All logic consolidated into single `publish.yml` workflow
+
+3. **Separation of concerns:**
+   - `squad-release.yml` — Creates GitHub Release + tag (triggered on main branch merge)
+   - `publish.yml` — Publishes to npm (triggered by GitHub Release)
+   - Clean event chain: Merge → Release → Publish
+
+#### Architecture
+
+**Event Flow:**
+1. Brady merges to `main` (via `squad-promote.yml` or direct merge)
+2. `squad-release.yml` triggers on `push` to `main`
+3. Creates tag + GitHub Release (if version bumped)
+4. `publish.yml` triggers on `release.published` event
+5. Publishes both packages to npm with provenance
+
+**Manual Override:**
+- `publish.yml` supports `workflow_dispatch` for ad-hoc publishes
+- Requires version input (e.g., "0.8.21")
+- Useful for hotfixes or republishing
+
+#### Setup Required (Brady Action Items)
+
+**NPM_TOKEN Secret Setup:**
+1. Go to https://www.npmjs.com/settings/{username}/tokens
+2. Generate new **Automation** token (not Classic or Granular)
+3. Go to GitHub repo → Settings → Secrets and variables → Actions
+4. Add secret: `NPM_TOKEN` = (paste token)
+
+**Verification:**
+- Next release will automatically publish to npm when GitHub Release created
+- Manual test: Run workflow_dispatch on `publish.yml` with version "0.8.21"
+
+#### State Integrity
+
+- Zero risk: npm publish is idempotent (can't republish same version)
+- Version mismatch protection: Workflow verifies package.json matches release tag
+- Publication verification: Workflow confirms packages visible on npm after publish
+- Rollback strategy: Manual unpublish via `npm unpublish` if issues detected within 72 hours
+
+**Key Learning:** Automated npm publishing reduces human error (version mismatches, forgotten packages, incorrect tag) and provides audit trail via GitHub Actions logs. Provenance attestation strengthens supply chain security.
