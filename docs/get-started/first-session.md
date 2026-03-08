@@ -86,7 +86,25 @@ Say "yes" or skip straight to a task (which is implicit confirmation):
 > Yes. Dallas, set up the Express server with basic routing.
 ```
 
-Squad creates the `.squad/` directory structure — team roster, routing rules, casting state, ceremony config, agent charters, and histories — all seeded with your project context. Then it spawns Dallas:
+Squad creates the `.squad/` directory structure — team roster, routing rules, casting state, ceremony config, agent charters, and histories — all seeded with your project context.
+
+### What's inside .squad/?
+
+| File/Directory | Purpose |
+|---|---|
+| `team.md` | Team roster, roles, and member info |
+| `routing.md` | Work routing rules (which agent handles what) |
+| `decisions.md` | Team decisions — all agents read this before working |
+| `agents/` | Each agent's charter and history (their memory) |
+| `ceremonies.md` | Ceremony schedule (retrospectives, reviews, etc.) |
+| `casting/` | Team formation history and casting state |
+| `skills/` | Reusable capabilities agents can learn |
+
+**You own these files.** Edit them anytime — change roles, add routing rules, fix decisions. Squad reads them before every spawn.
+
+**Commit `.squad/` to version control.** It's your team's brain. Anyone who clones the repo gets the team with all their knowledge.
+
+Then it spawns Dallas:
 
 ```
 🔧 Dallas — setting up Express server with routing
