@@ -1,54 +1,52 @@
-# Routing Rules — squad-sdk
+# Routing Rules — Mission Control
 
 ## Work Type → Agent
 
 | Work Type | Agent | Examples |
 |-----------|-------|---------|
-| Core runtime | Fenster 🔧 | CopilotClient, adapter, session pool, tools module, spawn orchestration |
-| Prompt architecture | Verbal 🧠 | Agent charters, spawn templates, coordinator logic, response tier selection |
-| Type system | Edie 👩‍💻 | Discriminated unions, generics, tsconfig, strict mode enforcement, declaration files |
-| SDK integration | Kujan 🕵️ | @github/copilot-sdk usage, CopilotSession lifecycle, event handling, platform patterns |
-| Runtime performance | Fortier ⚡ | Streaming, event loop health, session management, async iterators, memory profiling |
-| Tests & quality | Hockney 🧪 | Test coverage, Vitest, edge cases, CI/CD, quality gates |
-| Docs & messaging | McManus 📣 | README, API docs, getting-started, demos, tone review |
-| Architecture & review | Keaton 🏗️ | Product direction, architectural decisions, code review, scope/trade-offs |
-| Distribution | Rabin 📦 | npm packaging, esbuild config, global install, marketplace prep |
-| Release management | Trejo 🚢 | Semantic versioning, GitHub Releases, changelogs, dev→main merges, release gating |
-| CI/CD & publish pipeline | Drucker ⚙️ | GitHub Actions, publish.yml, automated validation gates, workflow monitoring |
-| Security & PII | Baer 🔒 | Hook design (file-write guards, PII filters), security review, compliance |
-| Visual identity | Redfoot 🎨 | Logo, icons, brand assets, design system |
-| Aspire & observability | Saul 🔭 | Aspire dashboard, OTLP integration, Playwright E2E, Docker telemetry |
-| VS Code integration | Strausz 🔌 | VS Code Extension API, runSubagent compatibility, editor integration |
-| REPL & shell | Kovash 🖥️ | Interactive shell, Ink components, session dispatch, streaming pipeline, event wiring |
-| CLI UX design | Marquez 🎨 | Interaction design, copy, spacing, affordances, UX gates, flow review |
-| TUI implementation | Cheritto 🖥️ | Ink components, layout, input handling, focus management, rendering perf |
-| Terminal E2E tests | Breedan 🧪 | node-pty harness, Gherkin features, frame snapshots, UX gate test suite |
-| Accessibility review | Nate ♿ | Keyboard nav, color contrast, error guidance, shortcut discoverability |
-| Hostile QA | Waingro 💥 | Adversarial testing, edge cases, regression scenarios, nasty input corpus |
+| Core runtime | EECOM 🔧 | CopilotClient, adapter, session pool, tools module, spawn orchestration |
+| Prompt architecture | Procedures 🧠 | Agent charters, spawn templates, coordinator logic, response tier selection |
+| Type system | CONTROL 👩‍💻 | Discriminated unions, generics, tsconfig, strict mode enforcement, declaration files |
+| SDK integration | CAPCOM 🕵️ | @github/copilot-sdk usage, CopilotSession lifecycle, event handling, platform patterns |
+| Runtime performance | GNC ⚡ | Streaming, event loop health, session management, async iterators, memory profiling |
+| Tests & quality | FIDO 🧪 | Test coverage, Vitest, edge cases, CI/CD, quality gates, adversarial testing, PR blocking |
+| Docs & messaging | PAO 📣 | README, API docs, getting-started, demos, tone review, contributor recognition |
+| Architecture & review | Flight 🏗️ | Product direction, architectural decisions, code review, scope/trade-offs |
+| Distribution | Network 📦 | npm packaging, esbuild config, global install, marketplace prep |
+| Release management | Surgeon 🚢 | Semantic versioning, GitHub Releases, changelogs, dev→main merges, release gating |
+| CI/CD & publish pipeline | Booster ⚙️ | GitHub Actions, publish.yml, automated validation gates, workflow monitoring |
+| Security & PII | RETRO 🔒 | Hook design (file-write guards, PII filters), security review, compliance, secret management |
+| CLI UX & visual design | INCO 🎨 | Interaction design, copy, spacing, affordances, UX gates, logo, brand, design system |
+| Aspire & observability | Telemetry 🔭 | Aspire dashboard, OTLP integration, Playwright E2E, Docker telemetry |
+| VS Code integration | GUIDO 🔌 | VS Code Extension API, runSubagent compatibility, editor integration |
+| REPL & shell | VOX 🖥️ | Interactive shell, session dispatch, streaming pipeline, event wiring |
+| TUI implementation | DSKY 🖥️ | Terminal components, layout, input handling, focus management, rendering perf |
+| Terminal E2E tests | Sims 🧪 | node-pty harness, Gherkin features, frame snapshots, UX gate test suite |
+| SDK usability | Handbook 📖 | JSDoc, LLM discoverability, API surface clarity, legacy cleanup, migration guides |
 
 ## Module Ownership
 
 | Module | Primary | Secondary |
 |--------|---------|-----------|
-| `src/adapter/` | Fenster 🔧 | Kujan 🕵️ |
-| `src/agents/` | Verbal 🧠 | Fenster 🔧 |
-| `src/build/` | Edie 👩‍💻 | Rabin 📦 |
-| `src/casting/` | Fenster 🔧 | Verbal 🧠 |
-| `src/cli/` | Fenster 🔧 | Rabin 📦 |
-| `src/client/` | Kujan 🕵️ | Fenster 🔧 |
-| `src/config/` | Edie 👩‍💻 | Fenster 🔧 |
-| `src/coordinator/` | Verbal 🧠 | Keaton 🏗️ |
-| `src/hooks/` | Baer 🔒 | Fenster 🔧 |
-| `src/marketplace/` | Rabin 📦 | Fenster 🔧 |
-| `src/ralph/` | Fenster 🔧 | — |
-| `src/runtime/` | Fortier ⚡ | Fenster 🔧 |
-| `src/sharing/` | Fenster 🔧 | Rabin 📦 |
-| `src/skills/` | Verbal 🧠 | — |
-| `src/tools/` | Fenster 🔧 | Kujan 🕵️ |
-| `src/cli/shell/` | Kovash 🖥️ | Cheritto 🖥️ |
-| `src/cli/shell/components/` | Cheritto 🖥️ | Kovash 🖥️ |
-| `tests/acceptance/` | Breedan 🧪 | Waingro 💥 |
-| `src/index.ts` | Edie 👩‍💻 | Keaton 🏗️ |
+| `src/adapter/` | EECOM 🔧 | CAPCOM 🕵️ |
+| `src/agents/` | Procedures 🧠 | EECOM 🔧 |
+| `src/build/` | CONTROL 👩‍💻 | Network 📦 |
+| `src/casting/` | EECOM 🔧 | Procedures 🧠 |
+| `src/cli/` | EECOM 🔧 | Network 📦 |
+| `src/client/` | CAPCOM 🕵️ | EECOM 🔧 |
+| `src/config/` | CONTROL 👩‍💻 | EECOM 🔧 |
+| `src/coordinator/` | Procedures 🧠 | Flight 🏗️ |
+| `src/hooks/` | RETRO 🔒 | EECOM 🔧 |
+| `src/marketplace/` | Network 📦 | EECOM 🔧 |
+| `src/ralph/` | EECOM 🔧 | — |
+| `src/runtime/` | GNC ⚡ | EECOM 🔧 |
+| `src/sharing/` | EECOM 🔧 | Network 📦 |
+| `src/skills/` | Procedures 🧠 | — |
+| `src/tools/` | EECOM 🔧 | CAPCOM 🕵️ |
+| `src/cli/shell/` | VOX 🖥️ | DSKY 🖥️ |
+| `src/cli/shell/components/` | DSKY 🖥️ | VOX 🖥️ |
+| `tests/acceptance/` | Sims 🧪 | FIDO 🧪 |
+| `src/index.ts` | CONTROL 👩‍💻 | Flight 🏗️ |
 
 ## Routing Principles
 
