@@ -65,6 +65,8 @@ These scenarios showcase Squad's flexibility for creative projects:
 
 Using Squad in your project? We'd love to feature it here.
 
+**Share your project:** Post about your Squad project on LinkedIn using the `#BuiltWithSquad` hashtag to help others discover what's possible with Squad. Community projects inspire innovation.
+
 **How to get listed:**
 1. Open a pull request with the title prefix `showcase:` (e.g., `showcase: Add My Project`)
    - **Note:** The `showcase:` prefix is required for PR triage and review
