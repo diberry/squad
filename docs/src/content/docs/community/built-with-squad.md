@@ -3,7 +3,7 @@ title: Built with Squad
 description: Projects using Squad in production — from enterprise job schedulers to learning platforms and real-world samples.
 ---
 
-Squad is used in **78+ repositories** across organizations and individual developers.
+**78+ repositories** across organizations and individual developers use Squad.
 
 ## Featured projects
 
@@ -30,7 +30,7 @@ These scenarios automate common development and technical tasks:
 - [**Compliance checker**](https://github.com/bradygaster/Squad-IRL/tree/main/compliance-checker) — Validate code and documentation against compliance requirements
 - [**A/B test orchestrator**](https://github.com/bradygaster/Squad-IRL/tree/main/ab-test-orchestrator) — Coordinate and analyze A/B testing workflows
 
-### Business & operations
+### Business and operations
 
 These scenarios handle business processes and operational workflows:
 
@@ -53,7 +53,7 @@ These scenarios help you manage personal workflows and information:
 - [**Receipt scanner**](https://github.com/bradygaster/Squad-IRL/tree/main/receipt-scanner) — Extract and organize data from receipts
 - [**Travel planner**](https://github.com/bradygaster/Squad-IRL/tree/main/travel-planner) — Plan and organize travel itineraries
 
-### Creative & fun
+### Creative and fun
 
 These scenarios showcase Squad's flexibility for creative projects:
 
