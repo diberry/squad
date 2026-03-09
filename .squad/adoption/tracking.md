@@ -1,6 +1,6 @@
 # Squad Adoption Tracking
 
-⚠️ **INTERNAL** — This file tracks adoption privately. Individual repos are NOT published without owner consent. See `docs/community/built-with-squad.md` for the public showcase.
+This file tracks Squad adoption. All repositories listed are public and discoverable via GitHub code search. The public showcase at `docs/community/built-with-squad.md` features opted-in projects with additional context.
 
 ## Aggregate Metrics
 
