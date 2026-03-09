@@ -66,8 +66,9 @@ These scenarios showcase Squad's flexibility for creative projects:
 Using Squad in your project? We'd love to feature it here.
 
 **How to get listed:**
-1. Open a pull request adding your project to this page
-2. Or start a discussion in [GitHub Discussions](https://github.com/bradygaster/squad/discussions)
+1. Open a pull request with the title prefix `showcase:` (e.g., `showcase: Add My Project`)
+   - **Note:** The `showcase:` prefix is required for PR triage and review
+2. Add your project to this page
 
 **What to include:**
 - Project name and repository link
@@ -75,6 +76,8 @@ Using Squad in your project? We'd love to feature it here.
 - Confirmation that you're actively using Squad
 
 **Review time:** We typically review submissions within a few days.
+
+**About submissions:** PAO, the team's DevRel agent, reviews all submissions to ensure projects align with Squad's community standards and are actively maintained.
 
 ---
 
