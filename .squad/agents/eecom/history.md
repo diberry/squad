@@ -24,3 +24,8 @@ CLI completeness audit (2026-03-08) confirmed: 26 primary commands routed in cli
 
 📌 **Team update (2026-03-08T21:18:00Z):** FIDO + EECOM released unanimous GO verdict for v0.8.24. Smoke test approved as release gate. FIDO confirmed 32/32 pass + publish.yml wired correctly. EECOM confirmed 26/26 commands + packaging complete (minor gap: "streams" alias untested, non-blocking).
 
+### SDK Init Flow Deep Dive (2026-03-08)
+Traced complete `squad init --sdk` flow end-to-end for unified PRD. Key findings: (1) Init flow has two phases: CLI init creates skeleton files, REPL auto-cast creates team members. (2) Critical gap: squad.config.ts is never updated after auto-cast — members exist in .squad/ but not in config. (3) Ralph is inconsistently created (auto-cast yes, CLI init no). (4) No commands exist for adding/removing members post-init. (5) CastingEngine class exists but is never called during init — LLM-based Init Mode prompt is used instead. Roadmap written to .squad/identity/sdk-init-implementation-roadmap.md with 7 fixes prioritized by dependency graph. Critical path: sync utility → Ralph fixes → CastingEngine integration → hire/remove commands. High-risk items: squad.config.ts AST parsing (considered regex alternative). Open questions: AST vs regex for config sync, CastingEngine augment vs replace LLM, Ralph always-on vs opt-in.
+
+📌 **Team update (2026-03-11T01:25:00Z):** SDK Init decisions finalized: Phase-based quality improvement program, CastingEngine canonical casting, squad.config.ts as source of truth, Ralph always-included, implementation priority order (sync utility first, then Ralph fixes, then CastingEngine integration). All decisions merged to decisions.md. Ready to start Phase 1 implementation.
+

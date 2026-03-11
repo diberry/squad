@@ -138,3 +138,108 @@ Definitive CLI completeness audit confirms all commands work post-publish.
 ---
 
 *Fresh start — Mission Control rebirth, 2026-03-08. Previous decisions archived.*
+
+---
+
+## SDK Init Shore-Up Initiative (2026-03-11)
+
+### Phase-Based SDK Quality Improvement Program
+
+**By:** Flight  
+**Date:** 2026-03-11  
+**Affects:** EECOM, CAPCOM, FIDO, Procedures
+
+SDK initialization produces incomplete state (config sync broken, built-in members missing, CastingEngine bypassed). Implement 3-phase approach prioritizing foundational gaps before comprehensive testing.
+
+**What:**
+1. **Phase 1 (P1):** Fix foundational gaps — config sync, Ralph inclusion, @copilot roster entry
+2. **Phase 2 (P1):** Wire CastingEngine into CLI init flow (restore universe curation quality)
+3. **Phase 3 (P2):** Exercise full test matrix (29 untested features → 100% SDK feature parity)
+
+**Why this order:**
+- Config sync must work before CastingEngine templates can rely on it
+- Stable init flow required before systematic feature verification
+- Phases 1-2 unblock SDK consumers immediately (Phase 3 is verification)
+
+**Ownership:**
+- **EECOM + CAPCOM:** Phases 1-2 (estimated 2 sprints)
+- **FIDO + CAPCOM:** Phase 3 (estimated 2 sprints)
+- **Procedures:** Partner on Phase 2 (universe template quality)
+
+**Success Criteria:**
+- Phase 1: All members (user-added, Ralph, @copilot) in `squad.config.ts` without manual edits
+- Phase 2: 90%+ init runs use curated templates (Apollo 13/Usual Suspects)
+- Phase 3: 100% SDK feature parity
+
+Full PRD: `.squad/identity/prd-sdk-init-shoreup.md`
+
+---
+
+### CastingEngine is the canonical casting system
+
+**By:** CAPCOM  
+**Date:** 2026-03-11  
+
+All team casting flows (CLI init, REPL auto-cast, manual casting) must use `CastingEngine.castTeam()`.
+
+**What:** Consolidate casting logic to avoid duplication of personality/role-matching. Use structured character data (personality, backstory, role) from universe templates instead of generic role-based personalities.
+
+**Why:** SDK already ships with CastingEngine — we should use it. Provides rich, themed characters instead of generic roles. Avoids duplication of casting logic across CLI and REPL.
+
+**Impact:** Requires refactoring `cli/core/cast.ts:personalityForRole()` and wiring coordinator universe selection to CastingEngine templates.
+
+---
+
+### squad.config.ts is the source of truth for SDK-mode projects
+
+**By:** CAPCOM  
+**Date:** 2026-03-11  
+
+When `squad.config.ts` exists, it is the canonical team roster. Markdown files (.squad/team.md, routing.md) are **generated output** from `squad build`.
+
+**What:** TypeScript config enables type-checking, validation, and better tooling. Markdown is regenerated from config during build.
+
+**Why:** Having two sources of truth (config + markdown) creates sync bugs. One source enables automated consistency.
+
+**Impact:**
+- `squad build` regenerates markdown from config
+- REPL init flow writes squad.config.ts after casting
+- Manual team.md edits in SDK mode trigger a warning (suggest `squad migrate --to sdk`)
+
+---
+
+### Ralph is a required built-in agent, always included
+
+**By:** CAPCOM  
+**Date:** 2026-03-11  
+
+Ralph (Work Monitor) is added automatically during init, just like Scribe.
+
+**What:** Ralph is a core framework component (work queue tracking, keep-alive monitoring). Include Ralph in both CLI init and REPL auto-cast flows.
+
+**Why:** Ralph is a core team member, not an optional add-on. Should be present in every Squad project.
+
+**Impact:** Add Ralph to the hardcoded agents array in `cli/core/init.ts` (both SDK init and REPL paths).
+
+---
+
+### SDK Init Implementation Priority Order
+
+**By:** EECOM  
+**Date:** 2026-03-11  
+
+Prioritize squad.config.ts sync fixes over new commands. Implement in this order:
+
+1. **Fix 1 — squad.config.ts sync utility** (regex-based, upgrade to AST if edge cases arise)
+2. **Fix 2, 7 — Ralph in CLI init + REPL init with prompt**
+3. **Fix 6 — CastingEngine integration** (augment LLM proposals with structured character data, don't replace LLM)
+4. **Fix 3, 4, 5 — hire/remove commands, @copilot flag** (polish, lower priority)
+
+**Why:** squad.config.ts sync is load-bearing for the rest. Ralph fixes are quick wins completing a half-implemented feature. CastingEngine is high-value but medium-risk. Hire/remove/flags are polish.
+
+**Open Questions:**
+- AST vs Regex for config parsing: Start with regex, upgrade if edge cases arise
+- CastingEngine augment vs replace: Keep LLM for flexibility, use CastingEngine to enrich proposals
+- Ralph always-on vs opt-in: Make Ralph always-included
+
+**Reference:** Full roadmap at `.squad/identity/sdk-init-implementation-roadmap.md`
