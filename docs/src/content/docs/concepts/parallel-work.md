@@ -172,9 +172,9 @@ First match wins:
 | Git / Release | `claude-haiku-4.5` | Changelogs, tags, version bumps |
 | Designer / Visual | `claude-opus-4.5` | Vision capability required |
 
-### Model Catalog (16 models)
+### Model catalog
 
-Squad supports models across three tiers:
+GitHub Copilot exposes the model tiers that Squad can use:
 
 - **Premium:** claude-opus-4.6, claude-opus-4.6-fast, claude-opus-4.5
 - **Standard:** claude-sonnet-4.5, gpt-5.2-codex, claude-sonnet-4, gpt-5.2, gpt-5.1-codex, gpt-5.1, gpt-5, gemini-3-pro-preview

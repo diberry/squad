@@ -1,8 +1,8 @@
 # Switching AI Models — Budget vs Quality
 
-**Try this to reduce costs temporarily:**
+**Try this to reduce premium request usage temporarily:**
 ```
-Switch everyone to Haiku — I'm trying to save costs this sprint
+Switch everyone to Haiku — I want to save premium requests this sprint
 ```
 
 **Try this to maximize quality:**
@@ -15,21 +15,21 @@ Use Opus for all agents — quality over cost for this session
 Reset to default model strategy
 ```
 
-Squad supports 16 models across three tiers. Switch the entire team, set per-agent preferences, or let Squad auto-route based on task type.
+GitHub Copilot brokers the models that Squad can use. Switch the entire team, set per-agent preferences, or let Squad auto-route based on task type.
 
 ---
 
-## 1. The Default: Cost-First Strategy
+## 1. The default: cost-first strategy
 
-Model selection strategies for different needs. Squad supports 16 models with fallback chains.
+Model selection strategies for different needs. Squad uses the models that GitHub Copilot exposes to your plan, with fallback chains when a model is unavailable.
 
-Squad's default model configuration prioritizes cost-effectiveness:
+Squad's default model configuration tries to preserve premium requests while keeping code quality high:
 
 - **Non-code tasks** (planning, triage, decisions) → `claude-haiku-4.5` (fast, cheap)
 - **Code tasks** (implementation, refactoring) → `claude-sonnet-4.5` (balanced quality/cost)
 - **Code review** (critical analysis) → `claude-sonnet-4.5`
 
-This is optimized for **everyday use** — good quality without burning your API budget.
+This is optimized for **everyday use** — good quality without burning through premium requests.
 
 ---
 
@@ -49,7 +49,7 @@ All agents now use claude-haiku-4.5 (fast/cheap tier)
 Agents will be faster but may need more guidance on complex tasks.
 ```
 
-This is written to `.ai-team/model-config.json`:
+This is written to `.squad/model-config.json`:
 
 ```json
 {
@@ -80,7 +80,7 @@ All other agents → claude-sonnet-4.5 (standard tier)
 Neo will give higher-quality code reviews and architectural guidance.
 ```
 
-This is written to `.ai-team/model-config.json`:
+This is written to `.squad/model-config.json`:
 
 ```json
 {
@@ -120,9 +120,9 @@ Tank doesn't need Opus to write tests. Neo does need it for code reviews. Balanc
 
 ---
 
-## 5. The 16-Model Catalog
+## 5. Model catalog
 
-Squad supports these models (as of v0.2.0):
+GitHub Copilot can expose these models to Squad, depending on your subscription tier and rollout status:
 
 **Premium tier** (highest quality, highest cost):
 - `claude-opus-4.6` — latest Opus, best reasoning
@@ -147,7 +147,7 @@ Squad supports these models (as of v0.2.0):
 - `gpt-5-mini`
 - `gpt-4.1`
 
-**Note:** Model availability depends on your GitHub Copilot subscription tier.
+**Note:** GitHub Copilot remains the broker here. Squad does not connect directly to Anthropic, OpenAI, Azure OpenAI, or Gemini APIs, and bring your own key is not supported.
 
 ---
 
@@ -230,4 +230,4 @@ You don't have to configure this — it's automatic.
 - **Use Opus for the Lead.** Code reviews benefit most from premium reasoning. Opus catches edge cases Sonnet misses.
 - **Haiku is underrated for tests.** Test writing doesn't require deep reasoning — Haiku is fast and accurate enough.
 - **Per-agent overrides are cheap.** Put Opus on the Lead, Haiku on the Tester, Sonnet on everyone else. Balanced budget.
-- **Model config is in `.ai-team/model-config.json`.** Commit it so your team uses the same models.
+- **Model config is in `.squad/model-config.json`.** Commit it so your team uses the same models.

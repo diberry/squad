@@ -5,6 +5,15 @@
 
 Three ways to get Squad running. Pick the one that fits.
 
+## Platform requirements
+
+Squad routes all LLM requests through GitHub Copilot. The CLI, VS Code, and SDK all use Copilot as the model access layer.
+
+- GitHub Copilot is required.
+- GitHub Copilot is the only supported backend.
+- Bring your own key is not a supported feature.
+- Model availability depends on what GitHub Copilot exposes for your plan.
+
 ---
 
 ## Try this:
@@ -68,7 +77,7 @@ Pick based on what you're doing:
 | Try Squad quickly | **CLI** with `npx` | No install needed. Run `npx @bradygaster/squad-cli init` and you're testing it. |
 | Use Squad across all projects | **CLI** with `--global` | One install. Works everywhere. Run `squad` from any terminal. |
 | Work inside VS Code | **VS Code** (just open your project) | Already using Copilot? Squad just works. Same `.squad/` directory as CLI. |
-| Build tools on top of Squad | **SDK** | Typed APIs, routing config, agent lifecycle hooks. Programmatic access to everything. |
+| Build tools on top of Squad | **SDK** | Typed APIs, routing config, agent lifecycle hooks. Runtime model access still goes through GitHub Copilot. |
 
 Can't decide? → Start with **CLI**. You can always add VS Code or the SDK later. Your `.squad/` directory works identically everywhere.
 
@@ -96,7 +105,7 @@ Then import what you need:
 import { defineConfig, loadConfig, resolveSquad } from '@bradygaster/squad-sdk';
 ```
 
-The SDK gives you typed configuration, routing, model selection, and the full agent lifecycle API. See the [SDK Reference](../reference/sdk.md) for details.
+The SDK gives you typed configuration, routing, model selection, and the full agent lifecycle API. Runtime model access still goes through GitHub Copilot. See the [SDK Reference](../reference/sdk.md) for details.
 
 ---
 

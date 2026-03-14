@@ -17,6 +17,17 @@ It's not a chatbot wearing hats. Each team member runs in its own context, reads
 
 ---
 
+## Platform requirements
+
+Squad uses GitHub Copilot as its model access layer. Every LLM request goes through Copilot.
+
+- **GitHub Copilot is required.** Squad runs inside GitHub Copilot CLI and VS Code.
+- **GitHub Copilot is the only supported backend.** Squad does not support bring your own key (BYOK) or direct provider API access.
+- **Model availability comes from Copilot.** The models you can select depend on what GitHub Copilot exposes for your plan.
+- **`gh` is still required for GitHub workflows.** Issues, pull requests, project boards, and Ralph still rely on GitHub CLI authentication.
+
+---
+
 ## Quick Start
 
 ### 1. Create your project
@@ -70,6 +81,14 @@ Here's what I'm building: a recipe sharing app with React and Node.
 **✓ Validate:** Squad responds with team member proposals. Type `yes` to confirm — they're ready to work.
 
 Squad proposes a team — each member named from a persistent thematic cast. You say **yes**. They're ready.
+
+---
+
+## Frequently asked questions
+
+### Can I use Squad without GitHub Copilot?
+
+No. GitHub Copilot is the only supported LLM backend for Squad. Squad routes every model request through Copilot, and bring your own key is not a supported feature.
 
 ---
 
@@ -687,7 +706,7 @@ npm run lint           # Type check (tsc --noEmit)
 
 - **Alpha** — API and file formats may change between versions
 - **Node 20+** — requires Node.js 20.0.0 or later
-- **GitHub Copilot CLI & VS Code** — Squad works on both CLI and VS Code
+- **GitHub Copilot required** — Squad works through GitHub Copilot CLI and VS Code
 - **`gh` CLI required** — GitHub Issues, PRs, Ralph, and Project Boards all need `gh auth login`
 - **Knowledge grows with use** — the first session is the least capable; agents improve as they accumulate history
 - **npm distribution only** — Install via `npm install -g @bradygaster/squad-cli` or `npx @bradygaster/squad-cli`. GitHub-native distribution (`npx github:`) is no longer supported.

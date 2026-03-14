@@ -90,7 +90,7 @@ Squad runs entirely in your Copilot session. Nothing leaves your machine beyond 
 
 > "Switch everyone to Haiku — I'm trying to save costs this sprint"
 
-Squad supports 17 models across three tiers. Budget mode: `claude-haiku-4.5` for everything. Quality mode: `claude-opus-4.6` for the Lead, `claude-sonnet-4.5` for everyone else. Fallback chains handle unavailability automatically.
+GitHub Copilot exposes the model tiers that Squad can use. Budget mode: `claude-haiku-4.5` for everything. Quality mode: `claude-opus-4.6` for the Lead, `claude-sonnet-4.5` for everyone else. Fallback chains handle unavailability automatically.
 
 ### Client Compatibility
 

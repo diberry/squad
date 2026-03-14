@@ -73,8 +73,9 @@ export interface SquadSessionConfig {
   excludedTools?: string[];
 
   /**
-   * Custom provider configuration (BYOK - Bring Your Own Key).
-   * When specified, uses the provided API endpoint instead of Copilot API.
+   * Experimental internal provider override.
+   * GitHub Copilot remains the only supported public backend.
+   * @internal
    */
   provider?: SquadProviderConfig;
 
@@ -650,7 +651,9 @@ export type SquadUserInputHandler = (
 // ============================================================================
 
 /**
- * Configuration for a custom API provider (BYOK - Bring Your Own Key).
+ * Internal configuration for an experimental provider override path.
+ * GitHub Copilot remains the only supported public backend.
+ * @internal
  */
 export interface SquadProviderConfig {
   /**

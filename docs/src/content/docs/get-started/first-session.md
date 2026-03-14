@@ -48,7 +48,9 @@ Start the Copilot CLI:
 copilot
 ```
 
-Select **Squad** from the `/agent` list (CLI) or `/agents` (VS Code). Squad greets you by name:
+Squad routes all model access through GitHub Copilot, so this step is required even if you installed the CLI or SDK separately.
+
+Select **Squad** from the `/agent` list (CLI) or `/agents` (VS Code). Squad greets you by name (pulled from `git config user.name`):
 
 ```
 Hey Brady, what are you building?

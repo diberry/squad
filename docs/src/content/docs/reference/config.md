@@ -116,22 +116,24 @@ routing: {
 
 ---
 
-## Model Configuration
+## Model configuration
 
-17 models across three tiers. Squad picks the right one, or you override:
+GitHub Copilot exposes the models that Squad can request. Squad picks the right one, or you override it:
 
-| Tier | Models | Use Case |
-|------|--------|----------|
-| **premium** | claude-opus-4, gpt-4.1 | Architecture, code review |
-| **standard** | claude-sonnet-4, gpt-4.1 | Most work |
-| **fast** | claude-haiku-3.5, gpt-4.1-mini | Triage, logging, quick tasks |
+| Tier | Typical models | Use case |
+|------|----------------|----------|
+| **premium** | `claude-opus-*` | Architecture, code review |
+| **standard** | `claude-sonnet-*`, `gpt-5.*`, `gemini-3-pro-preview` | Most work |
+| **fast** | `claude-haiku-*`, `gpt-4.1`, `gpt-5-mini` | Triage, logging, quick tasks |
+
+Bring your own key is not a supported feature. Model availability comes from your GitHub Copilot plan.
 
 Per-agent overrides in `model-config.json`:
 
 ```json
 {
-  "neo": "claude-opus-4",
-  "tank": "claude-haiku-3.5"
+  "neo": "claude-opus-4.6",
+  "tank": "claude-haiku-4.5"
 }
 ```
 

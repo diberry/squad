@@ -40,6 +40,7 @@ Never used Squad before? Start here.
 - Node.js 18 or later
 - npm 9 or later
 - A GitHub account with [GitHub Copilot](https://github.com/features/copilot) enabled
+- GitHub Copilot is required because Squad routes all LLM requests through Copilot. Bring your own key is not supported.
 - `gh` CLI authenticated (`gh auth status` should show you logged in)
 
 ### Install

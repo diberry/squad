@@ -8,9 +8,9 @@
 Have all agents use Opus for the rest of this session
 ```
 
-**Try this to optimize costs:**
+**Try this to preserve premium requests:**
 ```
-Switch to Haiku — I'm trying to save costs
+Switch to Haiku — I want to save premium requests
 ```
 
 **Try this to balance quality and budget:**
@@ -18,19 +18,17 @@ Switch to Haiku — I'm trying to save costs
 Use Sonnet for code, Haiku for everything else
 ```
 
-Squad adjusts model selection based on your directive. Agents writing code get quality models (Sonnet/Opus), agents doing docs/logs get cost-optimized models (Haiku). You can override anytime.
+Squad adjusts model selection based on your directive. GitHub Copilot remains the broker: Squad asks Copilot for a model, and Copilot exposes whichever models your plan makes available. Squad does not connect directly to provider APIs, and bring your own key is not a supported feature.
 
 ---
 
-## How It Works
+## How it works
 
-Squad routes each agent to the right model based on what they're doing — not a one-size-fits-all default. The governing principle: **cost first, unless code is being written.**
-
-## How It Works
+Squad routes each agent to the right model based on what they're doing — not a one-size-fits-all default. The governing principle: **use the lightest GitHub Copilot-backed model that fits the job.**
 
 Model selection uses a layered system. First match wins:
 
-1. **User Override** — You said "use opus" or "save costs"? Done. Session-wide directives persist until contradicted.
+1. **User Override** — You said "use opus" or "save premium requests"? Done. Session-wide directives persist until contradicted.
 2. **Charter Preference** — The agent's charter specifies a `## Model` section with a preferred model.
 3. **Task-Aware Auto-Selection** — The coordinator checks what the agent is actually doing:
 
@@ -56,13 +54,13 @@ Model selection uses a layered system. First match wins:
 | Git / Release | `claude-haiku-4.5` | Changelogs, tags, version bumps |
 | Designer / Visual | `claude-opus-4.5` | Vision capability required |
 
-## 16-Model Catalog
+## Model catalog
 
-Squad supports 16 models across three tiers:
+GitHub Copilot can expose these models to Squad, depending on your subscription tier and current rollout status:
 
 - **Premium:** claude-opus-4.6, claude-opus-4.6-fast, claude-opus-4.5
-- **Standard:** claude-sonnet-4.5, gpt-5.2-codex, claude-sonnet-4, gpt-5.2, gpt-5.1-codex, gpt-5.1, gpt-5, gemini-3-pro-preview
-- **Fast/Cheap:** claude-haiku-4.5, gpt-5.1-codex-mini, gpt-4.1, gpt-5-mini, gpt-5.1-codex-mini
+- **Standard:** claude-sonnet-4.5, claude-sonnet-4, gemini-3-pro-preview, gpt-5.3-codex, gpt-5.2-codex, gpt-5.2, gpt-5.1-codex-max, gpt-5.1-codex, gpt-5.1, gpt-5
+- **Fast/Cheap:** claude-haiku-4.5, gpt-5.1-codex-mini, gpt-5-mini, gpt-4.1
 
 ## Fallback Chains
 
@@ -93,10 +91,10 @@ use opus for this architecture work
 Override to premium model for a single high-stakes task.
 
 ```
-always use haiku to save costs
+always use haiku to save premium requests
 ```
 
-Set session-wide preference for the cheapest model tier.
+Set a session-wide preference for the lightest model tier.
 
 ```
 what model did Kane use for that last task?
