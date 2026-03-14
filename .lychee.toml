@@ -1,0 +1,42 @@
+# Lychee link checker configuration
+# https://lychee.cli.rs/usage/config/
+
+# Exclude node_modules and generated output
+exclude_path = ["node_modules", "dist", "docs/node_modules", "docs/dist"]
+
+# Exclude patterns that cause false positives
+exclude = [
+  # Placeholder/example URLs
+  'https?://example\.com',
+  'https?://your-domain\.com',
+  'https?://localhost',
+  'https?://127\.0\.0\.1',
+  # LinkedIn blocks automated requests
+  '^https://www\.linkedin\.com',
+  # GitHub rate-limits unauthenticated requests
+  '^https://github\.com/.*/(?:issues|pull|commit)',
+  # npm package pages can be flaky
+  '^https://www\.npmjs\.com',
+  # Placeholder paths in code blocks
+  '/absolute/path/to/',
+  '/path/to/',
+  '{.*}',
+]
+
+# Only check these file types
+extensions = ["md", "mdx"]
+
+# Don't check email addresses
+include_mail = false
+
+# Timeout per request
+timeout = 30
+
+# Max concurrent requests (be polite)
+max_concurrency = 16
+
+# Accept common redirect status codes
+accept = ["100..=103", "200..=299"]
+
+# Max retries for transient failures
+max_retries = 2
