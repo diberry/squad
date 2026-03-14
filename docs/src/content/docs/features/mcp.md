@@ -66,7 +66,7 @@ Paste this base structure:
   "mcpServers": {
     "github": {
       "command": "node",
-      "args": ["path/to/github-mcp.js"],
+      "args": ["/absolute/path/to/github-mcp.js"],
       "env": {
         "GITHUB_TOKEN": "your-github-token-here"
       }
@@ -75,7 +75,7 @@ Paste this base structure:
 }
 ```
 
-Replace `path/to/github-mcp.js` with the actual path to your MCP server script. The `env` object passes environment variables to the server.
+Replace `/absolute/path/to/github-mcp.js` with the actual path to your MCP server script. The `env` object passes environment variables to the server.
 
 ### Step 3: Add your GitHub token
 
@@ -139,7 +139,7 @@ Click **"Edit in settings.json"** to see the raw configuration:
 "copilot.mcp.servers": {
   "github": {
     "command": "node",
-    "args": ["path/to/github-mcp.js"],
+    "args": ["/absolute/path/to/github-mcp.js"],
     "env": {
       "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
     }
@@ -147,7 +147,7 @@ Click **"Edit in settings.json"** to see the raw configuration:
 }
 ```
 
-The `${env:GITHUB_TOKEN}` syntax reads from your shell environment.
+The `${env:GITHUB_TOKEN}` syntax reads from your shell environment. Replace `/absolute/path/to/github-mcp.js` with the actual path to your MCP server script.
 
 ### Step 4: Add environment variables
 
@@ -167,7 +167,43 @@ Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows) and select **"Copilot: R
 
 ## Example: GitHub MCP (Already Included)
 
-Most Squad installs come with GitHub MCP pre-configured.
+Most Squad installs come with GitHub MCP pre-configured. Here's what it looks like:
+
+### CLI: `.copilot/mcp-config.json`
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": ["/absolute/path/to/github-mcp.js"],
+      "env": {
+        "GITHUB_TOKEN": "$GITHUB_TOKEN"
+      }
+    }
+  }
+}
+```
+
+Replace `/absolute/path/to/github-mcp.js` with the actual path to your GitHub MCP server script.
+
+### VS Code: `.vscode/settings.json`
+
+```json
+{
+  "copilot.mcp.servers": {
+    "github": {
+      "command": "node",
+      "args": ["/absolute/path/to/github-mcp.js"],
+      "env": {
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Replace `/absolute/path/to/github-mcp.js` with the actual path to your GitHub MCP server script.
 
 **What it does:**
 - List issues, PRs, and branches
@@ -204,7 +240,7 @@ Add the Trello server configuration (see [MCP Configuration Files](#mcp-configur
   "mcpServers": {
     "trello": {
       "command": "node",
-      "args": ["/path/to/trello-mcp.js"],
+      "args": ["/absolute/path/to/trello-mcp.js"],
       "env": {
         "TRELLO_API_KEY": "your-api-key",
         "TRELLO_TOKEN": "your-token",
@@ -214,6 +250,10 @@ Add the Trello server configuration (see [MCP Configuration Files](#mcp-configur
   }
 }
 ```
+
+Replace `/absolute/path/to/trello-mcp.js` with the actual path to your Trello MCP server script.
+
+Find your **board ID** by opening any card on Trello and looking at the URL: `trello.com/c/{{CARD_ID}}/{{BOARD_ID}}/`.
 
 ### Step 3: Test it
 
@@ -237,7 +277,7 @@ For .NET Aspire projects, configure the Aspire Dashboard MCP for deployment moni
   "mcpServers": {
     "aspire": {
       "command": "node",
-      "args": ["/path/to/aspire-mcp.js"],
+      "args": ["/absolute/path/to/aspire-mcp.js"],
       "env": {
         "ASPIRE_URL": "http://localhost:18888",
         "ASPIRE_API_KEY": "optional-api-key"
@@ -247,7 +287,17 @@ For .NET Aspire projects, configure the Aspire Dashboard MCP for deployment moni
 }
 ```
 
-Agents can check service health and deployment status automatically.
+Replace `/absolute/path/to/aspire-mcp.js` with the actual path to your Aspire MCP server script.
+
+### Step 3: Use it
+
+Agents can now ask:
+
+```
+> Squad, check the Aspire dashboard — any service errors?
+```
+
+The monitoring agent (or any agent) pulls live deployment status and alerts you to issues.
 
 ---
 
@@ -274,9 +324,9 @@ Agents don't need special setup to discover tools. Here's the flow:
 
 1. **Verify the command path:**
    ```bash
-   ls -la /path/to/mcp-server.js
+   ls -la /absolute/path/to/mcp-server.js
    ```
-   The file must exist and be executable.
+   The file must exist and be executable. Replace `/absolute/path/to/mcp-server.js` with your actual MCP server path.
 
 2. **Verify Node.js is installed:**
    ```bash
@@ -320,9 +370,9 @@ Agents don't need special setup to discover tools. Here's the flow:
 
 3. **Test the MCP server directly:**
    ```bash
-   node /path/to/mcp-server.js
+   node /absolute/path/to/mcp-server.js
    ```
-   It should start without errors. If it crashes, there's a server-side issue.
+   It should start without errors. If it crashes, there's a server-side issue. Replace `/absolute/path/to/mcp-server.js` with your actual MCP server path.
 
 ### Authentication Errors
 
@@ -368,13 +418,13 @@ Agents don't need special setup to discover tools. Here's the flow:
      "mcpServers": {
        "github": {
          "command": "node",
-        "args": ["/path/to/github-mcp.js"],
+        "args": ["/absolute/path/to/github-mcp.js"],
         "lazy": true
       }
     }
   }
    ```
-   This starts the server only when its first tool is called.
+   This starts the server only when its first tool is called. Replace `/absolute/path/to/github-mcp.js` with your actual MCP server path.
 
 ---
 
