@@ -37,7 +37,7 @@ squad init
 
 **✓ Validate:** Check that `.squad/team.md` was created in your project.
 
-**Or use npx (no install):** `npx @bradygaster/squad-cli` — see [Migration Guide](docs/get-started/migration.md) if upgrading from an older version.
+**Or use npx (no install):** `npx @bradygaster/squad-cli` — see [Migration Guide](https://bradygaster.github.io/squad/docs/get-started/migration/) if upgrading from an older version.
 
 ### 3. Authenticate with GitHub (for Issues, PRs, and Ralph)
 
