@@ -27,6 +27,12 @@ jobs:
         run: npm ci
         working-directory: docs
 
+      - name: Lint docs markdown
+        run: npx markdownlint-cli2
+
+      - name: Spell check docs
+        run: npx cspell --no-progress --dot "docs/src/content/**/*.md" "README.md"
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
