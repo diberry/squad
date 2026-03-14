@@ -20,7 +20,7 @@ exclude = [
   # Placeholder paths in code blocks
   '/absolute/path/to/',
   '/path/to/',
-  '{.*}',
+  '\{.*\}',
 ]
 
 # Only check these file types
