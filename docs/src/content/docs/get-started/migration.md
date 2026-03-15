@@ -362,7 +362,7 @@ import { Squad } from '@bradygaster/squad-sdk';
 ### API Notes
 
 - The SDK is now fully typed (TypeScript strict mode).
-- Some methods were renamed or reorganized. Check the [SDK documentation](sdk/) for the current API surface.
+- Some methods were renamed or reorganized. Check the [SDK documentation](../reference/sdk.md) for the current API surface.
 - If you were relying on internal/undocumented APIs, those have changed. Stick to the documented public API.
 
 ---

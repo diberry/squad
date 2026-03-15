@@ -408,5 +408,5 @@ One agent: 3D dice/physics. One: PWA/gesture handling. One: multiplayer backend 
 
 ## Advanced Features
 
-For detailed guidance on advanced features like export/import, GitHub Issues integration, ceremonies, PRD mode, human team members, and skills, see [Tips and Tricks](/tips-and-tricks).
+For detailed guidance on advanced features like export/import, GitHub Issues integration, ceremonies, PRD mode, human team members, and skills, see [Tips and Tricks](tips-and-tricks.md).
 
