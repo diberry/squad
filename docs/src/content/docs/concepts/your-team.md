@@ -220,6 +220,55 @@ Running `init` on an existing Squad repo automatically offers upgrade mode.
 
 ---
 
+## Anatomy of an agent
+
+An agent is a directory at `.squad/agents/{name}/`. What lives there — and whether a directory exists at all — depends on the member type.
+
+| | AI agent | Human (👤) | @copilot (🤖) |
+|---|---|---|---|
+| Directory | `.squad/agents/{name}/` | None | None |
+| `charter.md` | ✅ Identity, boundaries, voice | ❌ | ❌ Uses `copilot-instructions.md` |
+| `history.md` | ✅ Optional, append-only learnings | ❌ | ❌ |
+| Spawnable | ✅ | ❌ Coordinator waits | ❌ Works via issue assignment |
+
+**AI agents** have a `charter.md` (identity, expertise, voice — compiled into the system prompt at spawn time) and an optional `history.md` (append-only cross-session learnings).
+
+**Human members** (👤) appear on the roster — see [Human team members](#human-team-members) — but have no files and aren't spawnable. The coordinator surfaces work and waits for you to relay it.
+
+**@copilot** (🤖) appears on the roster and works via GitHub issue assignment. It reads `.github/copilot-instructions.md` instead of a charter.
+
+**Retired agents** move to `.squad/agents/_alumni/{name}/` — charter preserved as a read-only archive, not spawnable.
+
+---
+
+## Cross-agent context
+
+Agents don't share memory directly. Context flows through explicit shared files:
+
+- **`team.md`** — who's on the team and what they do
+- **`routing.md`** — work assignment rules the coordinator reads on every request
+- **`decisions.md`** — canonical team memory: directives, patterns, learnings
+- **`.squad/decisions/inbox/`** — agents drop decision files here; the Scribe merges them into `decisions.md`
+
+Each agent's `history.md` is personal — only that agent reads it at spawn time. For the full picture on knowledge flow, see [Memory and knowledge](memory-and-knowledge.md).
+
+---
+
+## Hiring an agent
+
+To add a new AI agent to your team:
+
+- [ ] Create `.squad/agents/{name}/` directory
+- [ ] Write `charter.md` — start from `.squad/templates/charter.md`
+- [ ] Add to `team.md` roster with status `✅ Active`
+- [ ] Add to `routing.md` with work type assignments
+- [ ] (Optional) Create `history.md` for persistent memory
+- [ ] (Optional) Allocate a name via the casting system
+
+To add a **human member**, skip the directory — just add them to `team.md`. See [Human team members](#human-team-members) for badge and routing details.
+
+---
+
 ## Tips
 
 - **Commit `.squad/`** to version control — anyone who clones the repo gets the full team with all accumulated knowledge.
