@@ -4,17 +4,17 @@
 
 ## Overview
 
-A Squad agent is not a single file or code module. It's a **distributed identity** spanning three layers:
+A Squad agent is a **distributed identity** spanning three layers:
 
 1. **Runtime state** — `.squad/` directory (team-specific, git-committed)
 2. **SDK infrastructure** — `packages/squad-sdk/src/agents/` (compiled code)
 3. **Configuration** — `squad.config.ts` or `squad.config.json` (optional overrides)
 
-This doc explains how these layers work together to create an agent that can be spawned, collaborate, and accumulate knowledge over time.
+This doc explains how these layers work together to create spawnables agents (AI specialists), and how non-spawnables members (humans, @copilot) appear in the team roster.
 
-## Directory Structure
+## AI Agent Directory Structure
 
-Each agent exists in `.squad/agents/{name}/`:
+Each spawnable AI agent exists in `.squad/agents/{name}/`:
 
 ```
 .squad/
@@ -24,10 +24,8 @@ Each agent exists in `.squad/agents/{name}/`:
     │   └── history.md       # Append-only learnings (optional)
     ├── capcom/
     │   └── charter.md
-    ├── scribe/
-    │   └── charter.md
     └── _alumni/
-        └── verbal/          # Retired agents live here
+        └── verbal/          # Retired agents
             └── charter.md
 ```
 
@@ -35,237 +33,68 @@ Each agent exists in `.squad/agents/{name}/`:
 
 #### `charter.md` — The Agent's DNA
 
-**Who writes it:** The team (usually via a specialist like Procedures, or manually by the team owner).
+Compiled by the SDK at spawn time into the agent's system prompt.
 
-**Who reads it:** The SDK's charter compiler (`charter-compiler.ts`) at agent spawn time.
+**Core sections:**
+- **Identity** → name, role, expertise, style
+- **What I Own** → responsibilities (plain text)
+- **How I Work** → patterns, preferences, workflows
+- **Boundaries** → what the agent handles vs. delegates
+- **Model** → preferred model (e.g., `auto`, `gpt-4.1`, `claude-sonnet-4.6`)
 
-**What it contains:**
-
-```markdown
-# {Name} — {Role}
-
-> {One-line personality statement}
-
-## Identity
-- **Name:** Flight
-- **Role:** Lead
-- **Expertise:** Product vision, architecture, code review
-- **Style:** Decisive. Opinionated when it matters.
-
-## What I Own
-- Product direction and architectural decisions
-- Code review and quality gates
-
-## How I Work
-- Architecture decisions compound
-- Proposal-first: meaningful changes need docs/proposals/ before code
-
-## Boundaries
-**I handle:** Architecture, product direction, code review, scope.
-**I don't handle:** Implementation details, test writing, docs, distribution.
-
-## Model
-Preferred: auto
-```
-
-**Parsed sections:**
-- **Identity** → `name`, `role`, `expertise`, `style`
-- **What I Own** → `ownership` (plain text)
-- **Boundaries** → `boundaries` (plain text)
-- **Model** → `modelPreference`, `modelRationale`, `modelFallback`
-
-The charter is compiled into a `SquadCustomAgentConfig` object that includes:
-- The full charter content as the agent's system prompt
-- Parsed metadata (name, role, model preference)
+The charter is parsed into a `SquadCustomAgentConfig` object with:
+- Full charter as system prompt
+- Metadata (name, role, model preference)
 - Team context (from `team.md`, `routing.md`, `decisions.md`)
 
-**Format expectations:**
-- Markdown headings (`## `) structure the charter
-- The SDK parses specific sections by heading name
-- Freeform content is preserved and passed to the LLM
-- Personality and voice matter — agents have opinions
+Personality and voice matter — agents have opinions.
 
 #### `history.md` — Append-Only Learnings
 
-**Who writes it:** The agent itself, after completing work.
+Written by the agent after work. Read at spawn time.
 
-**Who reads it:** The agent, before starting new work (via the charter compiler's history shadow feature).
+**Structure:**
+- `## Core Context` — stable project facts
+- `## Learnings` — accumulated patterns and decisions
 
-**What it contains:**
+**What belongs:**
+- Project patterns (e.g., "three-branch model")
+- Domain knowledge (e.g., "boundary review heuristic")
+- Cross-session learnings
 
-```markdown
-# Flight — Project History
+**What doesn't:**
+- Transient task state (use SQL)
+- Raw logs (use `.squad/log/`)
+- Multi-agent decisions (use `.squad/decisions.md`)
 
-> Knowledge accumulated through leading Squad development.
+### Alumni — Retirement
 
-## Core Context
+Retired agents move to `.squad/agents/_alumni/{name}/`. They cannot be spawned. Charters are preserved as read-only archives.
 
-Three-branch model (main/dev/insiders). Apollo 13 team, 3931 tests. 
-Boundary review heuristic: "Squad Ships It" — if Squad doesn't ship 
-the code, it's IRL content.
+## The Casting System (Optional)
 
-## Learnings
+Squad assigns memorable names from fictional universes:
 
-### Adoption Tracking Architecture
-Three-tier opt-in system: Tier 1 (aggregate-only, `.github/adoption/`) 
-ships first; Tier 2 (opt-in registry) designed next; Tier 3 (public 
-showcase) launches when ≥5 projects opt in.
+- **`casting-registry.json`** — tracks allocated names, universes, timestamps
+- **`casting-policy.json`** — defines available universes and capacity limits
+- **`casting-history.json`** — immutable audit trail
 
-### Remote Squad Access
-Three-phase rollout: Phase 1 — GitHub Discussions bot with `/squad` 
-command (1 day, zero hosting). Phase 2 — GitHub Copilot Extension via 
-Contents API (1 week). Phase 3 — Slack/Teams bot (2 weeks).
-```
+Names are not reused within the same universe. When a universe is exhausted, a new one is added to the policy.
 
-**What goes in:**
-- Context that persists across sessions (project patterns, established decisions)
-- Learnings that inform future work (what worked, what didn't)
-- Domain-specific knowledge accumulated over time
+## How an AI Agent "Exists"
 
-**What doesn't go in:**
-- Transient task state (use the session-scoped SQL database for that)
-- Raw command output or logs (use `.squad/log/` for session logs)
-- Decisions that affect other agents (those go in `.squad/decisions.md`)
-
-**Format:**
-- Top-level `## Core Context` — stable facts
-- Top-level `## Learnings` — append new `### ` blocks here
-- No deletion — history is append-only
-
-### Alumni — The Retirement Pattern
-
-When an agent is no longer needed, it's moved to `.squad/agents/_alumni/{name}/`:
-
-```
-.squad/agents/_alumni/
-├── verbal/
-│   └── charter.md
-├── kobayashi/
-│   └── charter.md
-└── mcmanus/
-    └── charter.md
-```
-
-**What happens on retirement:**
-1. Agent directory moved from `.squad/agents/{name}/` to `.squad/agents/_alumni/{name}/`
-2. Agent removed from `team.md` roster
-3. Routing rules updated to remove agent from work assignments
-4. Charter preserved for historical reference
-5. Casting name returned to the pool (if using the casting system)
-
-Alumni agents cannot be spawned. Their charters are read-only archives.
-
-## The Casting System
-
-Squad uses a **thematic casting model** to assign memorable names from fictional universes.
-
-### Files
-
-#### `casting-registry.json` — Name Allocation
-
-```json
-{
-  "agents": {
-    "flight": {
-      "universe": "Apollo 13",
-      "character": "Flight Director",
-      "assigned": "2026-02-21T10:00:00Z"
-    }
-  }
-}
-```
-
-**Purpose:** Tracks which names are in use, which universe they're from, and when they were assigned.
-
-**Who manages it:** The casting module (`packages/squad-sdk/src/casting/`).
-
-**Lifecycle:**
-- Name allocated when agent created → entry added
-- Agent retired → entry remains (name not reused within same universe)
-- Universe exhausted → new universe added to `casting-policy.json`
-
-#### `casting-policy.json` — Universe Rules
-
-```json
-{
-  "casting_policy_version": "1.1",
-  "allowlist_universes": [
-    "The Usual Suspects",
-    "Reservoir Dogs",
-    "Alien",
-    "Ocean's Eleven"
-  ],
-  "universe_capacity": {
-    "The Usual Suspects": 6,
-    "Reservoir Dogs": 8,
-    "Alien": 8,
-    "Ocean's Eleven": 14
-  }
-}
-```
-
-**Purpose:** Defines which fictional universes are available and how many names each can provide.
-
-**Who manages it:** The team owner (manually edited when adding new universes).
-
-**Rules:**
-- Each universe has a capacity limit (prevents name dilution)
-- Names must be recognizable characters from that universe
-- No universe mixing on the same team (maintains thematic coherence)
-
-#### `casting-history.json` — Audit Log
-
-```json
-{
-  "universe_usage_history": [
-    {
-      "timestamp": "2026-02-21T10:00:00Z",
-      "universe": "Apollo 13",
-      "agent": "flight",
-      "character": "Flight Director",
-      "action": "assigned"
-    }
-  ],
-  "assignment_cast_snapshots": {}
-}
-```
-
-**Purpose:** Immutable audit trail of all casting decisions.
-
-**Who writes it:** The casting module (append-only).
-
-**Why it matters:** Enables rollback, debugging, and understanding team evolution over time.
-
-## How an Agent "Exists"
-
-An agent is **active** when all three conditions are met:
+An AI agent is **active** when:
 
 1. **Charter exists** — `.squad/agents/{name}/charter.md` is present
 2. **Roster entry** — Agent listed in `team.md` with status `✅ Active` or `📋 Silent`
 3. **Routing rules** — Agent appears in `routing.md` work assignments
 
-Without all three, the agent cannot be spawned.
-
 **Spawn flow:**
 
 ```
-User request
-    ↓
-Coordinator reads routing.md
-    ↓
-Identifies agent to spawn (e.g., "flight")
-    ↓
-SDK reads .squad/agents/flight/charter.md
-    ↓
-SDK reads .squad/agents/flight/history.md (if exists)
-    ↓
-SDK reads .squad/team.md, routing.md, decisions.md
-    ↓
-Charter compiler builds SquadCustomAgentConfig
-    ↓
-SDK spawns agent with compiled prompt
-    ↓
-Agent runs, writes to history.md after work
+User request → Coordinator reads routing.md → Identifies agent
+→ SDK reads charter.md, history.md → Compiles SquadCustomAgentConfig
+→ Spawns agent → Agent runs → Writes to history.md
 ```
 
 ## Relationship to SDK Source Files
@@ -287,7 +116,7 @@ This means:
 - Multiple projects using the same SDK have different teams
 - Agents can be dynamically added, retired, or renamed
 
-## What About `squad.config.ts`?
+## Config Overrides
 
 The optional `squad.config.ts` file provides **overrides** for charter-based agents:
 
@@ -295,100 +124,88 @@ The optional `squad.config.ts` file provides **overrides** for charter-based age
 export default {
   agents: {
     flight: {
-      model: 'gpt-4.1', // Override charter's "Preferred: auto"
-      tools: ['read', 'write'], // Restrict tool access
-      extraPrompt: 'Focus on performance trade-offs.' // Append to charter
+      model: 'gpt-4.1', // Override charter
+      tools: ['read', 'write'], // Restrict tools
+      extraPrompt: 'Focus on performance.' // Append to charter
     }
   }
 }
 ```
 
-**Merge order (config wins on conflict):**
-1. Charter parsed → base `SquadCustomAgentConfig`
-2. Config overrides applied → merged `SquadCustomAgentConfig`
-3. Team context injected → final prompt sent to LLM
+**Merge order:** Charter → Config → Team context → Final prompt
 
-This allows:
-- Per-environment tuning (staging vs production)
-- Temporary restrictions (disable tools during testing)
-- A/B testing different prompts without editing charters
+Use cases: per-environment tuning, temporary restrictions, A/B testing.
 
-## Cross-Agent Context Propagation
+## Cross-Agent Context
 
 Agents don't share memory. Context flows via **explicit artifacts**:
 
-### `team.md` — Shared Roster
-All agents read this to know who else exists and what they do.
+- **`team.md`** — Shared roster (who exists, what they do)
+- **`routing.md`** — Work assignment rules (coordinator uses this)
+- **`decisions.md`** — Canonical decisions log (shared memory)
+- **`.squad/decisions/inbox/`** — Decision drop-box (agents write, Scribe merges)
+- **`.squad/log/`** — Session summaries (auditing and debugging)
 
-### `routing.md` — Work Assignment Rules
-Defines which agent handles which type of work. Coordinator uses this to route requests.
+## Human Team Members (👤)
 
-### `decisions.md` — Canonical Decisions Log
-All agents read this before starting work. It's the shared memory.
+Squad supports **human members** in the roster:
 
-### `.squad/decisions/inbox/` — Decision Drop-Box
-Agents write decisions here. Scribe merges them into `decisions.md`.
-
-**Flow:**
-
-```
-Flight makes a decision
-    ↓
-Flight writes .squad/decisions/inbox/flight-api-versioning.md
-    ↓
-Scribe (background agent) runs
-    ↓
-Scribe reads inbox, appends to decisions.md, deletes inbox file
-    ↓
-CAPCOM starts work, reads decisions.md
-    ↓
-CAPCOM sees Flight's decision, respects it
+```markdown
+| Name | Role | Status | Badge |
+|------|------|--------|-------|
+| dina | Product Manager | ✅ Active | 👤 Human |
 ```
 
-### `.squad/log/` — Session Logs
-Scribe writes session summaries here. Useful for auditing and debugging.
+**Key differences from AI agents:**
+- **No charter** — Humans don't have `.squad/agents/{name}/charter.md`
+- **No history** — Humans don't accumulate `history.md`
+- **Not spawnable** — Coordinator presents work and waits for human input (asynchronous collaboration)
+- **Participate in routing** — Routing rules can assign work to humans (e.g., "UX design → dina")
+- **Code review** — Humans can be listed as required reviewers in routing
 
-**Example log file:**
+Humans are roster members but operate asynchronously. The coordinator surfaces work to them and waits.
 
+## @copilot Coding Agent (🤖)
+
+Squad supports **@copilot** as a roster member:
+
+```markdown
+| Name | Role | Status | Badge |
+|------|------|--------|-------|
+| @copilot | Coding Agent | ✅ Active | 🤖 Coding Agent |
 ```
-.squad/log/2026-03-16T10-00-00-feature-adoption-tracking.md
-```
 
-Contains:
-- Who worked
-- What was done
-- Decisions made
-- Key outcomes
+**Key differences from AI agents:**
+- **No charter** — @copilot uses `copilot-instructions.md` (injected via `.github/copilot-instructions.md`)
+- **Not spawnable** — Works via GitHub issue assignment (asynchronous)
+- **Creates `copilot/*` branches** — Opens draft PRs for review
+- **Capability profile** — Has a 🟢/🟡/🔴 profile in `team.md` (e.g., 🟢 TypeScript, 🟡 Architecture, 🔴 Security audits)
+- **Self-checks before starting** — Reads capability profile, only takes work it's suited for
+
+The coordinator routes work to @copilot by assigning issues. @copilot autonomously picks up work, performs capability checks, and opens PRs.
 
 ## Key Takeaways
 
-1. **An agent is a directory** — `.squad/agents/{name}/` with at least `charter.md`.
-2. **Charter is the source of truth** — defines identity, boundaries, voice.
-3. **History is optional** — but recommended for agents doing repeated work.
-4. **Casting adds personality** — thematic names make agents memorable.
-5. **SDK is generic infrastructure** — no agent-specific code in the runtime.
-6. **Context flows via files** — `team.md`, `routing.md`, `decisions.md`, `.squad/log/`.
-7. **Retirement is move + remove** — alumni live in `_alumni/`, can't be spawned.
+1. **AI agents are directories** — `.squad/agents/{name}/` with `charter.md`
+2. **Charter is source of truth** — identity, boundaries, voice
+3. **History is optional** — recommended for repeated work
+4. **Casting adds personality** — thematic names (Apollo 13, Ocean's Eleven)
+5. **SDK is generic** — no agent-specific code in the runtime
+6. **Context flows via files** — `team.md`, `routing.md`, `decisions.md`
+7. **Humans and @copilot are roster members** — but not spawnable
 
-## Developer Checklist: Creating a New Agent
+## Developer Checklist: Creating a New AI Agent
 
 - [ ] Create `.squad/agents/{name}/` directory
-- [ ] Write `charter.md` using `.squad/templates/charter.md` as reference
-- [ ] Add agent to `team.md` roster with status `✅ Active`
-- [ ] Add agent to `routing.md` with work type assignments
+- [ ] Write `charter.md` (use `.squad/templates/charter.md`)
+- [ ] Add to `team.md` roster with status `✅ Active`
+- [ ] Add to `routing.md` with work type assignments
 - [ ] (Optional) Allocate name via casting system
-- [ ] (Optional) Create `history.md` if agent needs persistent memory
+- [ ] (Optional) Create `history.md` for persistent memory
 - [ ] Test spawn: `squad spawn {name} "Hello, world"`
-
-## Further Reading
-
-- **Charter format reference:** `.squad/templates/charter.md`
-- **Roster format reference:** `.squad/templates/roster.md`
-- **SDK agent infrastructure:** `packages/squad-sdk/src/agents/`
-- **Casting system design:** `packages/squad-sdk/src/casting/`
 
 ---
 
-**Author:** Flight  
-**Requested by:** Dina (via Brady)  
+**Author:** Flight
+**Requested by:** Dina (via Brady)
 **Date:** 2026-03-16
