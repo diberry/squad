@@ -155,7 +155,7 @@ This is the biggest jump. The codebase was rewritten in TypeScript, the `.squad/
 
 ### Key Format Changes
 
-| v0.5.4 | v0.8.18 |
+| v0.5.4 | v0.8.x (latest) |
 |--------|---------|
 | `.squad/config.json` | `.squad/team.md` (Markdown with YAML front matter) |
 | JSON decision log | `.squad/decisions.md` (append-only Markdown) |
@@ -186,7 +186,7 @@ Verify the version:
 squad --version
 ```
 
-Expected output: `0.8.18` (or `0.8.18-preview.N`).
+Expected output: `0.8.x` with your current version (the latest includes critical fixes for Node.js 24+ and ESM compatibility).
 
 Your `.squad/` directory is compatible — no reinitialization needed.
 
@@ -310,7 +310,7 @@ If you run Squad in GitHub Actions or another CI/CD system, update your workflow
   run: npx github:bradygaster/squad
 ```
 
-### After (v0.8.18)
+### After (v0.8.x and later)
 
 ```yaml
 - uses: actions/setup-node@v4
@@ -329,9 +329,9 @@ If you run Squad in GitHub Actions or another CI/CD system, update your workflow
 ### Key CI/CD Notes
 
 - Set `GITHUB_TOKEN` as an environment variable. Squad requires it for GitHub Copilot operations.
-- Pin to a specific version (e.g., `@0.8.22`) in CI to avoid surprise upgrades.
-- If you use `npx`, use `npx @bradygaster/squad-cli@0.8.22` with a pinned version.
-- Node.js 20+ is required. Update your workflow's `setup-node` action if needed.
+- For stable CI/CD runs, pin to a specific version (e.g., `@0.8.25`) to avoid surprise upgrades.
+- If you use `npx`, use `npx @bradygaster/squad-cli@0.8.25` with a pinned version, or use `@latest` to stay current.
+- Node.js 20+ is required (Node.js 24+ supported as of v0.8.23). Update your workflow's `setup-node` action if needed.
 
 ---
 
@@ -520,17 +520,19 @@ fnm use 20
 
 ## Rolling Back
 
-If you need to downgrade from v0.8.18:
+If you need to downgrade from the latest version:
 
 ```bash
-npm install -g @bradygaster/squad-cli@0.8.17
+npm install -g @bradygaster/squad-cli@0.8.22
 ```
+
+(Replace 0.8.22 with your target version.)
 
 ### Warnings
 
 - **The GitHub-native distribution (`npx github:bradygaster/squad`) is permanently removed.** You cannot roll back to that install method.
 - **`.squad/` directory format changed between v0.5.4 and v0.8.x.** If you roll back to v0.5.4, your current `.squad/` directory will not be compatible. Keep backups.
-- Rolling back within the v0.8.x line (e.g., 0.8.18 to 0.8.17) should be safe — the `.squad/` format is stable across v0.8.x releases.
+- Rolling back within the v0.8.x line should be safe — the `.squad/` format is stable across all v0.8.x releases.
 
 ---
 
@@ -540,7 +542,9 @@ npm install -g @bradygaster/squad-cli@0.8.17
 - **`squad doctor`:** 9-check setup validation with clear pass/fail output.
 - **npm-only distribution:** Simpler install, semantic versioning, stable and insider channels.
 - **TypeScript strict mode:** Full type safety across the SDK and CLI.
-- **Semver fix:** Version format now follows the semver spec (`0.8.18-preview.N` instead of `0.8.18.N-preview`).
+- **Semver fix:** Version format now follows the semver spec (v0.8.18-preview.N instead of 0.8.18.N-preview).
+
+(Note: This section references the v0.8.18 milestone, but you're likely installing a newer version. Current latest includes critical fixes for Node.js 24+ and ESM compatibility — see [latest releases](https://github.com/bradygaster/squad/releases) for details.)
 
 For the full list of changes, see the [CHANGELOG](https://github.com/bradygaster/squad/blob/main/CHANGELOG.md).
 
