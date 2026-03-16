@@ -1,27 +1,24 @@
 ---
 timestamp: "{ISO-8601}"
 action: "scan|draft|approve|edit|skip|post|halt|resume|delete|lint_failure|expire"
-item_type: "issue|discussion"
-item_number: {number}
-item_url: "{url}"
-draft_id: "{N from review table}"
-reviewer: "{github-username}"
-outcome: "{contextual — see Conditional Fields table for per-action outcome values}"
 ---
 
-## Context
+> All other fields are conditional on the action type. See **Conditional Fields** table below.
+> Include only the sections relevant to your action type.
+
+## Context (draft, approve, edit, skip, post, delete actions)
 - Thread depth: {comment count}
 - Response type: {welcome|troubleshooting|feature-guidance|redirect|acknowledgment|closing|technical-uncertainty|empathetic-disagreement|information-request}
 - Confidence: {🟢|🟡|🔴}
 - Long thread flag: {true|false}
 
-## Draft Content
+## Draft Content (draft, edit, post actions)
 {full draft text}
 
-## Reviewer Notes
+## Reviewer Notes (approve, edit, skip actions)
 {any edits or comments from reviewer, or "—" if none}
 
-## Post Result
+## Post Result (post, delete actions)
 {link to posted comment if posted, or "not posted" if skipped/halted}
 
 ## Conditional Fields
