@@ -173,7 +173,9 @@ After approval:
 Log every action.
 
 - Location: `.squad/comms/audit/{timestamp}.md`
-- Required fields: action, item, draft content, reviewer, outcome, timestamp
+- Required fields vary by action — see `.squad/comms/templates/audit-entry.md` Conditional Fields table
+- Universal required fields: `timestamp`, `action`
+- All other fields are conditional on the action type
 
 ## Examples
 
@@ -205,18 +207,29 @@ Full drafts below ▼
 ### Example audit entry
 
 ```markdown
-# PAO External Comms Audit
+---
+timestamp: "2026-03-16T21:30:00Z"
+action: "post"
+---
 
-- action: post
-- item: Issue #426
-- draft content: |
-    Thread: 3 comments, last activity 2026-03-16, reporter hit a preview-build regression after install.
-    Hey @newdev! Welcome to Squad 👋 Thanks for opening this.
-    We reproduced the issue in preview builds and we're checking the regression point now.
-    Let us know if you can share the command you ran right before the failure.
-- reviewer: @bradygaster
-- outcome: approved and posted via gh issue comment
-- timestamp: 2026-03-16T21:30:00Z
+## Context
+- Thread depth: 3
+- Response type: welcome
+- Confidence: 🟢
+- Long thread flag: false
+
+## Draft Content
+Thread: 3 comments, last activity 2026-03-16, reporter hit a preview-build regression after install.
+
+Hey @newdev! Welcome to Squad 👋 Thanks for opening this.
+We reproduced the issue in preview builds and we're checking the regression point now.
+Let us know if you can share the command you ran right before the failure.
+
+## Reviewer Notes
+—
+
+## Post Result
+https://github.com/bradygaster/squad/issues/426#issuecomment-123456
 ```
 
 ### T1 — Welcome
