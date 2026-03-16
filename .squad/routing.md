@@ -11,6 +11,7 @@
 | Runtime performance | Fortier ⚡ | Streaming, event loop health, session management, async iterators, memory profiling |
 | Tests & quality | Hockney 🧪 | Test coverage, Vitest, edge cases, CI/CD, quality gates |
 | Docs & messaging | McManus 📣 | README, API docs, getting-started, demos, tone review |
+| Community response | McManus 📣 | Scan unanswered issues/discussions, draft responses, present review table |
 | Architecture & review | Keaton 🏗️ | Product direction, architectural decisions, code review, scope/trade-offs |
 | Distribution | Rabin 📦 | npm packaging, esbuild config, global install, marketplace prep |
 | Release management | Trejo 🚢 | Semantic versioning, GitHub Releases, changelogs, dev→main merges, release gating |

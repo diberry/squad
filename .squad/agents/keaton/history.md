@@ -49,6 +49,9 @@
 
 ## Learnings
 
+- PAO external comms architecture decision: Phase 1 uses a scan→draft→review→post pipeline with humanizer tone enforcement, SQLite review state, append-only audit logs, and a `pao halt` freeze switch.
+- Phase 1 scope and constraints: manual-trigger only, never autonomous, every draft requires explicit human approval before posting, and scheduled scans stay blocked pending Brady approval.
+
 ## 📌 v0.8.22 Release Disaster — 2026-03-07T20:50:00Z
 
 **THE WORST RELEASE IN SQUAD HISTORY.** Brady was rightfully upset. This was a catastrophe. Full retrospective written with brutal honesty.
