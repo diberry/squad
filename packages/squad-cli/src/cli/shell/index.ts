@@ -29,7 +29,7 @@ import { loadAgentCharter, buildAgentPrompt } from './spawn.js';
 import { createSession, saveSession, loadLatestSession, type SessionData } from './session-store.js';
 import { parseDispatchTargets, type ParsedInput } from './router.js';
 import { agentSessionGuidance, genericGuidance, formatGuidance } from './error-messages.js';
-import { parseCastResponse, createTeam, formatCastSummary, type CastProposal } from '../core/cast.js';
+import { parseCastResponse, createTeam, formatCastSummary, augmentWithCastingEngine, type CastProposal } from '../core/cast.js';
 
 export { SessionRegistry } from './sessions.js';
 export { StreamBridge } from './stream-bridge.js';
@@ -856,7 +856,14 @@ export async function runShell(): Promise<void> {
     // Create a temporary Init Mode coordinator session
     let initSession: SquadSession | null = null;
     try {
-      const initSysPrompt = buildInitModePrompt({ teamRoot });
+      // Check for .init-roles marker (set by `squad init --roles` or `/init --roles`)
+      const initRolesMarker = join(teamRoot, '.squad', '.init-roles');
+      const useBaseRoles = existsSync(initRolesMarker);
+      // Consume the marker immediately — it's been read, no need to persist
+      if (useBaseRoles) {
+        try { unlinkSync(initRolesMarker); } catch { /* ignore */ }
+      }
+      const initSysPrompt = buildInitModePrompt({ teamRoot, useBaseRoles });
       initSession = await client.createSession({
         streaming: true,
         systemMessage: { mode: 'append', content: initSysPrompt },
@@ -889,7 +896,7 @@ export async function runShell(): Promise<void> {
       debugLog('handleInitCast: response preview', accumulated.slice(0, 500));
 
       // Parse the team proposal
-      const proposal = parseCastResponse(accumulated);
+      let proposal = parseCastResponse(accumulated);
       if (!proposal) {
         debugLog('handleInitCast: failed to parse team from response');
         debugLog('handleInitCast: full response:', accumulated);
@@ -904,6 +911,13 @@ export async function runShell(): Promise<void> {
         });
         return;
       }
+
+      // Augment with CastingEngine if universe is recognized
+      proposal = augmentWithCastingEngine(proposal);
+      debugLog('handleInitCast: augmented proposal', {
+        universe: proposal.universe,
+        members: proposal.members.map(m => m.name),
+      });
 
       // Show the proposed team
       shellApi?.addMessage({
@@ -976,6 +990,8 @@ export async function runShell(): Promise<void> {
     if (existsSync(initPromptFile)) {
       try { unlinkSync(initPromptFile); } catch { /* ignore */ }
     }
+
+    // Note: .init-roles marker is already cleaned up in handleInitCast (consumed on read)
 
     // Invalidate the old coordinator session so the next dispatch builds one
     // with the real team roster
@@ -1139,6 +1155,7 @@ export async function runShell(): Promise<void> {
 
   // Clear terminal and scrollback — prevents old scaffold output from
   // bleeding through above the header box in extended sessions.
+  // Also ensures we start from a clean viewport before Ink renders.
   process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
 
   const { waitUntilExit } = render(
@@ -1205,6 +1222,11 @@ export async function runShell(): Promise<void> {
         onRestoreSession,
       }),
     ),
+    // NOTE: Both incrementalRendering AND Ink's trailing-newline have been
+    // patched via scripts/patch-ink-rendering.mjs (runs on postinstall).
+    // This means: (a) logUpdate uses standard erase-and-rewrite, (b) no
+    // trailing '\n' is appended to output, (c) no clearTerminal scroll-to-top.
+    // patchConsole: false ensures console.log doesn't corrupt Ink's rendering.
     { exitOnCtrlC: false, patchConsole: false },
   );
 

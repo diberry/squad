@@ -1,68 +1,79 @@
 ---
-updated_at: 2026-03-03T00:00:00Z
-focus_area: Migration to Public Repo + SDK Samples
-issues_open: []
-issues_closed_prd: 30
-tests_passing: 2944
-prd_location: .squad/identity/prd-next-waves.md
-current_phase: Migration v0.6.0 + SDK Samples
-process: All work through PRs with squad member review before merge
+updated_at: 2026-03-15T15:50:00Z
+focus_area: Post-sprint — SDK work + remaining bugs
+version: v0.8.25-build.4
+branch: dev
+tests_passing: ~4157
+tests_todo: 46
+tests_skipped: 5
+test_files: 154
+team_size: 19 active agents + Scribe + Ralph + @copilot
+team_identity: Apollo 13 / NASA Mission Control
+process: All work through PRs. Branch naming squad/{issue-number}-{slug}. Never commit to main directly.
 ---
 
 # What We're Focused On
 
-**Status:** Migration planning complete. Target: public repo v0.6.0 (clean minor bump from v0.5.4). On `migration` branch. Two new SDK samples shipped (knock-knock, rock-paper-scissors). Banana gate still active for git operations.
+**Status:** Irritating bugs sprint COMPLETE. 7 issues closed, 8 PRs merged to dev, 5 community PRs merged. CI lockfile fix resolved 8-day build failure. Reskill needed, then dive into SDK work and remaining bugs.
 
-## Public Readiness Assessment (2026-02-24)
+## Current State
 
-Full team fan-out: Keaton, Fenster, Hockney, McManus, Rabin, Baer, Edie all assessed their domains.
+**Version:** v0.8.25-build.4 (on dev, not yet released)
+- **Packages:** @bradygaster/squad-sdk, @bradygaster/squad-cli
+- **Branch:** dev
+- **Build:** ✅ clean (0 errors, CI green)
+- **Tests:** ~4,157 passed, 46 todo, 5 skipped, ~154 test files
+  - Only failure: aspire-integration.test.ts (needs Docker, pre-existing)
+  - New: docs-links.test.ts (internal link + anchor validation from diberry)
 
-**Consensus: 🟡 READY WITH CAVEATS** — unanimous.
+**Stack:**
+- TypeScript (strict mode, ESM-only)
+- Node.js ≥20
+- @github/copilot-sdk
+- Vitest (test runner)
+- esbuild (bundler)
 
-### Must-Fix Blockers (ALL RESOLVED ✅)
-1. ✅ **LICENSE file** — MIT LICENSE created at repo root
-2. ✅ **CI workflow broken** — Fixed `squad-ci.yml` to use `npm ci` → `npm run build` → `npm test` (vitest)
-3. ✅ **Debug console.logs** — 3 debug logs in coordinator/index.ts replaced with OTel spans
+**Team:** Apollo 13 / NASA Mission Control
+- 19 active agents + Scribe + Ralph + @copilot
 
-### Experimental Messaging (DONE ✅)
-- ⚠️ banners added to all CLI docs (installation.md, shell.md, vscode.md)
-- README Status section changed from "Production" to "Experimental alpha"
-- Broken CONTRIBUTING link fixed
+## What Just Shipped (Irritating Bugs Sprint — 2026-03-15)
 
-### Should-Fix (Post-Ship Polish)
-- Add `homepage` and `bugs` fields to package.json
-- Document alpha→v1.0 breaking change policy in README
-- Close #324 (dogfood testing)
+### Bug Fixes (our PRs)
+- **PR #409** — Version stamp in agent charter.md (#321)
+- **PR #411** — SDK init trio: Ralph in init (#338), config sync after cast (#337), @copilot removed from routing templates (#339)
+- **PR #412** — Base roles opt-in via `--roles` flag (#379) — @spboyer pinged
+- **PR #414** — CI lockfile fix (stale nested SDK entry caused 8-day build failure)
 
-### Post-M1 Backlog
-- Add `noUncheckedIndexedAccess` to tsconfig
-- Tighten ~26 `any` types in SDK
-- Add architecture overview doc
-- One real Copilot SDK integration test
-- `npm audit fix` for dev-dependency ReDoS warnings
+### Community PRs (Tamir Dresher)
+- **PR #415** — Rework rate OTEL metrics in squad-sdk (5th DORA metric)
+- **PR #381** — Rework rate CLI command (`squad rework`) — cherry-picked to dev
 
-## Waves A–D: COMPLETE
+### Community PRs (Dina Berry)
+- **PR #389** — Docs consolidation & reduction (-1,471 net lines, closes #258/#351)
+- **PR #393** — baseBranch alignment to dev (closes #350)
+- **PR #396** — Docs quality CI (markdownlint, cspell, link validation)
 
-All 30 PRD-referenced issues are closed.
+### Issues Closed
+#321, #337, #338, #339, #348, #356, #379, #258, #350, #351
 
-### Open Issue: #324 — Dogfood CLI with real repos (P0)
-- Status: OPEN — remaining blocker for full confidence
-- Assignees: Keaton, Waingro
+## Next Up (Post-Reskill)
 
-### Next Steps
-1. **Ship public alpha** — All blockers resolved, experimental messaging in place
-2. **Complete #324 dogfood** — Test against real repos
-3. **Plan Wave E** — Based on dogfood + public feedback
+### Remaining Sprint Bugs
+- **#342** — CastingEngine bypass (casting doesn't use the engine)
+- **#363** — WSL transient error handling
+- **#340** — SDK feature parity audit
+
+### SDK Work
+- SDK builder improvements
+- Feature parity between CLI and SDK paths
+
+### Upgrade Notes for PAO
+- Captured in session files — PAO needs to review and update docs for:
+  - `--roles` flag for `squad init`
+  - Version stamp in charters
+  - Ralph auto-inclusion in init
+  - Config sync after casting (SDK users)
 
 ## Process
 
-All work flows through PRs with squad member review before merge.
-
----
-
-## Archive: Earlier Phases
-
-Epic #323 — CLI Quality & UX (Phases 1–3: Testing Wave → Improvement → Breathtaking)
-- Phase 1: 7 P0 blockers fixed (#365–#371)
-- Phase 2: 6 Wave D items shipped (#488–#493)
-- Phase 3: Wave A–C polish delivered (30 issues closed)
+All work through PRs. Branch naming: `squad/{issue-number}-{slug}`. Never commit to main directly. Squad member review before merge. Always use bradygaster (personal) GitHub account for this repo.

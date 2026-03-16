@@ -1,6 +1,7 @@
-# Squad Team — squad-sdk
+# Mission Control — squad-sdk
 
 > The programmable multi-agent runtime for GitHub Copilot.
+> *"Failure is not an option."*
 
 ## Coordinator
 
@@ -12,27 +13,25 @@
 
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
-| Keaton | Lead | `.squad/agents/keaton/charter.md` | ✅ Active |
-| Verbal | Prompt Engineer | `.squad/agents/verbal/charter.md` | ✅ Active |
-| Fenster | Core Dev | `.squad/agents/fenster/charter.md` | ✅ Active |
-| Hockney | Tester | `.squad/agents/hockney/charter.md` | ✅ Active |
-| McManus | DevRel | `.squad/agents/mcmanus/charter.md` | ✅ Active |
-| Kujan | SDK Expert | `.squad/agents/kujan/charter.md` | ✅ Active |
-| Edie | TypeScript Engineer | `.squad/agents/edie/charter.md` | ✅ Active |
-| Trejo | Release Manager | `.squad/agents/trejo/charter.md` | ✅ Active |
-| Drucker | CI/CD Engineer | `.squad/agents/drucker/charter.md` | ✅ Active |
-| Fortier | Node.js Runtime | `.squad/agents/fortier/charter.md` | ✅ Active |
-| Rabin | Distribution | `.squad/agents/rabin/charter.md` | ✅ Active |
-| Baer | Security | `.squad/agents/baer/charter.md` | ✅ Active |
-| Redfoot | Graphic Designer | `.squad/agents/redfoot/charter.md` | ✅ Active |
-| Strausz | VS Code Extension | `.squad/agents/strausz/charter.md` | ✅ Active |
-| Saul | Aspire & Observability | `.squad/agents/saul/charter.md` | ✅ Active |
-| Kovash | REPL & Interactive Shell | `.squad/agents/kovash/charter.md` | ✅ Active |
-| Marquez | CLI UX Designer | `.squad/agents/marquez/charter.md` | ✅ Active |
-| Cheritto | TUI Engineer | `.squad/agents/cheritto/charter.md` | ✅ Active |
-| Breedan | E2E Test Engineer | `.squad/agents/breedan/charter.md` | ✅ Active |
-| Nate | Accessibility Reviewer | `.squad/agents/nate/charter.md` | ✅ Active |
-| Waingro | Product Dogfooder | `.squad/agents/waingro/charter.md` | ✅ Active |
+| Flight | Lead | `.squad/agents/flight/charter.md` | ✅ Active |
+| Procedures | Prompt Engineer | `.squad/agents/procedures/charter.md` | ✅ Active |
+| EECOM | Core Dev | `.squad/agents/eecom/charter.md` | ✅ Active |
+| FIDO | Quality Owner | `.squad/agents/fido/charter.md` | ✅ Active |
+| PAO | DevRel | `.squad/agents/pao/charter.md` | ✅ Active |
+| CAPCOM | SDK Expert | `.squad/agents/capcom/charter.md` | ✅ Active |
+| CONTROL | TypeScript Engineer | `.squad/agents/control/charter.md` | ✅ Active |
+| Surgeon | Release Manager | `.squad/agents/surgeon/charter.md` | ✅ Active |
+| Booster | CI/CD Engineer | `.squad/agents/booster/charter.md` | ✅ Active |
+| GNC | Node.js Runtime | `.squad/agents/gnc/charter.md` | ✅ Active |
+| Network | Distribution | `.squad/agents/network/charter.md` | ✅ Active |
+| RETRO | Security | `.squad/agents/retro/charter.md` | ✅ Active |
+| INCO | CLI UX & Visual Design | `.squad/agents/inco/charter.md` | ✅ Active |
+| GUIDO | VS Code Extension | `.squad/agents/guido/charter.md` | ✅ Active |
+| Telemetry | Aspire & Observability | `.squad/agents/telemetry/charter.md` | ✅ Active |
+| VOX | REPL & Interactive Shell | `.squad/agents/vox/charter.md` | ✅ Active |
+| DSKY | TUI Engineer | `.squad/agents/dsky/charter.md` | ✅ Active |
+| Sims | E2E Test Engineer | `.squad/agents/sims/charter.md` | ✅ Active |
+| Handbook | SDK Usability | `.squad/agents/handbook/charter.md` | ✅ Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | — | 🔄 Monitor |
 
@@ -83,4 +82,5 @@ When working on issues, follow the Squad branching model:
 - **Stack:** TypeScript (strict mode, ESM-only), Node.js ≥20, @github/copilot-sdk, Vitest, esbuild
 - **Description:** The programmable multi-agent runtime for GitHub Copilot — v1 replatform of Squad beta
 - **Distribution:** npm (`npm install -g @bradygaster/squad-cli` for CLI, `npm install @bradygaster/squad-sdk` for SDK)
+- **Universe:** Apollo 13 / NASA Mission Control
 - **Created:** 2026-02-21

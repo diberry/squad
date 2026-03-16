@@ -2,6 +2,82 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed — CLI Terminal Rendering
+- Eliminated scroll-to-top flicker caused by Ink's fullscreen `clearTerminal` path firing on every render cycle
+- Reduced re-render churn via memoized elapsed-time display (one-second granularity gate) and consolidated animation intervals
+- Stabilized component keys (timestamp-based instead of shifting array indices) to prevent Ink remounts
+- Pinned live viewport height to keep input prompt above fold on all terminal sizes
+
+## [0.8.24] - 2026-03-08
+
+### Added — Azure DevOps Platform Adapter
+- **PlatformAdapter interface** — unified API for GitHub, ADO, and Microsoft Planner
+- **AzureDevOpsAdapter** — `az boards` CLI for work items, `az repos` for PRs
+- **GitHubAdapter** — `gh` CLI wrapper implementing PlatformAdapter
+- **PlannerAdapter** — Microsoft Graph API for hybrid work-item tracking
+- **Cross-project ADO config** via `.squad/config.json` — work items can live in a different org/project than the repo
+
+### Added — CommunicationAdapter
+- **Pluggable agent-human messaging** — Scribe/Ralph can post updates through platform-appropriate channels
+- **Four adapters:** FileLog (zero-config), GitHub Discussions, ADO Work Item Discussions, Teams Webhook (stub)
+- **Factory auto-detection** — `createCommunicationAdapter(repoRoot)` selects the right adapter
+
+### Added — SubSquads (Community-Voted Rename)
+- Workstreams → SubSquads across CLI, types, and docs
+- CLI: `squad subsquads` (with `workstreams` and `streams` as deprecated aliases)
+- Old names preserved as `@deprecated` re-exports for backward compatibility
+
+### Fixed — Security Hardening
+- `execSync` → `execFileSync` (prevents shell injection)
+- `escapeWiql()` helper (prevents WIQL injection in ADO queries)
+- `curl --config stdin` (hides bearer tokens from process listing)
+- Case-insensitive URL detection for ADO remotes
+- Cross-platform draft filter (`findstr` → JMESPath)
+- PR status mapping (`active` → `open` for `gh` CLI)
+- `gh issue create` fix (parse URL from stdout, not `--json`)
+
+### Fixed — ESM Runtime Patch + Secret Guardrails
+- Runtime `Module._resolveFilename` intercept for Node 24+ ESM compatibility
+- 5-layer secret defense architecture
+- 59 TDD security hook tests
+- `.squad/skills/secret-handling/SKILL.md` team reference
+
+### Added — Docs Site Improvements
+- Contributor Guide page in docs site Guide section
+- Squad Contributors Guide page (36+ contributors honored)
+- Concepts and Cookbook sections wired into docs build
+- Broken links fixed across docs site
+
+### By the Numbers
+- 8 PRs merged (#191, #263, #268, #270, #272, #275, #277, #266)
+- 153 new tests (92 platform + 15 comms + 46 SubSquads)
+- 59 security tests
+- 8 issues closed
+- 3 new docs pages, 6+ broken links fixed
+
+## [0.8.23] - 2026-03-12
+
+### Fixed — Node 24+ ESM Import Crash
+- **Node 24+ `squad init` crash fix (#XXX)** — v0.8.23 resolves `ERR_MODULE_NOT_FOUND: Cannot find module 'vscode-jsonrpc/node'` crash that occurs on Node.js 24+ and GitHub Codespaces. Root cause: upstream ESM import issue in `@github/copilot-sdk`. Two-layer defense implemented:
+  - **Lazy imports** — Commands `init`, `build`, `link`, `migrate` no longer eagerly load copilot-sdk at startup
+  - **Postinstall patch** — Automatically fixes broken ESM import at install time
+  - Side benefit: Faster CLI startup for non-session commands
+
+### Added — Squad RC Documentation
+- Comprehensive guide for `squad rc` (Remote Control) covering:
+  - ACP (Azure Communication Platform) passthrough architecture
+  - 7-layer security model for session isolation and encryption
+  - Mobile keyboard shortcuts and accessibility features
+  - Troubleshooting guide for common connection issues
+
+### By the Numbers
+- 2 issues closed
+- 3 PRs merged
+- 3,811 tests passing (3,840 total, 0 logic failures)
+- 1 critical crash fix (Node 24+ compatibility)
+
 ## [0.8.22] - 2026-03-11
 
 ### Added — SDK-First Mode (Phase 1)

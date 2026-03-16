@@ -58,9 +58,15 @@ export type { SquadEntry } from './multi-squad.js';
 export type { MultiSquadConfig } from './multi-squad.js';
 export type { SquadInfo } from './multi-squad.js';
 
-// --- Workstream types (streams/types.ts) ---
+// --- SubSquad types (streams/types.ts) ---
+export type { SubSquadDefinition } from './streams/types.js';
+export type { SubSquadConfig } from './streams/types.js';
+export type { ResolvedSubSquad } from './streams/types.js';
+/** @deprecated Use SubSquadDefinition */
 export type { WorkstreamDefinition } from './streams/types.js';
+/** @deprecated Use SubSquadConfig */
 export type { WorkstreamConfig } from './streams/types.js';
+/** @deprecated Use ResolvedSubSquad */
 export type { ResolvedWorkstream } from './streams/types.js';
 /** @deprecated aliases */
 export type { StreamDefinition } from './streams/types.js';
@@ -81,3 +87,11 @@ export type { HooksDefinition } from './builders/types.js';
 export type { CastingDefinition } from './builders/types.js';
 export type { TelemetryDefinition } from './builders/types.js';
 export type { SquadSDKConfig } from './builders/types.js';
+// --- Platform types (platform/types.ts) ---
+export type { PlatformType } from './platform/types.js';
+export type { WorkItem } from './platform/types.js';
+export type { PullRequest } from './platform/types.js';
+export type { PlatformAdapter } from './platform/types.js';
+export type { RalphCommands } from './platform/ralph-commands.js';
+export type { GitHubRemoteInfo } from './platform/detect.js';
+export type { AzureDevOpsRemoteInfo } from './platform/detect.js';

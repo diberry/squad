@@ -26,14 +26,18 @@ mkdir my-project && cd my-project
 git init
 ```
 
+**✓ Validate:** Run `git status` — you should see "No commits yet".
+
 ### 2. Install Squad
 
 ```bash
-npm install --save-dev @bradygaster/squad-cli
-npx squad init
+npm install -g @bradygaster/squad-cli
+squad init
 ```
 
-**Or use npx (no install):** `npx @bradygaster/squad-cli` — see [Migration Guide](docs/get-started/migration.md) if upgrading from an older version.
+**✓ Validate:** Check that `.squad/team.md` was created in your project.
+
+**Or use npx (no install):** `npx @bradygaster/squad-cli` — see [Migration Guide](https://bradygaster.github.io/squad/docs/get-started/migration/) if upgrading from an older version.
 
 ### 3. Authenticate with GitHub (for Issues, PRs, and Ralph)
 
@@ -41,14 +45,17 @@ npx squad init
 gh auth login
 ```
 
+**✓ Validate:** Run `gh auth status` — you should see "Logged in to github.com".
+
 ### 4. Open Copilot and go
 
 ```
-copilot
+copilot --agent squad --yolo
 ```
 
-**In the GitHub Copilot CLI**, type `/agent` and select **Squad**.
-**In VS Code**, type `/agents` and select **Squad**.
+> **Why `--yolo`?** Squad makes many tool calls in a typical session. Without it, Copilot will prompt you to approve each one.
+
+**In VS Code**, open Copilot Chat and select the **Squad** agent.
 
 Then:
 
@@ -56,6 +63,8 @@ Then:
 I'm starting a new project. Set up the team.
 Here's what I'm building: a recipe sharing app with React and Node.
 ```
+
+**✓ Validate:** Squad responds with team member proposals. Type `yes` to confirm — they're ready to work.
 
 Squad proposes a team — each member named from a persistent thematic cast. You say **yes**. They're ready.
 
@@ -159,7 +168,7 @@ For insider builds:
 npm install -g @bradygaster/squad-cli@insider
 ```
 
-> **Note:** GitHub-native distribution (`npx github:bradygaster/squad`) has been removed. All distribution is now via npm (see [Migration Guide](docs/get-started/migration.md) for details).
+> **Note:** GitHub-native distribution (`npx github:bradygaster/squad`) has been removed. All distribution is now via npm (see [Migration Guide](https://bradygaster.github.io/squad/docs/get-started/migration/) for details).
 
 ---
 
@@ -233,7 +242,7 @@ export default defineSquad({
 });
 ```
 
-Run `squad build` to generate all the markdown. See the [SDK-First Mode Guide](docs/sdk-first-mode.md) for full documentation.
+Run `squad build` to generate all the markdown. See the [SDK-First Mode Guide](docs/src/content/docs/sdk-first-mode.md) for full documentation.
 
 ---
 

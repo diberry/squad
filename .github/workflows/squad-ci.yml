@@ -11,6 +11,24 @@ permissions:
   contents: read
 
 jobs:
+  docs-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install docs tools
+        run: npm install --no-save markdownlint-cli2 cspell
+
+      - name: Lint docs markdown
+        run: npx markdownlint-cli2
+
+      - name: Spell check docs
+        run: npx cspell --no-progress --dot "docs/src/content/**/*.md" "README.md"
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -22,6 +40,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install docs dependencies
+        run: npm ci
+        working-directory: docs
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps

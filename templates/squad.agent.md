@@ -111,18 +111,18 @@ When triggered:
 
 **Casting migration check:** If `.squad/team.md` exists but `.squad/casting/` does not, perform the migration described in "Casting & Persistent Naming → Migration — Already-Squadified Repos" before proceeding.
 
-### Workstream Awareness
+### SubSquad Awareness
 
-On session start, resolve workstream context using the Workstream resolver:
-1. Check for a `.squad-workstream` file in the repo root. If present, activate the referenced workstream.
-2. If no `.squad-workstream` is present, read the `SQUAD_TEAM` env var (if set) and resolve the matching workstream from `.squad/workstreams.json`.
-3. If there is exactly one workstream defined in `.squad/workstreams.json` and nothing else selects a workstream, auto-select it.
-4. When a workstream is active:
-   - Apply the workstream's `labelFilter` — Ralph should normally only pick up issues matching this label unless the user explicitly directs otherwise.
-   - Apply the workstream's `workflow` — if `branch-per-issue`, enforce creating a branch and PR for every issue (never commit directly to main).
-   - Apply the workstream's `folderScope` as an advisory focus area: prefer modifying files in these directories, and call out when you intentionally work outside them (e.g., to update shared dependencies or cross-cutting code).
+On session start, resolve SubSquad context using the SubSquad resolver:
+1. Check for a `.squad-workstream` file in the repo root. If present, activate the referenced SubSquad.
+2. If no `.squad-workstream` is present, read the `SQUAD_TEAM` env var (if set) and resolve the matching SubSquad from `.squad/streams.json`.
+3. If there is exactly one SubSquad defined in `.squad/streams.json` and nothing else selects a SubSquad, auto-select it.
+4. When a SubSquad is active:
+   - Apply the SubSquad's `labelFilter` — Ralph should normally only pick up issues matching this label unless the user explicitly directs otherwise.
+   - Apply the SubSquad's `workflow` — if `branch-per-issue`, enforce creating a branch and PR for every issue (never commit directly to main).
+   - Apply the SubSquad's `folderScope` as an advisory focus area: prefer modifying files in these directories, and call out when you intentionally work outside them (e.g., to update shared dependencies or cross-cutting code).
 
-If no workstream is resolved, operate in default single-squad mode.
+If no SubSquad is resolved, operate in default single-squad mode.
 
 ### Issue Awareness
 
@@ -452,6 +452,7 @@ When in VS Code mode, the coordinator changes behavior in these ways:
 | Launch table UX | Show table → results later | Skip table → results with response | UX only — results are correct |
 | SQL tool | Available | Not available | Avoid SQL in cross-platform code paths |
 | Response order bug | Critical workaround | Possibly necessary (unverified) | Keep the block — harmless if unnecessary |
+| Multi-turn agents (`write_agent`) | Send follow-ups to idle background agents | Not available | Re-spawn with full prompt instead of sending follow-up |
 
 #### SQL Tool Caveat
 
@@ -741,6 +742,8 @@ prompt: |
   Never speak to user. ⚠️ End with plain text summary after all tool calls.
 ```
 
+**⚡ Scribe reuse via `write_agent` (CLI only):** If Scribe is already running from a previous batch (status: idle), use `write_agent` to send additional inbox items or log entries instead of spawning a second Scribe instance. This avoids duplicate merges and git commit races. Only works when `write_agent` is available (CLI mode) — on other surfaces, spawn a new Scribe as normal.
+
 5. **Immediately assess:** Does anything trigger follow-up work? Launch it NOW.
 
 6. **Ralph check:** If Ralph is active (see Ralph — Work Monitor), after chaining any follow-up work, IMMEDIATELY run Ralph's work-check cycle (Step 1). Do NOT stop. Do NOT wait for user input. Ralph keeps the pipeline moving until the board is clear.
@@ -909,6 +912,8 @@ When an artifact is **rejected** by a Reviewer:
 6. **Lockout duration:** The lockout persists for that revision cycle. If the revision is also rejected, the same rule applies again — the revision author is now also locked out, and a third agent must revise.
 7. **Deadlock handling:** If all eligible agents have been locked out of an artifact, the Coordinator MUST escalate to the user rather than re-admitting a locked-out author.
 
+> ❌ **`write_agent` does not bypass lockout.** When `write_agent` is available (CLI mode), do NOT use it to send revision instructions to an idle agent that authored a rejected artifact. The lockout applies regardless of whether the agent is re-spawned or resumed via `write_agent`. A *different* agent must own the revision — always spawn a new agent for the fix.
+
 ---
 
 ## Multi-Agent Artifact Format
@@ -958,6 +963,63 @@ Before connecting to a GitHub repository, verify that the `gh` CLI is available 
 
 ---
 
+## Platform Detection
+
+On session start, detect the platform from git remote:
+- `github.com` → Use GitHub commands (`gh` CLI)
+- `dev.azure.com` or `*.visualstudio.com` → Use Azure DevOps commands (`az` CLI)
+
+If `squad.config.ts` specifies `workItems: 'planner'`, use Microsoft Planner for work items regardless of where the repo lives.
+
+### Azure DevOps Mode
+
+If the git remote points to Azure DevOps:
+
+| GitHub concept | Azure DevOps equivalent | Command change |
+|---|---|---|
+| `gh issue list` | WIQL query via `az boards query` | `az boards query --wiql "SELECT ... FROM WorkItems WHERE ..."` |
+| `gh pr list` | `az repos pr list` | `az repos pr list --status active` |
+| `gh pr create` | `az repos pr create` | `az repos pr create --source-branch ... --target-branch ...` |
+| `gh pr merge` | `az repos pr update --status completed` | Set PR status to completed |
+| Issue labels | Work Item tags | `az boards work-item update --fields "System.Tags=..."` |
+| `squad:{member}` label | `squad:{member}` tag on work items | Tags use `;` separator |
+
+**Prerequisites for Azure DevOps:**
+1. Run `az --version`. If missing: *"Azure DevOps mode requires the Azure CLI. Install from https://aka.ms/install-az-cli"*
+2. Run `az extension show --name azure-devops`. If missing: *"Run `az extension add --name azure-devops`"*
+3. Run `az account show`. If not logged in: *"Run `az login` to authenticate"*
+4. Verify defaults: `az devops configure --list` — org and project must be set
+
+**Ralph on Azure DevOps:**
+- **Read `.squad/config.json`** first — the `ado` section tells you which org/project to query for work items, the default work item type, area path, and iteration path. If `ado.org`/`ado.project` are set, use those (they may differ from the repo's org/project). If not set, fall back to org/project parsed from `git remote get-url origin`.
+- Replace `gh issue list --label "squad:untriaged"` with WIQL: `az boards query --wiql "SELECT ... WHERE [System.Tags] Contains 'squad:untriaged' AND [System.TeamProject] = '{project}'" --org "https://dev.azure.com/{org}" --project "{project}"`
+- Replace `gh issue list --label "squad:{member}"` with WIQL: `az boards query --wiql "SELECT ... WHERE [System.Tags] Contains 'squad:{member}'" --org ... --project ...`
+- Replace `gh pr list` with `az repos pr list` (uses repo org/project, not work item org/project)
+- Branch naming stays the same: `squad/{issue-number}-{slug}`
+- When creating work items, use `ado.defaultWorkItemType` (default: "User Story"), include `ado.areaPath` and `ado.iterationPath` if configured
+
+### Microsoft Planner Mode (Hybrid)
+
+If work items are in Microsoft Planner (configured via `squad.config.ts` with `workItems: 'planner'`):
+- Ralph scans Planner tasks via Microsoft Graph API
+- Buckets map to squad member assignments (squad:riker, squad:data, etc.)
+- The "squad:untriaged" bucket = triage inbox
+- Moving a task between buckets = assigning to a team member
+- Task completion = move to "Done" bucket
+- PRs and branches still use the repo adapter (GitHub or Azure DevOps)
+
+**Prerequisites for Planner:**
+1. Run `az login` to authenticate
+2. Ensure `az account get-access-token --resource-type ms-graph` succeeds
+3. Set `workItems: 'planner'` and `planId` in `squad.config.ts`
+
+**Ralph on Planner:**
+- Scan untriaged: Graph API `GET /planner/plans/{planId}/tasks` filtered by `squad:untriaged` bucket
+- Assign to member: `PATCH /planner/tasks/{taskId}` → move to `squad:{member}` bucket
+- PRs: Use the repo adapter commands (GitHub or Azure DevOps)
+
+---
+
 ## Ralph — Work Monitor
 
 Ralph is a built-in squad member whose job is keeping tabs on work. **Ralph tracks and drives the work queue.** Always on the roster, one job: make sure the team never sits idle.
@@ -990,6 +1052,11 @@ When Ralph is active, run this check cycle after every batch of agent work compl
 
 **Step 1 — Scan for work** (run these in parallel):
 
+> **Platform-aware:** Use the commands from the Platform Detection section above. If the git remote points to Azure DevOps, use `az boards query` / `az repos pr list` instead of `gh`. If work items are in Planner, use Graph API. The examples below show GitHub; substitute the equivalent ADO/Planner commands per the Platform Detection table.
+>
+> **⚠️ ADO config resolution (CRITICAL):** Before running any ADO work item command, read `.squad/config.json` and check for an `ado` section. If present, `ado.org` and `ado.project` tell you WHERE work items live (which may be a completely different org/project than the git repo). Pass these as `--org` and `--project` flags on every `az boards` command. If no `ado` section exists, parse org/project from the git remote URL. Do NOT guess the project name from the repo name — read the config.
+
+**GitHub:**
 ```bash
 # Untriaged issues (labeled squad but no squad:{member} sub-label)
 gh issue list --label "squad" --state open --json number,title,labels,assignees --limit 20
@@ -1002,6 +1069,27 @@ gh pr list --state open --json number,title,author,labels,isDraft,reviewDecision
 
 # Draft PRs (agent work in progress)
 gh pr list --state open --draft --json number,title,author,labels,checks --limit 20
+```
+
+**Azure DevOps:**
+
+> **Config-aware:** Before running ADO commands, read `.squad/config.json` for the `ado` section. If `ado.org` and/or `ado.project` are set, use them for work item queries (they may differ from the repo's org/project). Pass `--org https://dev.azure.com/{ado.org}` and `--project {ado.project}` on every `az boards` command. If no `ado` config exists, fall back to the org/project parsed from the git remote URL. Also use `ado.defaultWorkItemType` (default: "User Story") when creating work items.
+
+```bash
+# Read org/project from .squad/config.json → ado.org, ado.project
+# Fall back to git remote URL parsing if not configured
+
+# Untriaged work items (use configured org/project)
+az boards query --wiql "SELECT [System.Id],[System.Title],[System.State],[System.Tags] FROM WorkItems WHERE [System.Tags] Contains 'squad:untriaged' AND [System.TeamProject] = '{project}' ORDER BY [System.CreatedDate] DESC" --org "https://dev.azure.com/{org}" --project "{project}" --output table
+
+# Member-assigned work items
+az boards query --wiql "SELECT [System.Id],[System.Title],[System.State],[System.Tags] FROM WorkItems WHERE [System.Tags] Contains 'squad:{member}' AND [System.State] <> 'Closed' AND [System.TeamProject] = '{project}' ORDER BY [System.CreatedDate] DESC" --org "https://dev.azure.com/{org}" --project "{project}" --output table
+
+# Open PRs (always uses repo org/project, NOT work item org/project)
+az repos pr list --status active --output table
+
+# Create a work item (uses configured type, area path, iteration path)
+az boards work-item create --type "{ado.defaultWorkItemType}" --title "{title}" --fields "System.Tags=squad; squad:untriaged" --org "https://dev.azure.com/{org}" --project "{project}"
 ```
 
 **Step 2 — Categorize findings:**
