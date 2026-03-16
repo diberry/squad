@@ -214,26 +214,26 @@ Squad auto-selects the right level of effort for each request:
 | `"Remove McManus from the team"` | Archives agent directory to `.squad/agents/.archived/`, updates team.md |
 | `"Change the tester to focus on integration tests"` | Updates the tester's charter and expertise |
 | `"Route all CSS files to Frontend"` | Adds a rule to `.squad/routing.md` |
-| `"From now on, McManus reviews all docs before merge"` | Creates routing rule + [directive](memory-and-knowledge.md) |
+| `"From now on, McManus reviews all docs before merge"` | Creates routing rule + [directive](../features/memory.md) |
 
 Running `init` on an existing Squad repo automatically offers upgrade mode.
 
 ---
 
-## Anatomy of an agent
+## Agent anatomy
 
-An agent is a directory at `.squad/agents/{name}/`. What lives there — and whether a directory exists at all — depends on the member type.
+An agent is a directory at `.squad/agents/{name}/`. The contents depend on the member type.
 
-| | AI agent | Human (👤) | @copilot (🤖) |
-|---|---|---|---|
-| Directory | `.squad/agents/{name}/` | None | None |
-| `charter.md` | ✅ Identity, boundaries, voice | ❌ | ❌ Uses `copilot-instructions.md` |
-| `history.md` | ✅ Optional, append-only learnings | ❌ | ❌ |
-| Spawnable | ✅ | ❌ Coordinator waits | ❌ Works via issue assignment |
+For how humans differ from AI agents, see [Human team members](#human-team-members) above.
+
+| | @copilot (🤖) |
+|---|---|
+| Directory | None |
+| `charter.md` | ❌ Uses `copilot-instructions.md` |
+| `history.md` | ❌ |
+| Spawnable | ❌ Works via issue assignment |
 
 **AI agents** have a `charter.md` (identity, expertise, voice — compiled into the system prompt at spawn time) and an optional `history.md` (append-only cross-session learnings).
-
-**Human members** (👤) appear on the roster — see [Human team members](#human-team-members) — but have no files and aren't spawnable. The coordinator surfaces work and waits for you to relay it.
 
 **@copilot** (🤖) appears on the roster and works via GitHub issue assignment. It reads `.github/copilot-instructions.md` instead of a charter.
 
@@ -250,7 +250,7 @@ Agents don't share memory directly. Context flows through explicit shared files:
 - **`decisions.md`** — canonical team memory: directives, patterns, learnings
 - **`.squad/decisions/inbox/`** — agents drop decision files here; the Scribe merges them into `decisions.md`
 
-Each agent's `history.md` is personal — only that agent reads it at spawn time. For the full picture on knowledge flow, see [Memory and knowledge](memory-and-knowledge.md).
+Each agent's `history.md` is personal — only that agent reads it at spawn time. For the full picture on knowledge flow, see [Memory and knowledge](../features/memory.md).
 
 ---
 
@@ -274,7 +274,7 @@ To add a **human member**, skip the directory — just add them to `team.md`. Se
 - **Commit `.squad/`** to version control — anyone who clones the repo gets the full team with all accumulated knowledge.
 - Use human members for approval gates: design review, compliance, final sign-off.
 - Design reviews prevent agents from building conflicting implementations — let them run on multi-agent tasks.
-- Retros produce [decisions](memory-and-knowledge.md) that improve future work, not just diagnose the current failure.
+- Retros produce [decisions](../features/memory.md) that improve future work, not just diagnose the current failure.
 - You're the relay for human members. Squad can't message them directly — it tells you, and you coordinate.
 
 ---
