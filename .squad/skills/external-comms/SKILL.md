@@ -204,31 +204,31 @@ Confidence: 🟢 High | 🟡 Medium | 🔴 Needs review
 Full drafts below ▼
 ```
 
-### Example audit entry
+### Example audit entry (post action)
 
 ```markdown
 ---
 timestamp: "2026-03-16T21:30:00Z"
 action: "post"
+item_number: 426
+draft_id: 1
+reviewer: "@bradygaster"
 ---
 
-## Context
+## Context (draft, approve, edit, skip, post, delete actions)
 - Thread depth: 3
 - Response type: welcome
 - Confidence: 🟢
 - Long thread flag: false
 
-## Draft Content
+## Draft Content (draft, edit, post actions)
 Thread: 3 comments, last activity 2026-03-16, reporter hit a preview-build regression after install.
 
 Hey @newdev! Welcome to Squad 👋 Thanks for opening this.
 We reproduced the issue in preview builds and we're checking the regression point now.
 Let us know if you can share the command you ran right before the failure.
 
-## Reviewer Notes
-—
-
-## Post Result
+## Post Result (post, delete actions)
 https://github.com/bradygaster/squad/issues/426#issuecomment-123456
 ```
 

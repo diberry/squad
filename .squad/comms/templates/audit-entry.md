@@ -4,7 +4,8 @@ action: "scan|draft|approve|edit|skip|post|halt|resume|delete|lint_failure|expir
 ---
 
 > All other fields are conditional on the action type. See **Conditional Fields** table below.
-> Include only the sections relevant to your action type.
+> Frontmatter includes `timestamp` and `action` universally, plus any action-specific required fields from the table.
+> Include only the body sections relevant to your action type.
 
 ## Context (draft, approve, edit, skip, post, delete actions)
 - Thread depth: {comment count}
@@ -19,7 +20,7 @@ action: "scan|draft|approve|edit|skip|post|halt|resume|delete|lint_failure|expir
 {any edits or comments from reviewer, or "—" if none}
 
 ## Post Result (post, delete actions)
-{link to posted comment if posted, or "not posted" if skipped/halted}
+{link to posted comment, or original URL if deleted}
 
 ## Conditional Fields
 
