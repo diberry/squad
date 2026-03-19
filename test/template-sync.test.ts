@@ -1,104 +1,165 @@
 /**
- * Template Sync & Casting Parity Tests (Issue #459)
+ * Template sync tests — ensures all template directories stay in sync
+ * for casting-critical files (squad.agent.md, casting-policy.json, casting-reference.md).
  *
- * Prevents the casting universe mismatch from recurring by verifying:
- * - Universe count in squad.agent.md matches casting-policy.json
- * - All 3 copies of squad.agent.md agree on universe count
- * - Referenced casting-reference.md files exist
- * - casting-policy.json is identical across template dirs
- * - Every allowlisted universe has a capacity entry and vice versa
+ * Canonical sources: .squad-templates/ and templates/
+ * Copies: packages/squad-cli/templates/, packages/squad-sdk/templates/, .github/agents/
  */
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = process.cwd();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..');
 
-const SQUAD_TEMPLATES = join(ROOT, '.squad-templates');
-const TEMPLATES = join(ROOT, 'templates');
-const GITHUB_AGENTS = join(ROOT, '.github', 'agents');
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-/** Extract the "N universes available" number from a squad.agent.md file. */
-function extractUniverseCount(filePath: string): number {
-  const content = readFileSync(filePath, 'utf-8');
-  const match = content.match(/(\d+)\s+universes?\s+available/i);
-  if (!match) throw new Error(`No "N universes available" found in ${filePath}`);
-  return parseInt(match[1], 10);
+function readFile(relPath: string): string {
+  return readFileSync(resolve(ROOT, relPath), 'utf-8');
 }
 
-describe('Template sync & casting parity (issue #459)', () => {
-  // --- Test 1: Universe count in squad.agent.md matches casting-policy.json ---
+function fileExists(relPath: string): boolean {
+  return existsSync(resolve(ROOT, relPath));
+}
 
-  describe('universe count matches casting-policy.json', () => {
-    const policy = JSON.parse(readFileSync(join(SQUAD_TEMPLATES, 'casting-policy.json'), 'utf-8'));
-    const policyCount = policy.allowlist_universes.length;
+/** Extract the universe count from a squad.agent.md file (anchored to list item). */
+function extractUniverseCount(content: string): number | null {
+  const m = content.match(/^-\s+(\d+)\s+universes?\s+available/im);
+  return m ? Number(m[1]) : null;
+}
 
-    it('.squad-templates/squad.agent.md matches policy', () => {
-      const claimed = extractUniverseCount(join(SQUAD_TEMPLATES, 'squad.agent.md'));
-      expect(claimed).toBe(policyCount);
-    });
+/** Parse casting-policy.json and return universe names from the allowlist. */
+function parsePolicyUniverses(relPath: string): string[] {
+  const json = JSON.parse(readFile(relPath));
+  return json.allowlist_universes as string[];
+}
 
-    it('templates/squad.agent.md matches policy', () => {
-      const claimed = extractUniverseCount(join(TEMPLATES, 'squad.agent.md'));
-      expect(claimed).toBe(policyCount);
-    });
+/** Parse casting-policy.json and return the capacity map. */
+function parsePolicyCapacity(relPath: string): Record<string, number> {
+  const json = JSON.parse(readFile(relPath));
+  return json.universe_capacity as Record<string, number>;
+}
 
-    it('.github/agents/squad.agent.md matches policy', () => {
-      const claimed = extractUniverseCount(join(GITHUB_AGENTS, 'squad.agent.md'));
-      expect(claimed).toBe(policyCount);
-    });
+// ---------------------------------------------------------------------------
+// All template locations
+// ---------------------------------------------------------------------------
+
+const SQUAD_AGENT_LOCATIONS = [
+  '.squad-templates/squad.agent.md',
+  'templates/squad.agent.md',
+  '.github/agents/squad.agent.md',
+  'packages/squad-cli/templates/squad.agent.md',
+  'packages/squad-sdk/templates/squad.agent.md',
+] as const;
+
+const CASTING_POLICY_LOCATIONS = [
+  '.squad-templates/casting-policy.json',
+  'templates/casting-policy.json',
+  'packages/squad-cli/templates/casting-policy.json',
+  'packages/squad-sdk/templates/casting-policy.json',
+] as const;
+
+const CASTING_REFERENCE_LOCATIONS = [
+  '.squad-templates/casting-reference.md',
+  'templates/casting-reference.md',
+  'packages/squad-cli/templates/casting-reference.md',
+  'packages/squad-sdk/templates/casting-reference.md',
+] as const;
+
+// ---------------------------------------------------------------------------
+// squad.agent.md — universe count consistency
+// ---------------------------------------------------------------------------
+
+describe('squad.agent.md universe count', () => {
+  const canonicalPath = SQUAD_AGENT_LOCATIONS[0];
+  const canonicalContent = readFile(canonicalPath);
+  const expectedCount = extractUniverseCount(canonicalContent);
+
+  it('canonical file has a parseable universe count', () => {
+    expect(expectedCount).not.toBeNull();
+    expect(expectedCount).toBeGreaterThan(0);
   });
 
-  // --- Test 2: All 3 copies agree on universe count ---
-
-  it('all 3 squad.agent.md copies claim the same universe count', () => {
-    const counts = [
-      extractUniverseCount(join(SQUAD_TEMPLATES, 'squad.agent.md')),
-      extractUniverseCount(join(TEMPLATES, 'squad.agent.md')),
-      extractUniverseCount(join(GITHUB_AGENTS, 'squad.agent.md')),
-    ];
-    expect(counts[0]).toBe(counts[1]);
-    expect(counts[1]).toBe(counts[2]);
-  });
-
-  // --- Test 3: casting-reference.md exists where referenced ---
-
-  describe('casting-reference.md exists in template dirs', () => {
-    // casting-reference.md is a template-only file that gets copied to .squad/templates/
-    // during squad init. It belongs in .squad-templates/ and templates/ (both template dirs),
-    // but NOT in .github/agents/ (which only contains squad.agent.md, the live governance file).
-    it('.squad-templates/casting-reference.md exists', () => {
-      expect(existsSync(join(SQUAD_TEMPLATES, 'casting-reference.md'))).toBe(true);
+  for (const loc of SQUAD_AGENT_LOCATIONS) {
+    it(`${loc} matches canonical universe count (${expectedCount})`, () => {
+      const content = readFile(loc);
+      const count = extractUniverseCount(content);
+      expect(count).toBe(expectedCount);
     });
+  }
 
-    it('templates/casting-reference.md exists', () => {
-      expect(existsSync(join(TEMPLATES, 'casting-reference.md'))).toBe(true);
+  it('universe count matches casting-policy allowlist length', () => {
+    const policyUniverses = parsePolicyUniverses(CASTING_POLICY_LOCATIONS[0]);
+    expect(expectedCount).toBe(policyUniverses.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// casting-policy.json — content parity
+// ---------------------------------------------------------------------------
+
+describe('casting-policy.json content parity', () => {
+  const canonicalContent = readFile(CASTING_POLICY_LOCATIONS[0]);
+
+  for (const loc of CASTING_POLICY_LOCATIONS) {
+    it(`${loc} matches canonical casting-policy.json`, () => {
+      const content = readFile(loc);
+      expect(content).toBe(canonicalContent);
     });
+  }
+
+  it('allowlist and capacity map have the same universes', () => {
+    const allowlist = parsePolicyUniverses(CASTING_POLICY_LOCATIONS[0]);
+    const capacity = parsePolicyCapacity(CASTING_POLICY_LOCATIONS[0]);
+    const capacityNames = Object.keys(capacity);
+
+    expect(allowlist.sort()).toEqual(capacityNames.sort());
   });
 
-  // --- Test 4: casting-policy.json is identical across template dirs ---
-
-  it('casting-policy.json is identical in .squad-templates and templates', () => {
-    const a = JSON.parse(readFileSync(join(SQUAD_TEMPLATES, 'casting-policy.json'), 'utf-8'));
-    const b = JSON.parse(readFileSync(join(TEMPLATES, 'casting-policy.json'), 'utf-8'));
-    expect(a).toEqual(b);
-  });
-
-  // --- Test 5: Every allowlisted universe has a capacity entry and vice versa ---
-
-  it('allowlist_universes and universe_capacity are in sync', () => {
-    const policy = JSON.parse(readFileSync(join(SQUAD_TEMPLATES, 'casting-policy.json'), 'utf-8'));
-    const allowlist: string[] = policy.allowlist_universes;
-    const capacityKeys = Object.keys(policy.universe_capacity);
-
-    // Every allowlisted universe has a capacity entry
-    for (const universe of allowlist) {
-      expect(capacityKeys).toContain(universe);
+  it('all capacities are positive integers', () => {
+    const capacity = parsePolicyCapacity(CASTING_POLICY_LOCATIONS[0]);
+    for (const [name, cap] of Object.entries(capacity)) {
+      expect(cap, `${name} capacity`).toBeGreaterThan(0);
+      expect(Number.isInteger(cap), `${name} capacity is integer`).toBe(true);
     }
-    // No orphaned capacity entries
-    for (const key of capacityKeys) {
-      expect(allowlist).toContain(key);
-    }
   });
+});
+
+// ---------------------------------------------------------------------------
+// casting-reference.md — if it exists in canonical, it must exist everywhere
+// ---------------------------------------------------------------------------
+
+describe('casting-reference.md sync', () => {
+  const canonicalPath = CASTING_REFERENCE_LOCATIONS[0];
+  const canonicalExists = fileExists(canonicalPath);
+
+  if (canonicalExists) {
+    const canonicalContent = readFile(canonicalPath);
+
+    for (const loc of CASTING_REFERENCE_LOCATIONS) {
+      it(`${loc} exists and matches canonical`, () => {
+        expect(fileExists(loc), `${loc} should exist`).toBe(true);
+        expect(readFile(loc)).toBe(canonicalContent);
+      });
+    }
+
+    it('universe table row count matches casting-policy universe count', () => {
+      // Expect table rows like "| Universe Name |" in the reference
+      const tableRows = canonicalContent
+        .split('\n')
+        .filter((line) => /^\|[^-]/.test(line) && !/^\|\s*Universe/i.test(line));
+      const policyUniverses = parsePolicyUniverses(CASTING_POLICY_LOCATIONS[0]);
+      expect(tableRows.length).toBe(policyUniverses.length);
+    });
+  } else {
+    it('casting-reference.md does not exist in any template dir (consistent)', () => {
+      for (const loc of CASTING_REFERENCE_LOCATIONS) {
+        expect(fileExists(loc), `${loc} should not exist`).toBe(false);
+      }
+    });
+  }
 });
