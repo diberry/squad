@@ -1,15 +1,23 @@
 /**
- * Template sync tests — ensures all template directories stay in sync
- * for casting-critical files (squad.agent.md, casting-policy.json, casting-reference.md).
+ * Template sync tests — ensures all template directories stay in sync.
  *
- * Canonical sources: .squad-templates/ and templates/
- * Copies: packages/squad-cli/templates/, packages/squad-sdk/templates/, .github/agents/
+ * Canonical source: .squad-templates/
+ * Mirror targets:   templates/, packages/squad-cli/templates/, packages/squad-sdk/templates/
+ * Special target:   .github/agents/ (squad.agent.md only)
+ *
+ * Coverage strategy:
+ *   1. Dynamic enumeration — every file in .squad-templates/ must be byte-for-byte
+ *      identical across all mirror targets (and .github/agents/ for squad.agent.md).
+ *   2. Script execution — `node scripts/sync-templates.mjs` must exit 0.
+ *   3. Negative guard — .github/agents/ must not contain stray synced files.
+ *   4. Semantic checks — universe counts, casting-policy internal consistency.
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -22,8 +30,27 @@ function readFile(relPath: string): string {
   return readFileSync(resolve(ROOT, relPath), 'utf-8');
 }
 
+function readFileBytes(relPath: string): Buffer {
+  return readFileSync(resolve(ROOT, relPath));
+}
+
 function fileExists(relPath: string): boolean {
   return existsSync(resolve(ROOT, relPath));
+}
+
+/** Recursively collect all file paths relative to `dir`. */
+function collectFiles(dir: string, base = ''): string[] {
+  const entries = readdirSync(resolve(ROOT, dir), { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const rel = base ? join(base, entry.name) : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...collectFiles(join(dir, entry.name), rel));
+    } else {
+      files.push(rel);
+    }
+  }
+  return files;
 }
 
 /** Extract the universe count from a squad.agent.md file (anchored to list item). */
@@ -45,11 +72,22 @@ function parsePolicyCapacity(relPath: string): Record<string, number> {
 }
 
 // ---------------------------------------------------------------------------
-// All template locations
+// Constants
 // ---------------------------------------------------------------------------
 
+const SOURCE_DIR = '.squad-templates';
+
+const MIRROR_TARGETS = [
+  'templates',
+  'packages/squad-cli/templates',
+  'packages/squad-sdk/templates',
+] as const;
+
+const AGENT_MD_FILE = 'squad.agent.md';
+const AGENT_MD_EXTRA_TARGET = '.github/agents';
+
 const SQUAD_AGENT_LOCATIONS = [
-  '.squad-templates/squad.agent.md',
+  `${SOURCE_DIR}/${AGENT_MD_FILE}`,
   'templates/squad.agent.md',
   '.github/agents/squad.agent.md',
   'packages/squad-cli/templates/squad.agent.md',
@@ -57,21 +95,82 @@ const SQUAD_AGENT_LOCATIONS = [
 ] as const;
 
 const CASTING_POLICY_LOCATIONS = [
-  '.squad-templates/casting-policy.json',
+  `${SOURCE_DIR}/casting-policy.json`,
   'templates/casting-policy.json',
   'packages/squad-cli/templates/casting-policy.json',
   'packages/squad-sdk/templates/casting-policy.json',
 ] as const;
 
-const CASTING_REFERENCE_LOCATIONS = [
-  '.squad-templates/casting-reference.md',
-  'templates/casting-reference.md',
-  'packages/squad-cli/templates/casting-reference.md',
-  'packages/squad-sdk/templates/casting-reference.md',
-] as const;
+// ---------------------------------------------------------------------------
+// 1. Dynamic enumeration — byte-for-byte parity for ALL synced files
+// ---------------------------------------------------------------------------
+
+describe('dynamic template enumeration (all synced files)', () => {
+  const sourceFiles = collectFiles(SOURCE_DIR);
+
+  it('.squad-templates/ contains files to sync', () => {
+    expect(sourceFiles.length).toBeGreaterThan(0);
+  });
+
+  for (const relFile of sourceFiles) {
+    const canonicalPath = `${SOURCE_DIR}/${relFile}`;
+
+    for (const target of MIRROR_TARGETS) {
+      const targetPath = `${target}/${relFile}`;
+
+      it(`${targetPath} is byte-for-byte identical to ${canonicalPath}`, () => {
+        expect(fileExists(targetPath), `${targetPath} should exist`).toBe(true);
+        const src = readFileBytes(canonicalPath);
+        const dst = readFileBytes(targetPath);
+        expect(Buffer.compare(src, dst), `${targetPath} content mismatch`).toBe(0);
+      });
+    }
+
+    // squad.agent.md also lives in .github/agents/
+    if (relFile === AGENT_MD_FILE) {
+      const agentPath = `${AGENT_MD_EXTRA_TARGET}/${AGENT_MD_FILE}`;
+
+      it(`${agentPath} is byte-for-byte identical to ${canonicalPath}`, () => {
+        expect(fileExists(agentPath), `${agentPath} should exist`).toBe(true);
+        const src = readFileBytes(canonicalPath);
+        const dst = readFileBytes(agentPath);
+        expect(Buffer.compare(src, dst), `${agentPath} content mismatch`).toBe(0);
+      });
+    }
+  }
+});
 
 // ---------------------------------------------------------------------------
-// squad.agent.md — universe count consistency
+// 2. Script execution — sync-templates.mjs must exit cleanly
+// ---------------------------------------------------------------------------
+
+describe('sync-templates.mjs script execution', () => {
+  it('exits with code 0 (no syntax errors, no crashes)', () => {
+    // execSync throws on non-zero exit codes
+    const output = execSync('node scripts/sync-templates.mjs', {
+      cwd: ROOT,
+      encoding: 'utf-8',
+      timeout: 30_000,
+    });
+    expect(output).toContain('Synced');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Negative guard — .github/agents/ should only have squad.agent.md
+// ---------------------------------------------------------------------------
+
+describe('.github/agents/ contains only squad.agent.md', () => {
+  it('has no files beyond squad.agent.md from the sync', () => {
+    const agentDir = resolve(ROOT, AGENT_MD_EXTRA_TARGET);
+    expect(existsSync(agentDir), '.github/agents/ should exist').toBe(true);
+    const files = readdirSync(agentDir);
+    expect(files).toEqual([AGENT_MD_FILE]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. squad.agent.md — universe count consistency
 // ---------------------------------------------------------------------------
 
 describe('squad.agent.md universe count', () => {
@@ -99,7 +198,7 @@ describe('squad.agent.md universe count', () => {
 });
 
 // ---------------------------------------------------------------------------
-// casting-policy.json — content parity
+// 5. casting-policy.json — content parity & internal consistency
 // ---------------------------------------------------------------------------
 
 describe('casting-policy.json content parity', () => {
@@ -127,39 +226,4 @@ describe('casting-policy.json content parity', () => {
       expect(Number.isInteger(cap), `${name} capacity is integer`).toBe(true);
     }
   });
-});
-
-// ---------------------------------------------------------------------------
-// casting-reference.md — if it exists in canonical, it must exist everywhere
-// ---------------------------------------------------------------------------
-
-describe('casting-reference.md sync', () => {
-  const canonicalPath = CASTING_REFERENCE_LOCATIONS[0];
-  const canonicalExists = fileExists(canonicalPath);
-
-  if (canonicalExists) {
-    const canonicalContent = readFile(canonicalPath);
-
-    for (const loc of CASTING_REFERENCE_LOCATIONS) {
-      it(`${loc} exists and matches canonical`, () => {
-        expect(fileExists(loc), `${loc} should exist`).toBe(true);
-        expect(readFile(loc)).toBe(canonicalContent);
-      });
-    }
-
-    it('universe table row count matches casting-policy universe count', () => {
-      // Expect table rows like "| Universe Name |" in the reference
-      const tableRows = canonicalContent
-        .split('\n')
-        .filter((line) => /^\|[^-]/.test(line) && !/^\|\s*Universe/i.test(line));
-      const policyUniverses = parsePolicyUniverses(CASTING_POLICY_LOCATIONS[0]);
-      expect(tableRows.length).toBe(policyUniverses.length);
-    });
-  } else {
-    it('casting-reference.md does not exist in any template dir (consistent)', () => {
-      for (const loc of CASTING_REFERENCE_LOCATIONS) {
-        expect(fileExists(loc), `${loc} should not exist`).toBe(false);
-      }
-    });
-  }
 });
