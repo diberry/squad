@@ -80,3 +80,26 @@ CLI completeness audit (2026-03-08) confirmed: 26 primary commands routed in cli
 
 **PR:** #417 opened targeting dev.
 
+
+### PR #427 Cross-Fork Rebase (2026-03-15T21:00:00Z)
+
+**Context:** PR #427 (PAO external communications Phase 1) conflicted with upstream/dev after team recast (#423 Usual Suspects → Apollo 13) and model updates. Cross-repo PR (diberry/squad → bradygaster/squad). Initial rebase attempts failed due to git worktree confusion — main worktree was checked out to a different branch, causing git checkout commands to silently switch to wrong branches.
+
+**Problem:** Git commands (checkout, rebase) kept switching to unrelated branches (squad/agent-on-disk-concept, squad/320-fix-migration-guide-version-local) mid-rebase. Root cause: main worktree at C:\Users\diberry\repos\project-squad\squad was checked out to squad/agent-on-disk-concept. Git was treating checkout commands as worktree operations and switching the main worktree's HEAD, aborting the rebase.
+
+**Solution:** Created dedicated worktree (.worktrees/pao-rebase) for the rebase operation. This isolated the rebase from main worktree state and prevented branch switching.
+
+**Conflict Resolution (3 files, 7 commits rebased):**
+1. **.squad/agents/_alumni/mcmanus/charter.md** - Merged both rule sets: DOCS-TEST SYNC (from upstream reskill) and EXTERNAL COMMS, HUMANIZER, AUDIT TRAIL (from PR #427). Used PowerShell regex to extract and combine both sides.
+2. **.squad/routing.md** - Accepted Apollo 13 team names (EECOM, PAO, FIDO) from upstream via `git checkout --ours` (in rebase context, "ours" = upstream, "theirs" = our branch). PAO external comms infrastructure is team-agnostic.
+3. **.squad/agents/keaton/history.md** - Accepted deletion via `git rm` (file moved to _alumni in upstream recast).
+
+**Rebase Commits:** 7 commits from squad/426-pao-external-comms rebased onto upstream/dev (f87a7a5), covering #423 team reskill, #424 SDK switch, #425/#428 test parity, #429 model updates.
+
+**Force Push:** `git push origin squad/426-pao-external-comms --force-with-lease` succeeded. PR #427 comment posted via gh CLI.
+
+**Pattern:** When working with git worktrees, always create a dedicated worktree for complex operations (rebase, cherry-pick) to avoid main worktree state interference. Use `git worktree list` to diagnose unexpected branch switching.
+### Adoption Tracking Tier 1 Implementation (2026-03-10)
+Implemented Flight's privacy-first adoption monitoring strategy on PR #326 branch. Moved `.squad/adoption/` → `.github/adoption/` for better GitHub integration. Stripped tracking.md to aggregate-only metrics (removed all individual repo names/URLs). Updated GitHub Action workflow (adoption-report.yml) and monitoring script (scripts/adoption-monitor.mjs) to write reports to `.github/adoption/reports/`. Removed "Built with Squad" showcase link from README.md (deferred to Tier 2 opt-in feature). This honors the principle: collect aggregate metrics via public APIs, but never publish individual repo lists without explicit consent. Test discipline: verified npm run build passes; docs-build.test.ts passed structure tests (Astro build failure unrelated to changes). Committed with clear message explaining privacy rationale.
+
+📌 **Team update (2026-03-10T12-55-49Z):** Adoption tracking Tier 1 complete and merged to decisions.md. Privacy-first architecture confirmed: aggregate metrics only, opt-in for individual repos, public showcase only when 5+ projects opt in. Append-only file governance enforced (no deletions in history.md or decisions.md). Microsoft ampersand style guide adopted for documentation.

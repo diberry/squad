@@ -114,7 +114,29 @@ Want the same agents across all your projects?
 squad init --global
 ```
 
-This creates `~/.squad/` — a personal team root that any project can inherit from. See [Upstream Inheritance](../features/upstream-inheritance.md) for details.
+This creates your personal squad directory — a personal team root that any project can inherit from. See [Upstream Inheritance](../features/upstream-inheritance.md) for details.
+
+**Personal squad location by platform:**
+
+| Platform | Path |
+|----------|------|
+| Linux | `~/.config/squad/` |
+| macOS | `~/Library/Application Support/squad/` |
+| Windows | `%APPDATA%\squad\` |
+
+### SDK mode
+
+Generate a typed `squad.config.ts` with `useRole()` calls instead of markdown-only setup:
+
+```bash
+squad init --sdk
+```
+
+Combine with `--roles` to include the base role catalog (Lead, Backend, Frontend, Tester, etc.) in the generated config. Without `--roles`, init uses fictional universe casting by default.
+
+```bash
+squad init --sdk --roles
+```
 
 ---
 
