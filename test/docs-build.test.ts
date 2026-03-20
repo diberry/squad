@@ -15,15 +15,76 @@ const BLOG_CONTENT_DIR = join(CONTENT_DIR, 'blog');
 const DIST_DIR = join(DOCS_DIR, 'dist');
 
 // Expected content directories in src/content/docs/
-const EXPECTED_GET_STARTED = ['installation', 'first-session'];
+const EXPECTED_GET_STARTED = ['installation', 'first-session', 'five-minute-start', 'choosing-your-path', 'migration'];
 
 const EXPECTED_GUIDES = ['tips-and-tricks', 'sample-prompts', 'personal-squad', 'contributing', 'contributors', 'shell'];
 
-const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'api-reference', 'integration', 'tools-and-hooks'];
+const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'api-reference', 'integration', 'tools-and-hooks', 'glossary'];
 
 const EXPECTED_SCENARIOS = [
-  'issue-driven-dev', 'existing-repo', 'ci-cd-integration', 'solo-dev', 'monorepo', 'team-of-humans',
+  'aspire-dashboard',
+  'ci-cd-integration',
+  'client-compatibility',
+  'cross-org-auth',
+  'disaster-recovery',
+  'existing-repo',
+  'issue-driven-dev',
+  'keep-my-squad',
+  'large-codebase',
+  'mid-project',
+  'monorepo',
+  'multi-codespace',
+  'multiple-squads',
+  'new-project',
+  'open-source',
+  'private-repos',
+  'release-process',
+  'scaling-workstreams',
+  'solo-dev',
+  'switching-models',
+  'team-of-humans',
+  'team-portability',
+  'team-state-storage',
+  'troubleshooting',
+  'upgrading',
 ];
+
+const EXPECTED_FEATURES = [
+  'ceremonies',
+  'consult-mode',
+  'copilot-coding-agent',
+  'directives',
+  'enterprise-platforms',
+  'export-import',
+  'github-issues',
+  'gitlab-issues',
+  'human-team-members',
+  'issue-templates',
+  'labels',
+  'marketplace',
+  'mcp',
+  'memory',
+  'model-selection',
+  'notifications',
+  'parallel-execution',
+  'plugins',
+  'prd-mode',
+  'project-boards',
+  'ralph',
+  'remote-control',
+  'response-modes',
+  'reviewer-protocol',
+  'routing',
+  'skills',
+  'squad-rc',
+  'streams',
+  'team-setup',
+  'upstream-inheritance',
+  'vscode',
+  'worktrees',
+];
+
+const EXPECTED_CONCEPTS = ['architecture', 'your-team', 'memory-and-knowledge', 'parallel-work', 'github-workflow', 'portability'];
 
 // Blog posts are discovered dynamically to avoid breaking tests when posts change
 const EXPECTED_BLOG = existsSync(BLOG_CONTENT_DIR)
@@ -43,7 +104,7 @@ function getMarkdownFiles(section: string): string[] {
 }
 
 function getAllMarkdownFiles(): string[] {
-  const sections = ['get-started', 'guide', 'reference', 'scenarios'];
+  const sections = ['get-started', 'guide', 'reference', 'scenarios', 'features', 'concepts'];
   const allFiles: string[] = [];
   for (const section of sections) {
     allFiles.push(...getMarkdownFiles(section));
@@ -169,6 +230,8 @@ describe('Docs Build Script (Astro)', () => {
       ...EXPECTED_GUIDES.map(n => ({ dir: 'guide', name: n })),
       ...EXPECTED_REFERENCE.map(n => ({ dir: 'reference', name: n })),
       ...EXPECTED_SCENARIOS.map(n => ({ dir: 'scenarios', name: n })),
+      ...EXPECTED_FEATURES.map(n => ({ dir: 'features', name: n })),
+      ...EXPECTED_CONCEPTS.map(n => ({ dir: 'concepts', name: n })),
     ];
     for (const { dir, name } of allExpected) {
       const htmlPath = join(DIST_DIR, 'docs', dir, name, 'index.html');

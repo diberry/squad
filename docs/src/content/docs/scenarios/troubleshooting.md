@@ -4,6 +4,18 @@ Common issues and fixes for Squad installation and usage.
 
 ---
 
+## Quick fixes
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `squad: command not found` | Squad CLI not installed or not in PATH | Run `npm install -g @bradygaster/squad-cli` or use `npx @bradygaster/squad-cli` |
+| `No .squad/ directory found` | Not in a git repo or Squad not initialized | Run `git init` then `npx squad init` |
+| `Cannot find agent "{name}"` | Agent doesn't exist in `.squad/agents/` | Check `.squad/team.md` for roster, or re-run casting |
+| `gh: command not found` | GitHub CLI not installed | Install from [cli.github.com](https://cli.github.com/) then `gh auth login` |
+| `Node.js version error` | Node.js version below v20 | Upgrade Node.js to v20+ (see below) |
+
+---
+
 ## `npx github:bradygaster/squad` appears to hang
 
 **Problem:** Running the install command shows a frozen npm spinner. Nothing happens.
@@ -55,6 +67,28 @@ Common issues and fixes for Squad installation and usage.
    ```bash
    gh auth status
    ```
+
+---
+
+## Authentication fails on cross-org repos
+
+**Problem:** Squad agents hit authentication errors when working with repositories across personal GitHub and GitHub Enterprise Managed Users (EMU) organizations.
+
+**Cause:** The `gh` CLI and git credentials are tied to one account at a time. When you switch contexts between personal and EMU repos, the active account may not have access to the target repository.
+
+**Fix:**
+
+1. Use `gh auth switch` to toggle between authenticated accounts:
+   ```bash
+   gh auth status
+   gh auth switch --user <username>
+   ```
+
+2. Add account mappings to `.github/copilot-instructions.md` so Squad agents know which account to use for which repos.
+
+3. Configure git credential helpers per host or organization.
+
+See [Cross-organization authentication](./cross-org-auth) for detailed setup instructions.
 
 ---
 
