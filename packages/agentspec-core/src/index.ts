@@ -17,4 +17,4 @@ export {
   $inputMode,
   $outputMode,
   $sensitivity,
-} from "../lib/decorators.js";
+} from "./decorators.js";
