@@ -1,0 +1,54 @@
+{
+  "name": "@agentspec/core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic TypeSpec library for defining agents — the OpenAPI of agent definitions",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "tspMain": "lib/main.tsp",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "lib",
+    "generated",
+    "README.md"
+  ],
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@typespec/compiler": ">=0.60.0 <0.62.0"
+  },
+  "devDependencies": {
+    "@typespec/compiler": ">=0.60.0 <0.62.0",
+    "@typespec/json-schema": ">=0.60.0 <0.62.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  },
+  "keywords": [
+    "typespec",
+    "agent",
+    "agentspec",
+    "ai",
+    "multi-agent",
+    "openapi-for-agents"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/bradygaster/squad#readme",
+  "bugs": {
+    "url": "https://github.com/bradygaster/squad/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bradygaster/squad.git",
+    "directory": "packages/agentspec-core"
+  }
+}

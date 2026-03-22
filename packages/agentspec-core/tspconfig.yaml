@@ -1,0 +1,9 @@
+emit:
+  - "@agentspec/core"
+
+options:
+  "@agentspec/core":
+    emitter-output-dir: "{project-root}/.agentspec"
+    # Set to true to include behavior.instructions in A2A Agent Card output.
+    # Default: false — system prompts are behavioral config, not discovery metadata.
+    a2a-publish-instructions: false
