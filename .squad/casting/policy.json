@@ -1,6 +1,7 @@
 {
   "casting_policy_version": "1.1",
   "allowlist_universes": [
+    "Apollo 13",
     "The Usual Suspects",
     "Reservoir Dogs",
     "Alien",
@@ -17,6 +18,7 @@
     "DC Universe"
   ],
   "universe_capacity": {
+    "Apollo 13": 25,
     "The Usual Suspects": 6,
     "Reservoir Dogs": 8,
     "Alien": 8,

@@ -345,7 +345,7 @@ describe('spawn.ts — loadAgentCharter', () => {
     try {
       const tmpDir = makeTempDir('no-squad-');
       process.chdir(tmpDir);
-      expect(() => loadAgentCharter('test')).toThrow(/No team found/);
+      expect(() => loadAgentCharter('test')).toThrow(/No (team|charter) found/);
       cleanDir(tmpDir);
     } finally {
       process.chdir(originalCwd);
@@ -513,10 +513,10 @@ describe('router.ts — parseInput', () => {
       expect(parsed.agentName).toBe('Fenster');
     });
 
-    it('handles @Agent with no message', () => {
+    it('handles @Agent with no message — routes to coordinator', () => {
       const parsed = parseInput('@Edie', knownAgents);
-      expect(parsed.type).toBe('direct_agent');
-      expect(parsed.content).toBeUndefined();
+      expect(parsed.type).toBe('coordinator');
+      expect(parsed.raw).toBe('@Edie');
     });
 
     it('routes to coordinator when @Unknown agent', () => {
@@ -830,7 +830,7 @@ describe('commands.ts — executeCommand', () => {
     it('returns handled: false with error message', () => {
       const result = executeCommand('foobar', [], context);
       expect(result.handled).toBe(false);
-      expect(result.output).toContain('Hmm, /foobar?');
+      expect(result.output).toContain('Unknown command: /foobar');
       expect(result.output).toContain('Type /help');
     });
   });
@@ -1143,14 +1143,15 @@ describe('Error hardening — user-friendly messages with remediation hints', ()
     }
   });
 
-  it('loadAgentCharter error for no .squad/ includes squad init hint', () => {
+  it('loadAgentCharter error for no .squad/ includes actionable hint', () => {
     const tmpDir = makeTempDir('no-squad-spawn-');
     const originalCwd = process.cwd();
     try {
       process.chdir(tmpDir);
       loadAgentCharter('test');
     } catch (err: unknown) {
-      expect((err as Error).message).toContain('squad init');
+      // Error may say "squad init" OR "charter.md exists" depending on resolveSquad()
+      expect((err as Error).message).toMatch(/squad init|charter\.md exists/);
       expect((err as Error).message).not.toMatch(/^Error:/);
     } finally {
       process.chdir(originalCwd);

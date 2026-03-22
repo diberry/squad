@@ -12,9 +12,12 @@ import { mkdir, writeFile, readFile, copyFile, readdir, appendFile, unlink } fro
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, cpSync, statSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'fs';
+import { execFileSync } from 'node:child_process';
 import { MODELS } from '../runtime/constants.js';
 import type { SquadConfig, ModelSelectionConfig, RoutingConfig } from '../runtime/config.js';
-import type { WorkstreamDefinition } from '../streams/types.js';
+import type { SubSquadDefinition } from '../streams/types.js';
+import { ENGINEERING_ROLE_IDS } from '../roles/catalog.js';
+import { getRoleById } from '../roles/index.js';
 
 // ============================================================================
 // Template Resolution
@@ -110,8 +113,16 @@ export interface InitOptions {
   prompt?: string;
   /** If true, disable extraction from consult sessions (read-only consultations) */
   extractionDisabled?: boolean;
-  /** Optional workstream definitions — generates .squad/workstreams.json when provided */
-  streams?: WorkstreamDefinition[];
+  /** Optional SubSquad definitions — generates .squad/workstreams.json when provided */
+  streams?: SubSquadDefinition[];
+  /** If true, use built-in base roles with useRole() in SDK config (default: false) */
+  roles?: boolean;
+  /** ADO work item configuration — used when platform is azure-devops */
+  adoConfig?: {
+    defaultWorkItemType?: string;
+    areaPath?: string;
+    iterationPath?: string;
+  };
 }
 
 /**
@@ -374,6 +385,94 @@ function generateSDKBuilderConfig(options: InitOptions): string {
   return code;
 }
 
+/** Default starter roles used when --sdk --roles is specified. */
+const SDK_ROLES_STARTER_TEAM = ['lead', 'backend', 'frontend', 'tester'];
+
+/**
+ * Generate SDK builder config using useRole() for base roles.
+ *
+ * Produces a squad.config.ts that imports useRole from the SDK and
+ * references built-in base role definitions instead of plain
+ * defineAgent() calls.
+ */
+function generateSDKBuilderConfigWithRoles(options: InitOptions): string {
+  const { projectName, projectDescription, agents } = options;
+
+  // Partition agents into base-role agents and non-role agents
+  const roleAgents = agents.filter(a => getRoleById(a.role));
+  const plainAgents = agents.filter(a => !getRoleById(a.role));
+
+  // If caller didn't provide any base-role agents, generate a
+  // starter team from the default set.
+  const effectiveRoleAgents = roleAgents.length > 0
+    ? roleAgents
+    : SDK_ROLES_STARTER_TEAM.map(id => {
+        const role = getRoleById(id)!;
+        return { name: id, role: id, displayName: role.title };
+      });
+
+  const needsDefineAgent = plainAgents.length > 0;
+  const needsUseRole = effectiveRoleAgents.length > 0;
+
+  // Build import list
+  const imports = ['defineSquad', 'defineTeam'];
+  if (needsDefineAgent) imports.push('defineAgent');
+  if (needsUseRole) imports.push('useRole');
+
+  let code = `import {\n${imports.map(i => `  ${i},`).join('\n')}\n} from '@bradygaster/squad-sdk';\n\n`;
+
+  code += `/**\n * Squad Configuration — ${projectName}\n`;
+  if (projectDescription) {
+    code += ` *\n * ${projectDescription}\n`;
+  }
+  code += ` *\n * Uses built-in base roles from the role catalog.\n`;
+  code += ` * Customize names and overrides for your project.\n`;
+  code += ` */\n\n`;
+
+  // Generate useRole() definitions
+  for (const agent of effectiveRoleAgents) {
+    const varName = agent.name.replace(/-/g, '_');
+    code += `const ${varName} = useRole('${agent.role}', {\n`;
+    code += `  name: '${agent.name}',\n`;
+    code += `});\n\n`;
+  }
+
+  // Generate plain defineAgent() definitions (for system agents like scribe/ralph)
+  for (const agent of plainAgents) {
+    const displayName = agent.displayName || titleCase(agent.name);
+    code += `const ${agent.name} = defineAgent({\n`;
+    code += `  name: '${agent.name}',\n`;
+    code += `  role: '${agent.role}',\n`;
+    code += `  description: '${displayName}',\n`;
+    code += `  status: 'active',\n`;
+    code += `});\n\n`;
+  }
+
+  // All agent variable names in order
+  const allVarNames = [
+    ...effectiveRoleAgents.map(a => a.name.replace(/-/g, '_')),
+    ...plainAgents.map(a => a.name),
+  ];
+  const allNames = [
+    ...effectiveRoleAgents.map(a => `'${a.name}'`),
+    ...plainAgents.map(a => `'${a.name}'`),
+  ];
+
+  code += `export default defineSquad({\n`;
+  code += `  version: '1.0.0',\n\n`;
+  code += `  team: defineTeam({\n`;
+  code += `    name: '${projectName}',\n`;
+  if (projectDescription) {
+    code += `    description: '${projectDescription.replace(/'/g, "\\'")}',\n`;
+  }
+  code += `    members: [${allNames.join(', ')}],\n`;
+  code += `  }),\n\n`;
+  code += `  agents: [${allVarNames.join(', ')}],\n`;
+  code += `});\n`;
+
+  return code;
+}
+
 // ============================================================================
 // Agent Template Generation
 // ============================================================================
@@ -456,12 +555,25 @@ function titleCase(str: string): string {
 
 /**
  * Stamp version into squad.agent.md content.
+ * Replaces three locations: HTML comment, Identity Version line, and {version} placeholder.
  */
 function stampVersionInContent(content: string, version: string): string {
-  return content.replace(
+  // HTML comment: <!-- version: X.Y.Z -->
+  content = content.replace(
     /<!-- version: [^>]* -->/,
     `<!-- version: ${version} -->`
   );
+  // Identity section: - **Version:** X.Y.Z
+  content = content.replace(
+    /- \*\*Version:\*\* [0-9.]+(?:-[a-z]+(?:\.\d+)?)?/m,
+    `- **Version:** ${version}`
+  );
+  // Greeting placeholder: `Squad v{version}`
+  content = content.replace(
+    /`Squad v\{version\}`/g,
+    `\`Squad v${version}\``
+  );
+  return content;
 }
 
 /**
@@ -576,7 +688,7 @@ export async function initSquad(options: InitOptions): Promise<InitResult> {
     join(squadDir, 'casting'),
     join(squadDir, 'decisions'),
     join(squadDir, 'decisions', 'inbox'),
-    join(squadDir, 'skills'),
+    join(teamRoot, '.copilot', 'skills'),
     join(squadDir, 'plugins'),
     join(squadDir, 'identity'),
     join(squadDir, 'orchestration-log'),
@@ -595,10 +707,65 @@ export async function initSquad(options: InitOptions): Promise<InitResult> {
   
   const squadConfigPath = join(squadDir, 'config.json');
   if (!existsSync(squadConfigPath)) {
+    // Detect platform from git remote for config
+    let detectedPlatform: string | undefined;
+    try {
+      const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: teamRoot, encoding: 'utf-8' }).trim();
+      const remoteUrlLower = remoteUrl.toLowerCase();
+      if (remoteUrlLower.includes('dev.azure.com') || remoteUrlLower.includes('visualstudio.com') || remoteUrlLower.includes('ssh.dev.azure.com')) {
+        detectedPlatform = 'azure-devops';
+      }
+    } catch {
+      // No git remote — skip platform detection
+    }
     const squadConfig: Record<string, unknown> = {
       version: 1,
-      teamRoot: teamRoot,
     };
+    if (detectedPlatform) {
+      squadConfig.platform = detectedPlatform;
+    }
+    if (detectedPlatform === 'azure-devops') {
+      // ADO work item defaults — attempt to introspect the process template
+      // to discover available work item types for the project.
+      let introspectedTypes: string[] | undefined;
+      try {
+        const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: teamRoot, encoding: 'utf-8' }).trim();
+        // Parse org/project from remote URL for introspection
+        const httpsMatch = remoteUrl.match(/dev\.azure\.com\/([^/]+)\/([^/]+)\/_git/i);
+        const sshMatch = remoteUrl.match(/ssh\.dev\.azure\.com:v3\/([^/]+)\/([^/]+)\//i);
+        const vsMatch = remoteUrl.match(/([^/.]+)\.visualstudio\.com\/([^/]+)\/_git/i);
+        const parsed = httpsMatch ?? sshMatch ?? vsMatch;
+        if (parsed && parsed[1] && parsed[2]) {
+          const { getAvailableWorkItemTypes } = await import('../platform/azure-devops.js');
+          const types = getAvailableWorkItemTypes(parsed[1], parsed[2]);
+          const enabled = types.filter((t) => !t.disabled).map((t) => t.name);
+          if (enabled.length > 0) {
+            introspectedTypes = enabled;
+          }
+        }
+      } catch {
+        // Introspection failed — skip and use commented-out defaults
+      }
+
+      // Build the ADO config section: explicit options > introspected > commented defaults
+      const adoSection: Record<string, unknown> = {};
+      if (options.adoConfig?.defaultWorkItemType) {
+        adoSection.defaultWorkItemType = options.adoConfig.defaultWorkItemType;
+      }
+      if (options.adoConfig?.areaPath) {
+        adoSection.areaPath = options.adoConfig.areaPath;
+      }
+      if (options.adoConfig?.iterationPath) {
+        adoSection.iterationPath = options.adoConfig.iterationPath;
+      }
+
+      squadConfig.ado = adoSection;
+
+      // If introspection found types, store them so the user knows what's available
+      if (introspectedTypes?.length) {
+        adoSection._availableTypes = introspectedTypes;
+      }
+    }
     // Only include extractionDisabled if explicitly set
     if (options.extractionDisabled) {
       squadConfig.extractionDisabled = true;
@@ -617,7 +784,8 @@ export async function initSquad(options: InitOptions): Promise<InitResult> {
     const configFileName = configFormat === 'sdk' ? 'squad.config.ts' : 
                            configFormat === 'typescript' ? 'squad.config.ts' : 'squad.config.json';
     configPath = join(teamRoot, configFileName);
-    const configContent = configFormat === 'sdk' ? generateSDKBuilderConfig(options) :
+    const configContent = (configFormat === 'sdk' && options.roles) ? generateSDKBuilderConfigWithRoles(options) :
+                          configFormat === 'sdk' ? generateSDKBuilderConfig(options) :
                           configFormat === 'typescript' ? generateTypeScriptConfig(options) :
                           generateJsonConfig(options);
     
@@ -767,13 +935,13 @@ ${projectDescription ? `- **Description:** ${projectDescription}\n` : ''}- **Cre
   // Copy starter skills
   // -------------------------------------------------------------------------
   
-  const skillsDir = join(squadDir, 'skills');
+  const skillsDir = join(teamRoot, '.copilot', 'skills');
   if (templatesDir && existsSync(join(templatesDir, 'skills'))) {
     const skillsSrc = join(templatesDir, 'skills');
     const existingSkills = existsSync(skillsDir) ? readdirSync(skillsDir) : [];
     if (existingSkills.length === 0) {
       cpSync(skillsSrc, skillsDir, { recursive: true });
-      createdFiles.push('.squad/skills');
+      createdFiles.push('.copilot/skills');
     }
   }
   
@@ -863,10 +1031,25 @@ ${projectDescription ? `- **Description:** ${projectDescription}\n` : ''}- **Cre
   }
   
   // -------------------------------------------------------------------------
-  // Copy workflows (optional)
+  // Detect platform from git remote
   // -------------------------------------------------------------------------
   
-  if (includeWorkflows && templatesDir && existsSync(join(templatesDir, 'workflows'))) {
+  let isGitHub = true;
+  try {
+    const remoteUrl = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: teamRoot, encoding: 'utf-8' }).trim();
+    const remoteUrlLower = remoteUrl.toLowerCase();
+    if (remoteUrlLower.includes('dev.azure.com') || remoteUrlLower.includes('visualstudio.com') || remoteUrlLower.includes('ssh.dev.azure.com')) {
+      isGitHub = false;
+    }
+  } catch {
+    // No git remote — assume GitHub (default)
+  }
+
+  // -------------------------------------------------------------------------
+  // Copy workflows (optional) — skip for ADO repos
+  // -------------------------------------------------------------------------
+  
+  if (includeWorkflows && isGitHub && templatesDir && existsSync(join(templatesDir, 'workflows'))) {
     const workflowsSrc = join(templatesDir, 'workflows');
     const workflowsDest = join(teamRoot, '.github', 'workflows');
     
@@ -894,18 +1077,30 @@ ${projectDescription ? `- **Description:** ${projectDescription}\n` : ''}- **Cre
   if (includeMcpConfig) {
     const mcpConfigPath = join(teamRoot, '.copilot', 'mcp-config.json');
     if (!existsSync(mcpConfigPath)) {
-      const mcpSample = {
-        mcpServers: {
-          "EXAMPLE-trello": {
-            command: "npx",
-            args: ["-y", "@trello/mcp-server"],
-            env: {
-              TRELLO_API_KEY: "${TRELLO_API_KEY}",
-              TRELLO_TOKEN: "${TRELLO_TOKEN}"
+      const mcpSample = isGitHub
+        ? {
+            mcpServers: {
+              "EXAMPLE-github": {
+                command: "npx",
+                args: ["-y", "@anthropic/github-mcp-server"],
+                env: {
+                  GITHUB_TOKEN: "${GITHUB_TOKEN}"
+                }
+              }
             }
           }
-        }
-      };
+        : {
+            mcpServers: {
+              "EXAMPLE-azure-devops": {
+                command: "npx",
+                args: ["-y", "@azure/devops-mcp-server"],
+                env: {
+                  AZURE_DEVOPS_ORG: "${AZURE_DEVOPS_ORG}",
+                  AZURE_DEVOPS_PAT: "${AZURE_DEVOPS_PAT}"
+                }
+              }
+            }
+          };
       await mkdir(dirname(mcpConfigPath), { recursive: true });
       await writeFile(mcpConfigPath, JSON.stringify(mcpSample, null, 2) + '\n', 'utf-8');
       createdFiles.push(toRelativePath(mcpConfigPath));
@@ -915,20 +1110,20 @@ ${projectDescription ? `- **Description:** ${projectDescription}\n` : ''}- **Cre
   }
   
   // -------------------------------------------------------------------------
-  // Generate .squad/workstreams.json (when streams provided)
+  // Generate .squad/workstreams.json (when SubSquads provided)
   // -------------------------------------------------------------------------
 
   if (options.streams && options.streams.length > 0) {
-    const workstreamsConfig = {
+    const subsquadsConfig = {
       workstreams: options.streams,
       defaultWorkflow: 'branch-per-issue',
     };
     const workstreamsPath = join(squadDir, 'workstreams.json');
-    await writeIfNotExists(workstreamsPath, JSON.stringify(workstreamsConfig, null, 2) + '\n');
+    await writeIfNotExists(workstreamsPath, JSON.stringify(subsquadsConfig, null, 2) + '\n');
   }
 
   // -------------------------------------------------------------------------
-  // Add .squad-workstream to .gitignore
+  // Add .squad-workstream to .gitignore (SubSquad activation file)
   // -------------------------------------------------------------------------
 
   {
@@ -939,7 +1134,7 @@ ${projectDescription ? `- **Description:** ${projectDescription}\n` : ''}- **Cre
     }
     if (!currentIgnore.includes(workstreamIgnoreEntry)) {
       const block = (currentIgnore && !currentIgnore.endsWith('\n') ? '\n' : '')
-        + '# Squad: workstream activation file (local to this machine)\n'
+        + '# Squad: SubSquad activation file (local to this machine)\n'
         + workstreamIgnoreEntry + '\n';
       await appendFile(gitignorePath, block);
       createdFiles.push(toRelativePath(gitignorePath));

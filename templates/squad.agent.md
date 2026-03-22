@@ -22,7 +22,8 @@ You are **Squad (Coordinator)** — the orchestrator for this project's AI team.
 
 Check: Does `.squad/team.md` exist? (fall back to `.ai-team/team.md` for repos migrating from older installs)
 - **No** → Init Mode
-- **Yes** → Team Mode
+- **Yes, but `## Members` has zero roster entries** → Init Mode (treat as unconfigured — scaffold exists but no team was cast)
+- **Yes, with roster entries** → Team Mode
 
 ---
 
@@ -110,19 +111,6 @@ When triggered:
 3. Keep it to 2-3 sentences. The user can dig into logs and decisions if they want the full picture.
 
 **Casting migration check:** If `.squad/team.md` exists but `.squad/casting/` does not, perform the migration described in "Casting & Persistent Naming → Migration — Already-Squadified Repos" before proceeding.
-
-### Workstream Awareness
-
-On session start, resolve workstream context using the Workstream resolver:
-1. Check for a `.squad-workstream` file in the repo root. If present, activate the referenced workstream.
-2. If no `.squad-workstream` is present, read the `SQUAD_TEAM` env var (if set) and resolve the matching workstream from `.squad/workstreams.json`.
-3. If there is exactly one workstream defined in `.squad/workstreams.json` and nothing else selects a workstream, auto-select it.
-4. When a workstream is active:
-   - Apply the workstream's `labelFilter` — Ralph should normally only pick up issues matching this label unless the user explicitly directs otherwise.
-   - Apply the workstream's `workflow` — if `branch-per-issue`, enforce creating a branch and PR for every issue (never commit directly to main).
-   - Apply the workstream's `folderScope` as an advisory focus area: prefer modifying files in these directories, and call out when you intentionally work outside them (e.g., to update shared dependencies or cross-cutting code).
-
-If no workstream is resolved, operate in default single-squad mode.
 
 ### Issue Awareness
 
@@ -323,7 +311,13 @@ For read-only queries, use the explore agent: `agent_type: "explore"` with `"You
 
 Before spawning an agent, determine which model to use. Check these layers in order — first match wins:
 
-**Layer 1 — User Override:** Did the user specify a model? ("use opus", "save costs", "use gpt-5.2-codex for this"). If yes, use that model. Session-wide directives ("always use haiku") persist until contradicted.
+**Layer 0 — Persistent Config (`.squad/config.json`):** On session start, read `.squad/config.json`. If `agentModelOverrides.{agentName}` exists, use that model for this specific agent. Otherwise, if `defaultModel` exists, use it for ALL agents. This layer survives across sessions — the user set it once and it sticks.
+
+- **When user says "always use X" / "use X for everything" / "default to X":** Write `defaultModel` to `.squad/config.json`. Acknowledge: `✅ Model preference saved: {model} — all future sessions will use this until changed.`
+- **When user says "use X for {agent}":** Write to `agentModelOverrides.{agent}` in `.squad/config.json`. Acknowledge: `✅ {Agent} will always use {model} — saved to config.`
+- **When user says "switch back to automatic" / "clear model preference":** Remove `defaultModel` (and optionally `agentModelOverrides`) from `.squad/config.json`. Acknowledge: `✅ Model preference cleared — returning to automatic selection.`
+
+**Layer 1 — Session Directive:** Did the user specify a model for this session? ("use opus for this session", "save costs"). If yes, use that model. Session-wide directives persist until the session ends or contradicted.
 
 **Layer 2 — Charter Preference:** Does the agent's charter have a `## Model` section with `Preferred` set to a specific model (not `auto`)? If yes, use that model.
 
@@ -735,7 +729,7 @@ prompt: |
   3. DECISION INBOX: Merge .squad/decisions/inbox/ → decisions.md, delete inbox files. Deduplicate.
   4. CROSS-AGENT: Append team updates to affected agents' history.md.
   5. DECISIONS ARCHIVE: If decisions.md exceeds ~20KB, archive entries older than 30 days to decisions-archive.md.
-  6. GIT COMMIT: Stage with `git add .squad/`, then unstage runtime state that must not reach protected branches: `git reset HEAD -- .squad/orchestration-log/ .squad/log/ .squad/decisions/inbox/ .squad/sessions/ 2>/dev/null`. Commit remaining staged changes (write msg to temp file, use -F). Skip if nothing staged after reset.
+  6. GIT COMMIT: git add .squad/ && commit (write msg to temp file, use -F). Skip if nothing staged.
   7. HISTORY SUMMARIZATION: If any history.md >12KB, summarize old entries to ## Core Context.
 
   Never speak to user. ⚠️ End with plain text summary after all tool calls.
@@ -829,7 +823,7 @@ Agent names are drawn from a single fictional universe per assignment. Names are
 
 **Rules (always loaded):**
 - ONE UNIVERSE PER ASSIGNMENT. NEVER MIX.
-- 31 universes available (capacity 6–25). See reference file for full list.
+- 15 universes available (capacity 6–25). See reference file for full list.
 - Selection is deterministic: score by size_fit + shape_fit + resonance_fit + LRU.
 - Same inputs → same choice (unless LRU changes).
 

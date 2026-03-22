@@ -22,61 +22,98 @@ process.emit = function (evt: string, ...args: unknown[]) {
   return _origEmit.apply(this, [evt, ...args] as Parameters<typeof _origEmit>);
 };
 
-// Pre-flight: detect missing node:sqlite before the Copilot SDK tries to use it.
-// The @github/copilot SDK lazily imports node:sqlite for session storage.
-// Node.js <22.5.0 and some 22.x builds don't include the builtin. (#214)
-try {
-  await import('node:sqlite');
-} catch {
-  // Module not available — install a shim so the SDK's lazy require succeeds.
-  // We register a minimal stub that throws a descriptive error only if
-  // DatabaseSync is actually instantiated (it may never be on short sessions).
-  const { register } = await import('node:module');
-  // No shim to register — just surface a clear message at startup so users
-  // know what's happening instead of seeing an opaque stack trace.
-  const nodeVersion = process.versions.node;
-  console.warn(
-    `⚠ node:sqlite is not available in Node.js v${nodeVersion}.\n` +
-    '  The Copilot SDK uses node:sqlite for session storage.\n' +
-    '  Upgrade to Node.js ≥22.5.0 or launch with --experimental-sqlite.\n' +
-    '  Squad will attempt to continue, but session persistence may fail.\n',
-  );
+// Runtime ESM Import Patcher for @github/copilot-sdk (#265)
+// ---------------------------------------------------------
+// Patch broken ESM import in @github/copilot-sdk@0.1.32 at runtime before
+// Node's module loader attempts resolution.
+//
+// Root cause: copilot-sdk's session.js imports 'vscode-jsonrpc/node' without
+// .js extension, violating Node 24+ strict ESM resolution requirements.
+//
+// Why runtime patch?: NPX caches packages in ~/.npm/_cacache and skips
+// postinstall scripts on cache hits (documented npm behavior). The install-time
+// patch in scripts/patch-esm-imports.mjs never runs on npx cache hits, causing
+// ERR_MODULE_NOT_FOUND crashes on Node 24+.
+//
+// This runtime patch intercepts Module._resolveFilename before any imports
+// trigger copilot-sdk loading, rewriting the broken import to include .js.
+// Works everywhere: npx (cache hit/miss), global install, CI/CD.
+//
+// Upstream issue: https://github.com/github/copilot-sdk/issues/707
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const Module = require('node:module');
+
+const _origResolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request: string, parent: unknown, isMain: boolean, options?: unknown) {
+  // Intercept the broken import: 'vscode-jsonrpc/node' → 'vscode-jsonrpc/node.js'
+  if (request === 'vscode-jsonrpc/node') {
+    request = 'vscode-jsonrpc/node.js';
+  }
+  return _origResolveFilename.call(this, request, parent, isMain, options);
+};
+
+// Pre-flight: require Node.js ≥22.5.0 for node:sqlite (#214, #502).
+// node:sqlite is used by the Copilot SDK for session storage.
+// Fail fast with a clear message rather than letting users hit a cryptic
+// ERR_UNKNOWN_BUILTIN_MODULE crash when the SDK loads.
+{
+  const parts = process.versions.node.split('.').map(Number);
+  const major = parts[0] ?? 0;
+  const minor = parts[1] ?? 0;
+  if (major < 22 || (major === 22 && minor < 5)) {
+    console.error(
+      `✗ Squad requires Node.js ≥22.5.0 (you have v${process.versions.node}).\n` +
+      `  node:sqlite (required by the Copilot SDK for session storage) was added in Node 22.5.0.\n` +
+      `  Upgrade at: https://nodejs.org/en/download\n`,
+    );
+    process.exit(1);
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Top-level signal handlers — safety net for clean exit on Ctrl+C / SIGTERM.
+// Individual commands (shell, watch, aspire, rc) register their own handlers
+// that run first; these ensure the process never hangs if a command doesn't.
+// ---------------------------------------------------------------------------
+let _exitingOnSignal = false;
+function _handleTopLevelSignal(signal: 'SIGINT' | 'SIGTERM'): void {
+  const code = signal === 'SIGINT' ? 130 : 143;
+  if (_exitingOnSignal) {
+    // Second signal — force exit immediately
+    process.exit(code);
+  }
+  _exitingOnSignal = true;
+  // Allow in-flight cleanup handlers a brief window, then force exit
+  setTimeout(() => process.exit(code), 3_000).unref();
+}
+process.on('SIGINT', () => _handleTopLevelSignal('SIGINT'));
+process.on('SIGTERM', () => _handleTopLevelSignal('SIGTERM'));
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fatal, SquadError } from './cli/core/errors.js';
 import { BOLD, RESET, DIM, RED, GREEN, YELLOW } from './cli/core/output.js';
 import { runInit } from './cli/core/init.js';
-import { resolveSquad, resolveGlobalSquadPath } from '@bradygaster/squad-sdk';
-import { runShell } from './cli/shell/index.js';
+import { runCost } from './cli/commands/cost.js';
+import { getPackageVersion } from './cli/core/version.js';
 
-// Keep VERSION in index.ts (public API); import it here via re-export
-import { VERSION } from '@bradygaster/squad-sdk';
+// Lazy-load squad-sdk to avoid triggering @github/copilot-sdk import on Node 24+
+// (Issue: copilot-sdk has broken ESM imports - vscode-jsonrpc/node without .js extension)
+const lazySquadSdk = () => import('@bradygaster/squad-sdk');
+const lazyRunShell = () => import('./cli/shell/index.js');
 
-/**
- * Pre-flight: warn if node:sqlite is unavailable (#214).
- * The @github/copilot SDK lazily imports node:sqlite for session storage.
- * Node.js <22.5.0 and some 22.x builds lack this builtin, causing an
- * opaque ERR_UNKNOWN_BUILTIN_MODULE crash. Surface a clear message instead.
- */
-async function checkNodeSqlite(): Promise<void> {
-  try {
-    await import('node:sqlite');
-  } catch {
-    const nodeVersion = process.versions.node;
-    console.warn(
-      `⚠ node:sqlite is not available in Node.js v${nodeVersion}.\n` +
-      '  The Copilot SDK uses node:sqlite for session storage.\n' +
-      '  Upgrade to Node.js ≥22.5.0 or launch with --experimental-sqlite.\n' +
-      '  Squad will attempt to continue, but session persistence may fail.\n',
-    );
-  }
-}
+// Use local version resolver instead of importing VERSION from squad-sdk
+const VERSION = getPackageVersion();
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const hasGlobal = args.includes('--global');
+  // --economy activates economy mode for this session (sets env var for spawner)
+  const hasEconomy = args.includes('--economy');
+  if (hasEconomy) {
+    process.env['SQUAD_ECONOMY_MODE'] = '1';
+  }
   const rawCmd = args[0];
   const cmd = rawCmd?.trim() || '';
 
@@ -94,9 +131,10 @@ async function main(): Promise<void> {
     console.log(`  ${BOLD}(default)${RESET}  Launch interactive shell (no args)`);
     console.log(`             Flags: --global (init in personal squad directory)`);
     console.log(`  ${BOLD}init${RESET}       Initialize Squad (markdown-only, default)`);
-    console.log(`             Flags: --sdk (generate squad.config.ts with SDK builder syntax)`);
-    console.log(`                    --global (init in personal squad directory)`);
-    console.log(`                    --no-workflows (skip GitHub workflow installation)`);
+    console.log(`             Flags: --sdk (SDK builder syntax)`);
+    console.log(`                    --roles (use base roles)`);
+    console.log(`                    --global (personal squad dir)`);
+    console.log(`                    --no-workflows (skip CI setup)`);
     console.log(`             Usage: init --mode remote <team-repo-path>`);
     console.log(`             Creates .squad/config.json pointing to an external team root`);
     console.log(`  ${BOLD}upgrade${RESET}    Update Squad-owned files to latest version`);
@@ -107,6 +145,10 @@ async function main(): Promise<void> {
     console.log(`  ${BOLD}migrate${RESET}    Convert between markdown and SDK-First squad formats`);
     console.log(`             Flags: --to sdk|markdown, --from ai-team, --dry-run`);
     console.log(`  ${BOLD}status${RESET}     Show which squad is active and why`);
+    console.log(`  ${BOLD}roles${RESET}      List built-in Squad roles`);
+    console.log(`             Usage: roles [--category <name>] [--search <query>]`);
+    console.log(`  ${BOLD}cost${RESET}       Report token usage from orchestration logs`);
+    console.log(`             Flags: --all, --agent <name>`);
     console.log(`  ${BOLD}triage${RESET}     Scan for work and categorize issues`);
     console.log(`             Usage: triage [--interval <minutes>]`);
     console.log(`             Default: checks every 10 minutes (Ctrl+C to stop)`);
@@ -139,8 +181,9 @@ async function main(): Promise<void> {
     console.log(`             Flags: --status, --check`);
     console.log(`  ${BOLD}extract${RESET}    Extract learnings from consult mode session`);
     console.log(`             Flags: --dry-run, --clean, --yes, --accept-risks`);
-    console.log(`  ${BOLD}workstreams${RESET} Manage Squad Workstreams (multi-Codespace scaling)`);
-    console.log(`             Usage: workstreams <list|status|activate <name>>`);
+    console.log(`  ${BOLD}subsquads${RESET}  Manage Squad SubSquads (multi-Codespace scaling)`);
+    console.log(`             Usage: subsquads <list|status|activate <name>>`);
+    console.log(`             Aliases: workstreams, streams (deprecated)`);
     console.log(`  ${BOLD}link${RESET}       Link project to a remote team root`);
     console.log(`             Usage: link <team-repo-path>`);
     console.log(`  ${BOLD}build${RESET}      Compile squad.config.ts into .squad/ markdown`);
@@ -148,18 +191,31 @@ async function main(): Promise<void> {
     console.log(`                    --watch (rebuild on change)`);
     console.log(`  ${BOLD}aspire${RESET}     Launch .NET Aspire dashboard for observability`);
     console.log(`             Flags: --docker (force Docker), --port <n> (dashboard port)`);
+    console.log(`  ${BOLD}schedule${RESET}   Manage scheduled tasks`);
+    console.log(`             Usage: schedule list | run <id> | init | status`);
     console.log(`  ${BOLD}rc${RESET}         Start Remote Control bridge (phone/browser → Copilot)`);
     console.log(`             Usage: rc [--tunnel] [--port <n>] [--path <dir>]`);
     console.log(`  ${BOLD}copilot-bridge${RESET}  Check Copilot ACP stdio compatibility`);
     console.log(`  ${BOLD}init-remote${RESET}    Link project to remote team root (shorthand)`);
     console.log(`             Usage: init-remote <team-repo-path>`);
     console.log(`  ${BOLD}rc-tunnel${RESET}      Check devtunnel CLI availability`);
+    console.log(`  ${BOLD}discover${RESET}   List known squads and their capabilities`);
+    console.log(`  ${BOLD}delegate${RESET}   Create work in another squad`);
+    console.log(`             Usage: delegate <squad-name> <description>`);
+    console.log(`  ${BOLD}upstream${RESET}    Manage upstream Squad sources`);
+    console.log(`             Usage: upstream add <source> [--name <n>] [--ref <branch>]`);
+    console.log(`                    upstream remove <name>`);
+    console.log(`                    upstream list`);
+    console.log(`                    upstream sync [name]`);
+    console.log(`  ${BOLD}economy${RESET}    Toggle economy mode (cost-conscious model selection)`);
+    console.log(`             Usage: economy [on|off]`);
 
     console.log(`  ${BOLD}help${RESET}       Show this help message`);
     console.log(`\nFlags:`);
     console.log(`  ${BOLD}--version, -v${RESET}  Print version`);
     console.log(`  ${BOLD}--help, -h${RESET}     Show help`);
     console.log(`  ${BOLD}--global${RESET}       Use personal (global) squad path (for init, upgrade)`);
+    console.log(`  ${BOLD}--economy${RESET}      Activate economy mode for this session (cheaper models)`);
     console.log(`\nInstallation:`);
     console.log(`  npm install --save-dev @bradygaster/squad-cli`);
     console.log(`\nInsider channel:`);
@@ -169,7 +225,9 @@ async function main(): Promise<void> {
 
   // No args → launch interactive shell; whitespace-only arg → show help
   if (rawCmd === undefined) {
-    await checkNodeSqlite();
+    // Fire-and-forget update check — non-blocking, never delays shell startup
+    import('./cli/self-update.js').then(m => m.notifyIfUpdateAvailable(VERSION)).catch(() => {});
+    const { runShell } = await lazyRunShell();
     await runShell();
     return;
   }
@@ -198,10 +256,11 @@ async function main(): Promise<void> {
       return;
     }
 
-    const dest = hasGlobal ? resolveGlobalSquadPath() : process.cwd();
+    const dest = hasGlobal ? (await lazySquadSdk()).resolveGlobalSquadPath() : process.cwd();
     const noWorkflows = args.includes('--no-workflows');
     const sdk = args.includes('--sdk');
-    runInit(dest, { includeWorkflows: !noWorkflows, sdk }).catch(err => {
+    const roles = args.includes('--roles');
+    runInit(dest, { includeWorkflows: !noWorkflows, sdk, roles }).catch(err => {
       fatal(err.message);
     });
     return;
@@ -213,7 +272,7 @@ async function main(): Promise<void> {
     
     const migrateDir = args.includes('--migrate-directory');
     const selfUpgrade = args.includes('--self');
-    const dest = hasGlobal ? resolveGlobalSquadPath() : process.cwd();
+    const dest = hasGlobal ? (await lazySquadSdk()).resolveGlobalSquadPath() : process.cwd();
     
     // Handle --migrate-directory flag
     if (migrateDir) {
@@ -242,7 +301,12 @@ async function main(): Promise<void> {
   }
 
   if (cmd === 'triage' || cmd === 'watch') {
-    console.log('🕵️ Squad triage — scanning for work... (full implementation pending)');
+    const { runWatch } = await import('./cli/commands/watch.js');
+    const intervalIdx = args.indexOf('--interval');
+    const intervalMinutes = (intervalIdx !== -1 && args[intervalIdx + 1])
+      ? parseInt(args[intervalIdx + 1]!, 10)
+      : 10;
+    await runWatch(process.cwd(), intervalMinutes);
     return;
   }
 
@@ -322,8 +386,9 @@ async function main(): Promise<void> {
   }
 
   if (cmd === 'status') {
-    const repoSquad = resolveSquad(process.cwd());
-    const globalPath = resolveGlobalSquadPath();
+    const sdk = await lazySquadSdk();
+    const repoSquad = sdk.resolveSquad(process.cwd());
+    const globalPath = sdk.resolveGlobalSquadPath();
     const globalSquadDir = path.join(globalPath, '.squad');
     const globalExists = fs.existsSync(globalSquadDir);
 
@@ -351,6 +416,29 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (cmd === 'roles') {
+    const { runRoles } = await import('./cli/commands/roles.js');
+    await runRoles(args.slice(1));
+    return;
+  }
+
+  if (cmd === 'cost') {
+    const sdk = await lazySquadSdk();
+    const localSquad = sdk.resolveSquad(process.cwd());
+    const globalPath = sdk.resolveGlobalSquadPath();
+    const globalSquadDir = path.join(globalPath, '.squad');
+    const teamRoot = localSquad
+      ? path.resolve(localSquad, '..')
+      : (fs.existsSync(globalSquadDir) ? globalPath : null);
+
+    if (!teamRoot) {
+      fatal('No squad found. Run "squad init" first.');
+    }
+
+    await runCost(args.slice(1), teamRoot);
+    return;
+  }
+
   if (cmd === 'build') {
     const { runBuild } = await import('./cli/commands/build.js');
     const hasCheck = args.includes('--check');
@@ -360,9 +448,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (cmd === 'workstreams' || cmd === 'streams') {
-    const { runWorkstreams } = await import('./cli/commands/streams.js');
-    await runWorkstreams(process.cwd(), args.slice(1));
+  if (cmd === 'subsquads' || cmd === 'workstreams' || cmd === 'streams') {
+    const { runSubSquads } = await import('./cli/commands/streams.js');
+    await runSubSquads(process.cwd(), args.slice(1));
     return;
   }
 
@@ -382,8 +470,9 @@ async function main(): Promise<void> {
 
   if (cmd === 'nap') {
     const { runNap, formatNapReport } = await import('./cli/core/nap.js');
+    const sdk = await lazySquadSdk();
     // resolveSquad() returns the .squad/ directory itself — use it directly (#207)
-    const squadDir = resolveSquad(process.cwd());
+    const squadDir = sdk.resolveSquad(process.cwd());
     if (!squadDir) {
       fatal('No squad found. Run "squad init" first.');
     }
@@ -472,6 +561,37 @@ async function main(): Promise<void> {
     } else {
       console.log(`${YELLOW}⚠${RESET} devtunnel CLI not found. Install with: winget install Microsoft.devtunnel`);
     }
+    return;
+  }
+
+  if (cmd === 'schedule') {
+    const { runSchedule } = await import('./cli/commands/schedule.js');
+    const subcommand = args[1] || 'list';
+    await runSchedule(process.cwd(), subcommand, args.slice(2));
+    return;
+  }
+
+  if (cmd === 'upstream') {
+    const { upstreamCommand } = await import('./cli/commands/upstream.js');
+    await upstreamCommand(args.slice(1));
+    return;
+  }
+
+  if (cmd === 'discover') {
+    const { discoverCommand } = await import('./cli/commands/cross-squad.js');
+    await discoverCommand();
+    return;
+  }
+
+  if (cmd === 'delegate') {
+    const { delegateCommand } = await import('./cli/commands/cross-squad.js');
+    await delegateCommand(args.slice(1));
+    return;
+  }
+
+  if (cmd === 'economy') {
+    const { runEconomy } = await import('./cli/commands/economy.js');
+    await runEconomy(process.cwd(), args.slice(1));
     return;
   }
 

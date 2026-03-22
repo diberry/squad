@@ -1,68 +1,60 @@
 ---
-updated_at: 2026-03-03T00:00:00Z
-focus_area: Migration to Public Repo + SDK Samples
-issues_open: []
-issues_closed_prd: 30
-tests_passing: 2944
-prd_location: .squad/identity/prd-next-waves.md
-current_phase: Migration v0.6.0 + SDK Samples
-process: All work through PRs with squad member review before merge
+updated_at: 2026-03-16T12:30:00Z
+focus_area: "Skills migration + three-layer tooling (#330 + #354) — RELEASE BLOCKER"
+version: v0.8.25-build.10
+branch: dev
+tests_passing: ~4321
+tests_todo: 46
+tests_skipped: 5
+test_files: 154
+team_size: 19 active agents + Scribe + Ralph + @copilot
+team_identity: Apollo 13 / NASA Mission Control
+process: All work through PRs. Branch naming squad/{issue-number}-{slug}. Never commit to main directly.
 ---
 
 # What We're Focused On
 
-**Status:** Migration planning complete. Target: public repo v0.6.0 (clean minor bump from v0.5.4). On `migration` branch. Two new SDK samples shipped (knock-knock, rock-paper-scissors). Banana gate still active for git operations.
+**Status:** Skills migration and three-layer tooling awareness are the team's #1 priority. These two issues (#330 + #354) MUST ship together before the next release. All team efforts focused here.
 
-## Public Readiness Assessment (2026-02-24)
+## The Big One — Skills Migration + Three-Layer Tooling (#330 + #354)
 
-Full team fan-out: Keaton, Fenster, Hockney, McManus, Rabin, Baer, Edie all assessed their domains.
+**RELEASE BLOCKER — must ship before next release.**
 
-**Consensus: 🟡 READY WITH CAVEATS** — unanimous.
+Two issues, one body of work:
+- **#330** (spboyer) — Coordinator detects and enforces all three tooling layers (local skills, global MCP, global Copilot skills)
+- **#354** (bradygaster) — Migrate skills from `.squad/skills/` to `.copilot/skills/`
 
-### Must-Fix Blockers (ALL RESOLVED ✅)
-1. ✅ **LICENSE file** — MIT LICENSE created at repo root
-2. ✅ **CI workflow broken** — Fixed `squad-ci.yml` to use `npm ci` → `npm run build` → `npm test` (vitest)
-3. ✅ **Debug console.logs** — 3 debug logs in coordinator/index.ts replaced with OTel spans
+### Why this matters
+- Skills in `.squad/skills/` are invisible to Copilot's discovery system
+- Global MCP tools (azure-mcp-*, etc.) are detected but not enforced — no pre-flight research
+- Global Copilot skills are completely invisible to the coordinator
+- 11 of 13 deployment fix commits in Shayne's Azure session were avoidable with available tools
+- ~115KB of skill content loaded fully on every routing decision (vs frontmatter-only scanning in `.copilot/skills/`)
 
-### Experimental Messaging (DONE ✅)
-- ⚠️ banners added to all CLI docs (installation.md, shell.md, vscode.md)
-- README Status section changed from "Production" to "Experimental alpha"
-- Broken CONTRIBUTING link fixed
+### Execution sequence
+1. **Prototype** — verify spawned agents inherit MCP tools from parent session (gates design)
+2. **Governance** — update squad.agent.md (6 refs), add three-layer model + pre-flight rules
+3. **SDK/CLI** — update init, upgrade (migration), export/import, doctor, SkillScriptLoader paths
+4. **Physical move** — 23 skills from `.squad/skills/` → `.copilot/skills/`, update cross-refs
+5. **Backward compat** — check both locations for one version
+6. **Tests** — skill routing, migration, backward compat
+7. **Docs** — update all path references
 
-### Should-Fix (Post-Ship Polish)
-- Add `homepage` and `bugs` fields to package.json
-- Document alpha→v1.0 breaking change policy in README
-- Close #324 (dogfood testing)
+### Gating question
+Do spawned `general-purpose` agents inherit MCP tools from the coordinator's session? This determines whether "Azure skills + Azure MCP" is a real pipeline or just documentation.
 
-### Post-M1 Backlog
-- Add `noUncheckedIndexedAccess` to tsconfig
-- Tighten ~26 `any` types in SDK
-- Add architecture overview doc
-- One real Copilot SDK integration test
-- `npm audit fix` for dev-dependency ReDoS warnings
+## Next Up (After #330/#354)
 
-## Waves A–D: COMPLETE
+### Quick Wins
+- **#320** — Docs migration guide version pin (PAO)
+- **#347** — SDK init quality gate (FIDO)
 
-All 30 PRD-referenced issues are closed.
-
-### Open Issue: #324 — Dogfood CLI with real repos (P0)
-- Status: OPEN — remaining blocker for full confidence
-- Assignees: Keaton, Waingro
-
-### Next Steps
-1. **Ship public alpha** — All blockers resolved, experimental messaging in place
-2. **Complete #324 dogfood** — Test against real repos
-3. **Plan Wave E** — Based on dogfood + public feedback
+### Recently Shipped
+- **#322** — Model selection updated to Claude Sonnet 4.6 / GPT-5.4 (PR #429, merged)
+- **#342** — Closed (already shipped via PR #417)
+- **A2A (#332-336)** — Shelved (too risky short-term)
+- **#316, #357** — Shelved (A2A dependency)
 
 ## Process
 
-All work flows through PRs with squad member review before merge.
-
----
-
-## Archive: Earlier Phases
-
-Epic #323 — CLI Quality & UX (Phases 1–3: Testing Wave → Improvement → Breathtaking)
-- Phase 1: 7 P0 blockers fixed (#365–#371)
-- Phase 2: 6 Wave D items shipped (#488–#493)
-- Phase 3: Wave A–C polish delivered (30 issues closed)
+All work through PRs. Branch naming: `squad/{issue-number}-{slug}`. Never commit to main directly. Squad member review before merge. Always use bradygaster (personal) GitHub account for this repo.
