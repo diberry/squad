@@ -32,7 +32,7 @@ In each repo with a trained squad:
 
 ```bash
 cd ~/projects/saas-app
-npx github:bradygaster/squad export
+npx @bradygaster/squad-cli export
 ```
 
 ```
@@ -51,11 +51,11 @@ Repeat for your other repos:
 
 ```bash
 cd ~/projects/mobile-app
-npx github:bradygaster/squad export
+npx @bradygaster/squad-cli export
 # Produces: squad-export-2025-07-15-1.zip
 
 cd ~/projects/api-gateway
-npx github:bradygaster/squad export
+npx @bradygaster/squad-cli export
 # Produces: squad-export-2025-07-15-2.zip
 ```
 
@@ -70,7 +70,7 @@ Pick the squad whose domain knowledge is closest to your new project.
 ```bash
 cd ~/projects/new-platform
 git init
-npx github:bradygaster/squad
+npx @bradygaster/squad-cli
 ```
 
 ```
@@ -99,8 +99,8 @@ Extract the other two exports and copy skill files:
 unzip squad-export-mobile-app.zip -d /tmp/mobile-squad
 
 # Copy specific skills you want
-cp /tmp/mobile-squad/.ai-team/skills/react-native-debugging.md .ai-team/skills/
-cp /tmp/mobile-squad/.ai-team/skills/mobile-testing-patterns.md .ai-team/skills/
+cp /tmp/mobile-squad/.squad/skills/react-native-debugging.md .squad/skills/
+cp /tmp/mobile-squad/.squad/skills/mobile-testing-patterns.md .squad/skills/
 ```
 
 Repeat for the API gateway squad:
@@ -108,8 +108,8 @@ Repeat for the API gateway squad:
 ```bash
 unzip squad-export-api-gateway.zip -d /tmp/gateway-squad
 
-cp /tmp/gateway-squad/.ai-team/skills/rate-limiting-patterns.md .ai-team/skills/
-cp /tmp/gateway-squad/.ai-team/skills/auth-middleware-testing.md .ai-team/skills/
+cp /tmp/gateway-squad/.squad/skills/rate-limiting-patterns.md .squad/skills/
+cp /tmp/gateway-squad/.squad/skills/auth-middleware-testing.md .squad/skills/
 ```
 
 Skills are standalone markdown files. Agents load them automatically.
@@ -120,7 +120,7 @@ Skills are standalone markdown files. Agents load them automatically.
 
 If another squad learned something critical that isn't in a skill file, you can manually append it to an agent's history.
 
-Open `.ai-team/agents/{agent-name}/history.md` and add the knowledge as a session entry:
+Open `.squad/agents/{agent-name}/history.md` and add the knowledge as a session entry:
 
 ```markdown
 ## Session: 2025-07-15
@@ -160,7 +160,7 @@ Agents now know they have hybrid knowledge.
 If you want to **replace** your imported squad with a different one:
 
 ```bash
-npx github:bradygaster/squad import squad-export-mobile-app.zip --force
+npx @bradygaster/squad-cli import squad-export-mobile-app.zip --force
 ```
 
 This **overwrites** the existing squad. Use only if you're sure.
@@ -172,5 +172,5 @@ This **overwrites** the existing squad. Use only if you're sure.
 - **One full import, then cherry-pick.** Import the squad with the closest domain match, then manually copy skills from the others.
 - **Skills are modular.** Each skill file is independent. Copy the ones you need, ignore the rest.
 - **Histories are context-heavy.** Don't import histories from unrelated projects — they contain project-specific details that will confuse agents.
-- **Decisions can be manually merged.** If another squad made architectural decisions you want to preserve, copy them into `.ai-team/decisions.md` as new entries.
+- **Decisions can be manually merged.** If another squad made architectural decisions you want to preserve, copy them into `.squad/decisions.md` as new entries.
 - **Skill files are the cleanest transfer.** They're generic, portable, and immediately useful across projects.

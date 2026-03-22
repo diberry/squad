@@ -28,14 +28,14 @@ You don't have to start from scratch. You don't have to rewrite anything. Instal
 
 ```bash
 cd ~/projects/halfway-done-app
-npx github:bradygaster/squad
+npx @bradygaster/squad-cli
 ```
 
 ```
 ✅ .github/agents/squad.agent.md (v0.2.0)
-✅ .ai-team-templates/
-✅ .ai-team/skills/ (starter skills)
-✅ .ai-team/ceremonies.md
+✅ .squad-templates/
+✅ .squad/skills/ (starter skills)
+✅ .squad/ceremonies.md
 ✅ .gitattributes (merge=union rules)
 
 Squad is ready.

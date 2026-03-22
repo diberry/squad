@@ -19,7 +19,7 @@ const EXPECTED_GET_STARTED = ['choose-your-interface', 'first-session', 'install
 
 const EXPECTED_GUIDES = ['build-autonomous-agent', 'tips-and-tricks', 'sample-prompts', 'personal-squad', 'contributing', 'contributors', 'shell', 'faq', 'extensibility', 'building-extensions', 'github-auth-setup'];
 
-const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'api-reference', 'integration', 'tools-and-hooks', 'glossary'];
+const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'api-reference', 'integration', 'tools-and-hooks', 'glossary', 'vscode-troubleshooting'];
 
 const EXPECTED_SCENARIOS= [
   'aspire-dashboard',
@@ -89,6 +89,16 @@ const EXPECTED_FEATURES = [
 ];
 
 const EXPECTED_CONCEPTS = ['architecture', 'github-workflow', 'memory-and-knowledge', 'parallel-work', 'portability', 'your-team'];
+
+// Standalone pages at docs root that are intentionally not in any section subdirectory.
+// Add new root-level pages here to acknowledge them as intentional.
+const STANDALONE_PAGES = [
+  'whatsnew',
+  'insider-program',
+  'community',
+  'sdk-first-mode',
+  'tour-gitlab-issues',
+];
 
 // Blog posts are discovered dynamically to avoid breaking tests when posts change
 const EXPECTED_BLOG = existsSync(BLOG_CONTENT_DIR)
@@ -373,5 +383,160 @@ describe('Docs Build Script (Astro)', () => {
     const html = readDocHtml('tips-and-tricks', 'guide');
     expect(html).toContain('id="search-btn"');
     expect(html).toContain('id="search-modal"');
+  });
+});
+
+// --- Docs Hygiene Guards (source validation — no build required) ---
+
+describe('Docs Hygiene Guards', () => {
+  const ALL_SECTION_DIRS = ['get-started', 'guide', 'features', 'reference', 'scenarios', 'concepts', 'cookbook'];
+  const NAVIGATION_TS = join(DOCS_DIR, 'src', 'navigation.ts');
+
+  /** Extract every slug value from navigation.ts by reading it as text. */
+  function getNavSlugs(): string[] {
+    const content = readFile(NAVIGATION_TS);
+    const matches = content.match(/slug:\s*['"]([^'"]+)['"]/g) || [];
+    return matches.map(m => m.replace(/slug:\s*['"]/, '').replace(/['"]$/, ''));
+  }
+
+  /** All .md files in section subdirectories (excludes root-level files and blog). */
+  function getSectionFiles(): Array<{ slug: string; filepath: string }> {
+    const results: Array<{ slug: string; filepath: string }> = [];
+    for (const section of ALL_SECTION_DIRS) {
+      const dir = join(DOCS_CONTENT_DIR, section);
+      if (!existsSync(dir)) continue;
+      for (const f of readdirSync(dir).filter(f => f.endsWith('.md'))) {
+        results.push({ slug: `${section}/${f.replace('.md', '')}`, filepath: join(dir, f) });
+      }
+    }
+    return results;
+  }
+
+  /** Root-level .md files directly under docs/src/content/docs/. */
+  function getRootLevelFiles(): string[] {
+    return readdirSync(DOCS_CONTENT_DIR).filter(f => f.endsWith('.md'));
+  }
+
+  /** Every .md file across all docs sections, root level, and blog — for content scanning. */
+  function getAllDocsFilesForScanning(): string[] {
+    const files = getSectionFiles().map(f => f.filepath);
+    for (const f of getRootLevelFiles()) {
+      files.push(join(DOCS_CONTENT_DIR, f));
+    }
+    if (existsSync(BLOG_CONTENT_DIR)) {
+      for (const f of readdirSync(BLOG_CONTENT_DIR).filter(f => f.endsWith('.md'))) {
+        files.push(join(BLOG_CONTENT_DIR, f));
+      }
+    }
+    return files;
+  }
+
+  it('no orphaned pages — every content file appears in navigation.ts or STANDALONE_PAGES', () => {
+    const navSlugs = getNavSlugs();
+    const errors: string[] = [];
+
+    for (const { slug } of getSectionFiles()) {
+      if (!navSlugs.includes(slug)) {
+        errors.push(
+          `"${slug}" is not in navigation.ts or the standalone allowlist. Add it to the nav or to STANDALONE_PAGES if it's intentionally standalone.`
+        );
+      }
+    }
+
+    for (const f of getRootLevelFiles()) {
+      const slug = f.replace('.md', '');
+      if (!navSlugs.includes(slug) && !STANDALONE_PAGES.includes(slug)) {
+        errors.push(
+          `"${f}" is not in navigation.ts or the standalone allowlist. Add it to the nav or to STANDALONE_PAGES if it's intentionally standalone.`
+        );
+      }
+    }
+
+    expect(errors, errors.join('\n')).toHaveLength(0);
+  });
+
+  it('no dead nav links — every navigation.ts slug has a matching .md file on disk', () => {
+    const navSlugs = getNavSlugs();
+    const errors: string[] = [];
+
+    for (const slug of navSlugs) {
+      const filepath = join(DOCS_CONTENT_DIR, `${slug}.md`);
+      if (!existsSync(filepath)) {
+        errors.push(
+          `Nav entry "${slug}" has no matching content file. Remove it from navigation.ts or create the page.`
+        );
+      }
+    }
+
+    expect(errors, errors.join('\n')).toHaveLength(0);
+  });
+
+  it('no stale root-level legacy files — root .md files must be in STANDALONE_PAGES allowlist', () => {
+    const rootFiles = getRootLevelFiles();
+    const errors: string[] = [];
+
+    for (const f of rootFiles) {
+      const slug = f.replace('.md', '');
+      if (!STANDALONE_PAGES.includes(slug)) {
+        errors.push(
+          `"${f}" is a root-level .md file not in STANDALONE_PAGES. Move it to a section directory or delete it.`
+        );
+      }
+    }
+
+    expect(errors, errors.join('\n')).toHaveLength(0);
+  });
+
+  // Files that may reference the deprecated install command as historical "before"
+  // examples — migration guides and upgrade docs intentionally show old vs. new.
+  // Blog posts are historical content and are never rewritten.
+  const LEGACY_INSTALL_ALLOWLIST: string[] = [
+    join(DOCS_CONTENT_DIR, 'get-started', 'migration.md'),
+    join(DOCS_CONTENT_DIR, 'scenarios', 'upgrading.md'),
+  ];
+
+  // Files that may reference the legacy .ai-team/ directory name because they
+  // explain the migration from the old format or document the migration tooling.
+  // Blog posts are historical content and are never rewritten.
+  const LEGACY_DIR_ALLOWLIST: string[] = [
+    join(DOCS_CONTENT_DIR, 'get-started', 'migration.md'),
+    join(DOCS_CONTENT_DIR, 'scenarios', 'upgrading.md'),
+    join(DOCS_CONTENT_DIR, 'scenarios', 'team-portability.md'),
+    join(DOCS_CONTENT_DIR, 'scenarios', 'switching-models.md'),
+    join(DOCS_CONTENT_DIR, 'scenarios', 'team-state-storage.md'),
+    join(DOCS_CONTENT_DIR, 'sdk-first-mode.md'),
+    join(DOCS_CONTENT_DIR, 'reference', 'cli.md'),
+  ];
+
+  it('no deprecated install commands — "npx github:bradygaster/squad" must not appear in any .md file', () => {
+    const errors: string[] = [];
+
+    for (const filepath of getAllDocsFilesForScanning()) {
+      if (LEGACY_INSTALL_ALLOWLIST.includes(filepath)) continue;
+      if (filepath.startsWith(BLOG_CONTENT_DIR)) continue;
+      if (readFile(filepath).includes('npx github:bradygaster/squad')) {
+        errors.push(
+          `"${filepath}" contains deprecated install command "npx github:bradygaster/squad". Use "npm install -g @bradygaster/squad-cli" instead.`
+        );
+      }
+    }
+
+    expect(errors, errors.join('\n')).toHaveLength(0);
+  });
+
+  it('no deprecated .ai-team/ directory references in any .md file', () => {
+    const errors: string[] = [];
+
+    for (const filepath of getAllDocsFilesForScanning()) {
+      if (LEGACY_DIR_ALLOWLIST.includes(filepath)) continue;
+      if (filepath.startsWith(BLOG_CONTENT_DIR)) continue;
+      if (readFile(filepath).includes('.ai-team/')) {
+        errors.push(
+          `"${filepath}" references deprecated ".ai-team/" directory. Use ".squad/" instead.`
+        );
+      }
+    }
+
+    expect(errors, errors.join('\n')).toHaveLength(0);
   });
 });

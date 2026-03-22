@@ -29,7 +29,7 @@ Squad helps:
 - **Triage incoming issues** automatically
 - **Guide contributors** with documented patterns
 - **Handle good-first-issue tasks** autonomously
-- **Keep architecture decisions visible** in `.ai-team/decisions.md`
+- **Keep architecture decisions visible** in `.squad/decisions.md`
 
 ---
 
@@ -37,13 +37,13 @@ Squad helps:
 
 ```bash
 cd ~/projects/my-open-source-lib
-npx github:bradygaster/squad
+npx @bradygaster/squad-cli
 ```
 
 Enable the Ralph heartbeat workflow:
 
 ```bash
-cp .ai-team-templates/squad-heartbeat.yml .github/workflows/
+cp .squad-templates/squad-heartbeat.yml .github/workflows/
 git add .github/workflows/squad-heartbeat.yml
 git commit -m "Enable Squad auto-triage"
 git push
@@ -89,7 +89,7 @@ You review triaged issues and add `go:morpheus` if you approve.
 Enable the auto-assign workflow:
 
 ```bash
-cp .ai-team-templates/copilot-auto-assign.yml .github/workflows/
+cp .squad-templates/copilot-auto-assign.yml .github/workflows/
 git add .github/workflows/copilot-auto-assign.yml
 git commit -m "Enable Squad auto-assign"
 git push
@@ -111,9 +111,9 @@ You review PR #145, approve, merge. Issue #144 closed.
 
 ## 5. Skills Document Your Project's Patterns
 
-After Squad works on your project for a few weeks, `.ai-team/skills/` becomes a **living contributor guide**:
+After Squad works on your project for a few weeks, `.squad/skills/` becomes a **living contributor guide**:
 
-`.ai-team/skills/testing-conventions.md`:
+`.squad/skills/testing-conventions.md`:
 
 ```markdown
 # Testing Conventions
@@ -127,7 +127,7 @@ Mock external dependencies with `jest.mock()`
 
 Contributors can **read this file** to understand your testing norms. No need to repeat it in every PR review.
 
-`.ai-team/skills/api-design-patterns.md`:
+`.squad/skills/api-design-patterns.md`:
 
 ```markdown
 # API Design Patterns
@@ -153,7 +153,7 @@ Use HTTP status codes correctly:
 
 ## 6. Decisions.md is Your Architecture Decision Record (ADR)
 
-`.ai-team/decisions.md` becomes your **public ADR**:
+`.squad/decisions.md` becomes your **public ADR**:
 
 ```markdown
 ### 2025-07-10: Use esbuild instead of Webpack
@@ -182,7 +182,7 @@ Contributors see **why you made decisions**, not just what the code does.
 When someone forks your project, they can **import your squad**:
 
 ```bash
-npx github:bradygaster/squad export
+npx @bradygaster/squad-cli export
 ```
 
 Share `squad-export-{date}.zip` in your repo's releases or documentation.
@@ -192,7 +192,7 @@ Forkers import it:
 ```bash
 git clone https://github.com/forker/my-lib-fork.git
 cd my-lib-fork
-npx github:bradygaster/squad import squad-export-2025-07-15.zip
+npx @bradygaster/squad-cli import squad-export-2025-07-15.zip
 ```
 
 Now they have **your team's knowledge** — skills, decisions, conventions. They're not starting from scratch.
@@ -257,9 +257,9 @@ Add a badge to your README:
 This project uses [Squad](https://github.com/bradygaster/squad) for AI-assisted development.
 
 - **Triaging:** Issues are auto-labeled by Squad's Ralph agent
-- **Patterns:** See `.ai-team/skills/` for coding conventions
-- **Decisions:** See `.ai-team/decisions.md` for architectural rationale
-- **Import the squad:** `npx github:bradygaster/squad import squad-export.zip`
+- **Patterns:** See `.squad/skills/` for coding conventions
+- **Decisions:** See `.squad/decisions.md` for architectural rationale
+- **Import the squad:** `npx @bradygaster/squad-cli import squad-export.zip`
 ```
 
 Contributors know what to expect.
@@ -269,7 +269,7 @@ Contributors know what to expect.
 ## Tips
 
 - **Ralph triages issues for you.** Run the heartbeat workflow every 6 hours to auto-label new issues.
-- **Skills are living contributor docs.** As your squad learns, `.ai-team/skills/` becomes a knowledge base contributors can read.
+- **Skills are living contributor docs.** As your squad learns, `.squad/skills/` becomes a knowledge base contributors can read.
 - **Decisions.md is your ADR.** Architectural decisions are visible and explained, not hidden in Git history.
 - **Export your squad for forks.** Forkers get your team's accumulated knowledge — skills, conventions, decisions.
 - **good-first-issue + go:* = autonomous processing.** Mark issues as safe to auto-process, and Squad handles them.

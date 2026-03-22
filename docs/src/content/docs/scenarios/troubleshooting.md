@@ -16,7 +16,7 @@ Common issues and fixes for Squad installation and usage.
 
 ---
 
-## `npx github:bradygaster/squad` appears to hang
+## `npx @bradygaster/squad-cli` appears to hang
 
 **Problem:** Running the install command shows a frozen npm spinner. Nothing happens.
 
@@ -29,7 +29,7 @@ Common issues and fixes for Squad installation and usage.
    eval "$(ssh-agent -s)"
    ssh-add
    ```
-   Then re-run `npx github:bradygaster/squad`.
+   Then re-run `npx @bradygaster/squad-cli`.
 
 2. **Disable npm's progress spinner** to reveal the prompt:
    ```bash
@@ -94,7 +94,7 @@ See [Cross-organization authentication](./cross-org-auth) for detailed setup ins
 
 ## Node.js version too old
 
-**Problem:** `npx github:bradygaster/squad` fails with an engine compatibility error, or Squad behaves unexpectedly.
+**Problem:** `npx @bradygaster/squad-cli` fails with an engine compatibility error, or Squad behaves unexpectedly.
 
 **Cause:** Squad requires Node.js 20.0.0 or later (LTS), enforced via `engines` in `package.json`.
 
@@ -123,7 +123,7 @@ If below v20, upgrade to the latest LTS:
    ```bash
    ls .github/agents/squad.agent.md
    ```
-   If missing, re-run `npx github:bradygaster/squad`.
+   If missing, re-run `npx @bradygaster/squad-cli`.
 
 2. Restart your Copilot session — close and reopen the terminal or editor.
 
@@ -131,7 +131,7 @@ If below v20, upgrade to the latest LTS:
 
 ## Upgrade doesn't change anything
 
-**Problem:** Running `npx github:bradygaster/squad upgrade` completes but nothing changes.
+**Problem:** Running `npx @bradygaster/squad-cli upgrade` completes but nothing changes.
 
 **Cause:** You may already be on the latest version, or npm cached an old version.
 

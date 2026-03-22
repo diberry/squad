@@ -7,7 +7,7 @@ Full release history for Squad — from beta through the v1 TypeScript replatfor
 
 ---
 
-## v0.8.2 — Current Release
+## v0.8.25 — Current Release
 
 - **Version alignment** — CLI (0.8.1) and SDK (0.8.0) snapped to 0.8.2 across all packages
 - **Published to npm** — `@bradygaster/squad-sdk@0.8.2` and `@bradygaster/squad-cli@0.8.2`
