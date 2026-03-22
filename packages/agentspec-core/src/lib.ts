@@ -33,6 +33,8 @@ export const StateKeys = {
   inputModes: Symbol.for("@agentspec/core::inputModes"),
   /** stateMap: Model → string[] (OutputMode values) */
   outputModes: Symbol.for("@agentspec/core::outputModes"),
+  /** stateMap: Model → string (SensitivityLevel value) */
+  sensitivity: Symbol.for("@agentspec/core::sensitivity"),
 } as const;
 
 // ─── Library definition ───────────────────────────────────────────────────────

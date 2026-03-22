@@ -1,6 +1,9 @@
 import "@typespec/compiler";
+import "../dist/decorators.js";
 
 namespace AgentSpec;
+
+using TypeSpec.Reflection;
 
 // ─── Decorator declarations ───────────────────────────────────────────────────
 
@@ -21,7 +24,7 @@ extern dec version(target: Model, semver: valueof string);
 extern dec instruction(target: Model, text: valueof string);
 
 /** Declares a capability this agent provides. Repeatable. */
-extern dec capability(target: Model, id: valueof string, description?: valueof string);
+extern dec capability(target: Model, id: valueof string, description?: valueof string, level?: valueof string);
 
 /** Declares scope boundaries — what this agent handles and what it explicitly does not. */
 extern dec boundary(target: Model, handles: valueof string, doesNotHandle: valueof string);
@@ -46,6 +49,9 @@ extern dec inputMode(target: Model, mode: valueof InputMode);
 
 /** Declares a supported output modality. Repeatable. */
 extern dec outputMode(target: Model, mode: valueof OutputMode);
+
+/** Declares the sensitivity/visibility level of this agent. Defaults to "internal". */
+extern dec sensitivity(target: Model, level: valueof SensitivityLevel);
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 

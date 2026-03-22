@@ -19,8 +19,8 @@ using AgentSpec;
 @capability("forecast", "Multi-day weather forecasts up to 10 days")
 @capability("historical", "Historical weather data and averages")
 @boundary(
-  handles: "Weather queries, forecasts, climate data, severe weather alerts",
-  doesNotHandle: "Air quality, UV index, astronomical events, sports or travel recommendations"
+  "Weather queries, forecasts, climate data, severe weather alerts",
+  "Air quality, UV index, astronomical events, sports or travel recommendations"
 )
 @tool("openweathermap", "OpenWeatherMap API for current conditions and forecasts")
 @tool("noaa", "NOAA API for historical data and severe weather alerts")

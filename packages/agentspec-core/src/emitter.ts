@@ -5,9 +5,12 @@ import type { AgentManifestData } from "./types.js";
 
 export async function $onEmit(ctx: EmitContext): Promise<void> {
   const { program } = ctx;
-  const outputDir = (ctx.options as Record<string, unknown>)?.["emitter-output-dir"] as string | undefined ?? ".agentspec";
+  const outputDir = ctx.emitterOutputDir;
 
   const agentSet: Set<Type> = program.stateSet(StateKeys.agentSet);
+  const writeOps: Promise<void>[] = [];
+
+  await program.host.mkdirp(outputDir);
 
   navigateProgram(program, {
     model: (model) => {
@@ -20,13 +23,20 @@ export async function $onEmit(ctx: EmitContext): Promise<void> {
 
       if (!agentState) return;
 
+      // Security: reject agent IDs with path traversal sequences
+      if (agentState.id.includes('..') || agentState.id.includes('/') || agentState.id.includes('\\')) {
+        return;
+      }
+
       const manifest = buildManifest(program, model, agentState);
       const fileName = `${agentState.id}-agent-manifest.json`;
       const outputPath = `${outputDir}/${fileName}`;
 
-      void program.host.writeFile(outputPath, JSON.stringify(manifest, null, 2));
+      writeOps.push(program.host.writeFile(outputPath, JSON.stringify(manifest, null, 2)));
     },
   });
+
+  await Promise.all(writeOps);
 }
 
 function buildManifest(
@@ -40,6 +50,7 @@ function buildManifest(
   const capabilities = (program.stateMap(StateKeys.capabilities).get(model) ?? []) as ReadonlyArray<{
     readonly id: string;
     readonly description?: string;
+    readonly level?: string;
   }>;
   const boundary = program.stateMap(StateKeys.boundary).get(model) as
     | { readonly handles: string; readonly doesNotHandle: string }
@@ -53,6 +64,8 @@ function buildManifest(
     readonly description?: string;
   }>;
   const memory = (program.stateMap(StateKeys.memory).get(model) as string | undefined) ?? "none";
+  const sensitivityRaw = program.stateMap(StateKeys.sensitivity).get(model) as string | undefined;
+  const sensitivity = (sensitivityRaw ?? "internal") as "public" | "internal" | "restricted";
   const conversationStarters = (program.stateMap(StateKeys.conversationStarters).get(model) ?? []) as string[];
   const inputModes = (program.stateMap(StateKeys.inputModes).get(model) ?? ["text"]) as string[];
   const outputModes = (program.stateMap(StateKeys.outputModes).get(model) ?? ["text"]) as string[];
@@ -64,10 +77,14 @@ function buildManifest(
     description: agentState.description,
     ...(role !== undefined && { role }),
     ...(agentVersion !== undefined && { agentVersion }),
-    sensitivity: "internal",
+    sensitivity,
     behavior: {
       ...(instructions !== undefined && { instructions }),
-      capabilities: capabilities.map((c) => ({ id: c.id, ...(c.description && { description: c.description }) })),
+      capabilities: capabilities.map((c) => ({
+        id: c.id,
+        ...(c.description && { description: c.description }),
+        ...(c.level && { level: c.level }),
+      })),
       ...(boundary !== undefined && {
         boundaries: {
           handles: boundary.handles,

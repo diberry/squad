@@ -2,7 +2,21 @@ import type {
   DecoratorContext,
   Model,
 } from "@typespec/compiler";
-import { StateKeys } from "../src/lib.js";
+import { StateKeys } from "./lib.js";
+
+/** Extract a plain string from a valueof enum param.
+ * TypeSpec 0.56+ passes an EnumValue { valueKind, value: EnumMember } at runtime. */
+function enumName(v: unknown): string {
+  if (typeof v === "string") return v;
+  const obj = v as Record<string, unknown>;
+  if (obj.valueKind === "EnumValue") {
+    return (obj.value as { name: string }).name;
+  }
+  if (typeof obj.name === "string") return obj.name;
+  return String(v);
+}
+
+export const namespace = "AgentSpec";
 
 // ─── State key types ─────────────────────────────────────────────────────────
 
@@ -114,9 +128,9 @@ export function $knowledge(
 export function $memory(
   ctx: DecoratorContext,
   target: Model,
-  strategy: string
+  strategy: unknown
 ): void {
-  ctx.program.stateMap(StateKeys.memory).set(target, strategy);
+  ctx.program.stateMap(StateKeys.memory).set(target, enumName(strategy));
 }
 
 export function $conversationStarter(
@@ -132,27 +146,27 @@ export function $conversationStarter(
 export function $inputMode(
   ctx: DecoratorContext,
   target: Model,
-  mode: string
+  mode: unknown
 ): void {
   const map = ctx.program.stateMap(StateKeys.inputModes);
   const existing: string[] = map.get(target) ?? [];
-  map.set(target, [...existing, mode]);
+  map.set(target, [...existing, enumName(mode)]);
 }
 
 export function $outputMode(
   ctx: DecoratorContext,
   target: Model,
-  mode: string
+  mode: unknown
 ): void {
   const map = ctx.program.stateMap(StateKeys.outputModes);
   const existing: string[] = map.get(target) ?? [];
-  map.set(target, [...existing, mode]);
+  map.set(target, [...existing, enumName(mode)]);
 }
 
 export function $sensitivity(
   ctx: DecoratorContext,
   target: Model,
-  level: string
+  level: unknown
 ): void {
-  ctx.program.stateMap(StateKeys.sensitivity).set(target, level);
+  ctx.program.stateMap(StateKeys.sensitivity).set(target, enumName(level));
 }
