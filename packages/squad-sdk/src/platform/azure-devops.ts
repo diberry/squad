@@ -60,12 +60,14 @@ function parseJson<T>(raw: string): T {
 export function getAvailableWorkItemTypes(org: string, project: string): WorkItemTypeInfo[] {
   const orgUrl = `https://dev.azure.com/${org}`;
   try {
+    // Timeout after 3 s so tests and CI aren't blocked when az CLI is slow
+    // or tries to reach a non-existent org.  The catch block returns defaults.
     const raw = execFileSync('az', [
       'boards', 'work-item', 'type', 'list',
       '--org', orgUrl,
       '--project', project,
       '--output', 'json',
-    ], EXEC_OPTS).trim();
+    ], { ...EXEC_OPTS, timeout: 3_000 }).trim();
 
     const types = parseJson<Array<{
       name?: string;
