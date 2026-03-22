@@ -73,7 +73,12 @@ function getMainWorktreePath(worktreeDir: string, gitFilePath: string): string |
     // mainGitDir     = /main/.git   (up 2 from worktreeGitDir)
     const mainGitDir = path.resolve(worktreeGitDir, '..', '..');
     // mainCheckout   = /main        (dirname of mainGitDir)
-    return path.dirname(mainGitDir);
+    const mainCheckout = path.dirname(mainGitDir);
+    // Verify the derived main checkout is a real git repo
+    if (!fs.existsSync(mainGitDir) || !fs.statSync(mainGitDir).isDirectory()) {
+      return null;
+    }
+    return mainCheckout;
   } catch {
     return null;
   }

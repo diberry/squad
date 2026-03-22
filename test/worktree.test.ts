@@ -1,26 +1,26 @@
 /**
  * Worktree regression tests — Issue #521
  *
- * Both resolveSquad() and detectSquadDir() treat .git FILES (worktree pointers)
- * the same as .git DIRECTORIES.  In a linked worktree, .git is always a file —
- * so both functions return null/default without ever checking the main checkout
- * for .squad/.
+ * Both resolveSquad() and detectSquadDir() must handle .git FILES (worktree
+ * pointers) by reading the gitdir: pointer and falling back to the main
+ * checkout's .squad/. The implementation parses .git via fs.readFileSync —
+ * no child_process calls are made.
  *
- * These tests FAIL on the current code (proving the bug) and PASS once the
- * fix described in .squad/decisions/inbox/flight-worktree-investigation.md
- * is applied.  They serve as permanent regression guards.
- *
- * Implementation notes:
- *  - Temp dirs are created with mkdtempSync and deleted in afterEach.
- *  - child_process is mocked so tests never spawn a real git process.
- *  - The mock intercepts both execSync and execFileSync because the fix
- *    author may choose either form.
+ * Test directory structure:
+ *  tmp/
+ *    main/        ← main checkout
+ *      .git/      ← real .git directory
+ *        worktrees/
+ *          feature-521/
+ *      .squad/
+ *    worktree/    ← worktree
+ *      .git       ← FILE: "gitdir: ../main/.git/worktrees/feature-521"
  *
  * @see packages/squad-sdk/src/resolution.ts       resolveSquad()
  * @see packages/squad-cli/src/cli/core/detect-squad-dir.ts  detectSquadDir()
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   mkdtempSync,
   mkdirSync,
@@ -31,62 +31,8 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-// ---------------------------------------------------------------------------
-// Mock child_process BEFORE importing any module that may require it.
-// vi.mock() calls are hoisted by vitest, so this runs before all imports.
-// After the fix, resolveSquad() / detectSquadDir() will call execSync (or
-// execFileSync) to run `git worktree list --porcelain`.
-// ---------------------------------------------------------------------------
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
-  execFileSync: vi.fn(),
-  default: {
-    execSync: vi.fn(),
-    execFileSync: vi.fn(),
-  },
-}));
-
 import { resolveSquad } from '@bradygaster/squad-sdk/resolution';
 import { detectSquadDir } from '@bradygaster/squad-cli/core/detect-squad-dir';
-import { execSync, execFileSync } from 'child_process';
-
-const mockExecSync    = vi.mocked(execSync);
-const mockExecFileSync = vi.mocked(execFileSync);
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Produce a realistic `git worktree list --porcelain` payload.
- * The main checkout (first entry) is always listed first by git.
- *
- * Note: git uses forward-slash paths even on Windows.
- */
-function fakeWorktreeList(mainPath: string, worktreePath: string): string {
-  const main = mainPath.replace(/\\/g, '/');
-  const wt   = worktreePath.replace(/\\/g, '/');
-  return [
-    `worktree ${main}`,
-    `HEAD abc0000000000000000000000000000000000000001`,
-    `branch refs/heads/main`,
-    ``,
-    `worktree ${wt}`,
-    `HEAD def0000000000000000000000000000000000000002`,
-    `branch refs/heads/feature/521`,
-    ``,
-  ].join('\n');
-}
-
-/**
- * Configure the child_process mocks to return the given worktree list output.
- * Handles both execSync(string) and execFileSync(cmd, args) call shapes.
- */
-function mockWorktreeList(mainPath: string, worktreePath: string): void {
-  const output = fakeWorktreeList(mainPath, worktreePath);
-  mockExecSync.mockReturnValue(output as any);
-  mockExecFileSync.mockReturnValue(output as any);
-}
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -97,7 +43,6 @@ describe('worktree regression (#521)', () => {
 
   beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), 'squad-worktree-test-'));
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -115,15 +60,13 @@ describe('worktree regression (#521)', () => {
       mkdirSync(worktree);
       writeFileSync(
         join(worktree, '.git'),
-        'gitdir: ../../.git/worktrees/feature-521',
+        'gitdir: ../main/.git/worktrees/feature-521',
       );
 
-      // Main checkout: .git is a DIRECTORY, .squad/ is present
+      // Main checkout: .git is a DIRECTORY with worktrees/, .squad/ is present
       const main = join(tmp, 'main');
-      mkdirSync(join(main, '.git'), { recursive: true });
+      mkdirSync(join(main, '.git', 'worktrees', 'feature-521'), { recursive: true });
       mkdirSync(join(main, '.squad'), { recursive: true });
-
-      mockWorktreeList(main, worktree);
 
       // CURRENT CODE → returns null  (treats .git file as hard stop)  ← FAILS
       // AFTER FIX    → returns main/.squad via worktree fallback       ← PASSES
@@ -147,14 +90,12 @@ describe('worktree regression (#521)', () => {
       mkdirSync(join(worktree, 'src'), { recursive: true });
       writeFileSync(
         join(worktree, '.git'),
-        'gitdir: ../../.git/worktrees/feature-521',
+        'gitdir: ../main/.git/worktrees/feature-521',
       );
 
       const main = join(tmp, 'main');
-      mkdirSync(join(main, '.git'), { recursive: true });
+      mkdirSync(join(main, '.git', 'worktrees', 'feature-521'), { recursive: true });
       mkdirSync(join(main, '.squad'), { recursive: true });
-
-      mockWorktreeList(main, worktree);
 
       // CURRENT CODE → returns null  ← FAILS
       // AFTER FIX    → returns main/.squad  ← PASSES
@@ -167,16 +108,14 @@ describe('worktree regression (#521)', () => {
       mkdirSync(worktree);
       writeFileSync(
         join(worktree, '.git'),
-        'gitdir: ../../.git/worktrees/feature-521',
+        'gitdir: ../main/.git/worktrees/feature-521',
       );
 
-      // Main: .git directory, but ALSO no .squad/
+      // Main: .git directory with worktrees/, but ALSO no .squad/
       const main = join(tmp, 'main');
-      mkdirSync(join(main, '.git'), { recursive: true });
+      mkdirSync(join(main, '.git', 'worktrees', 'feature-521'), { recursive: true });
 
-      mockWorktreeList(main, worktree);
-
-      // Neither location has .squad/ → should return null in both old and new code
+      // Neither location has .squad/→ should return null in both old and new code
       // (This is a "should stay null" control test.)
       expect(resolveSquad(worktree)).toBeNull();
     });
@@ -191,15 +130,13 @@ describe('worktree regression (#521)', () => {
       mkdirSync(worktree);
       writeFileSync(
         join(worktree, '.git'),
-        'gitdir: ../../.git/worktrees/feature-521',
+        'gitdir: ../main/.git/worktrees/feature-521',
       );
 
-      // Main: .git directory, .squad/ present
+      // Main: .git directory with worktrees/, .squad/ present
       const main = join(tmp, 'main');
-      mkdirSync(join(main, '.git'), { recursive: true });
+      mkdirSync(join(main, '.git', 'worktrees', 'feature-521'), { recursive: true });
       mkdirSync(join(main, '.squad'), { recursive: true });
-
-      mockWorktreeList(main, worktree);
 
       // CURRENT CODE → returns { path: worktree/.squad, ... } — non-existent  ← FAILS
       // AFTER FIX    → returns { path: main/.squad, ... }                      ← PASSES
@@ -235,14 +172,12 @@ describe('worktree regression (#521)', () => {
       mkdirSync(worktree);
       writeFileSync(
         join(worktree, '.git'),
-        'gitdir: ../../.git/worktrees/feature-521',
+        'gitdir: ../main/.git/worktrees/feature-521',
       );
 
       const main = join(tmp, 'main');
-      mkdirSync(join(main, '.git'), { recursive: true });
+      mkdirSync(join(main, '.git', 'worktrees', 'feature-521'), { recursive: true });
       mkdirSync(join(main, '.squad'), { recursive: true });
-
-      mockWorktreeList(main, worktree);
 
       const info = detectSquadDir(worktree);
 
@@ -253,6 +188,29 @@ describe('worktree regression (#521)', () => {
 
       // The worktree directory must NOT have a .squad/ created as a side effect
       expect(existsSync(join(worktree, '.squad'))).toBe(false);
+    });
+  });
+
+  // ── statSync guard ────────────────────────────────────────────────────────
+
+  describe('statSync guard — crafted .git redirection', () => {
+    it('resolveSquad(): crafted .git pointing to non-existent path returns null, not crash', () => {
+      const worktree = join(tmp, 'worktree');
+      mkdirSync(worktree);
+      // gitdir points to a path where mainCheckout/.git does not exist
+      writeFileSync(join(worktree, '.git'), 'gitdir: ../nonexistent/.git/worktrees/malicious');
+
+      expect(resolveSquad(worktree)).toBeNull();
+    });
+
+    it('detectSquadDir(): crafted .git pointing to non-existent path returns fallback, not crash', () => {
+      const worktree = join(tmp, 'worktree');
+      mkdirSync(worktree);
+      writeFileSync(join(worktree, '.git'), 'gitdir: ../nonexistent/.git/worktrees/malicious');
+
+      const info = detectSquadDir(worktree);
+      // Falls back to the default (worktree/.squad) without crashing
+      expect(info.path).toBe(join(worktree, '.squad'));
     });
   });
 });

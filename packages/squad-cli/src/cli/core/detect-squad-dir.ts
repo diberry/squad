@@ -30,7 +30,12 @@ export function resolveWorktreeMainCheckout(dir: string): string | null {
     // mainGitDir     = /main/.git   (up 2 levels)
     // mainCheckout   = /main        (dirname of mainGitDir)
     const mainGitDir = path.resolve(worktreeGitDir, '..', '..');
-    return path.dirname(mainGitDir);
+    const mainCheckout = path.dirname(mainGitDir);
+    // Verify the derived main checkout is a real git repo
+    if (!fs.existsSync(mainGitDir) || !fs.statSync(mainGitDir).isDirectory()) {
+      return null;
+    }
+    return mainCheckout;
   } catch {
     return null;
   }
