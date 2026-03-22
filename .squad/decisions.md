@@ -6138,3 +6138,44 @@ ESM module resolution uses dual-layer postinstall strategy:
 
 **Impact:** If users report ESM errors on Node 22/24, direct them to `squad doctor`.
 
+
+---
+
+## Docs Catalog Audit Findings — PAO Decision
+
+**Author:** PAO (DevRel)  
+**Date:** 2026-03-22  
+
+Comprehensive audit of the Astro-based Squad docs site identified critical gaps in navigation coverage, stale content, and structural inconsistencies.
+
+### 1. Navigation gap is a CI failure condition
+
+Every content file under docs/src/content/docs/ that is not in 
+avigation.ts (or STANDALONE_PAGES) must be treated as a defect. Pattern of 15 orphaned pages (FAQ, built-in roles reference, context hygiene guide, VS Code troubleshooting, autonomous agent guide, GitHub auth setup) shows no automated check preventing nav gaps.
+
+**Action:** Add test assertion in 	est/docs-build.test.ts to verify every .md file in docs content tree appears in either NAV_SECTIONS or STANDALONE_PAGES.
+
+### 2. Root-level legacy files must be removed
+
+Six root-level files (	our-first-session.md, 	our-github-issues.md, 	our-gitlab-issues.md, guide.md, sample-prompts.md, 	ips-and-tricks.md) are stale legacy artifacts using deprecated install commands (
+px github:bradygaster/squad, .ai-team/), not in nav, creating confusion. Delete or archive — do not keep indefinitely.
+
+### 3. whatsnew.md must be updated on every release
+
+What's New page is the trust signal for active maintenance. Currently reports v0.8.2 when actual is v0.8.26+. This erodes user trust. **Update policy:** whatsnew.md is a required artifact in every release checklist.
+
+### 4. insider-program.md must use current distribution
+
+Insider Program page uses deprecated 
+px github:bradygaster/squad#insider syntax and references old .ai-team/ directory. Must be updated to use current npm insider channel or removed if insider program format changed.
+
+### 5. choose-your-interface.md supersedes choosing-your-path.md
+
+Orphaned get-started/choose-your-interface.md is significantly more complete than navved get-started/choosing-your-path.md. Options: (a) add choose-your-interface to nav and point from installation.md, or (b) merge into single canonical page. Do not keep both — enforce "one canonical page per concept" rule.
+
+### Observations (No Action Required)
+
+- **Zero dead nav links** — every nav reference has backing file (healthy signal)
+- **All actively-navved pages** follow Microsoft Style Guide, use correct install commands
+- **Blog section healthy** — 28 posts, consistent format
+- **Concepts section clean** — well-structured

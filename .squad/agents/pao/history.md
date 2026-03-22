@@ -55,8 +55,28 @@ Evaluated four docs pages from PR #331 (Tamir's blog analysis) against Squad-spe
 ### Boundary Review Execution (v0.8.26)
 Executed boundary review findings from PR #331: (1) Deleted ralph-operations.md (infrastructure around Squad, not Squad itself — moved to IRL); (2) Deleted proactive-communication.md (external tools/webhooks — moved to IRL); (3) Reframed issue-templates.md intro to clarify "GitHub feature configured for Squad" not "Squad feature"; (4) Updated EXPECTED_SCENARIOS in docs-build.test.ts to match remaining files. Pattern reinforced: boundary review = remove external infrastructure docs, reframe platform integration docs to clarify whose feature it is, keep Squad behavior/config docs. Changes staged for commit.
 
+### Docs Catalog Audit (2026-03-22)
+Full audit of the Astro docs site identified critical quality and navigation gaps. **Findings:** 0 dead nav links (healthy); 15 orphaned pages not discoverable via sidebar (FAQ, guides, reference pages, 6 legacy root files); 3 stale/broken pages using deprecated install syntax; 5 duplicate content conflicts. **Top 5 Actions:** (1) Add CI test to enforce nav coverage — catch orphaned pages automatically; (2) Delete 6 root-level legacy files (guide.md, sample-prompts.md, tips-and-tricks.md, tour-*.md) — deprecated syntax and not in nav; (3) Make whatsnew.md a release checklist artifact — current report (v0.8.2) vs actual (v0.8.26+) erodes trust; (4) Update insider-program.md to current install method — replace deprecated `npx github:` syntax; (5) Resolve choose-your-interface vs choosing-your-path duplication — one canonical page rule. **Skill Created:** docs-catalog-audit (low confidence; audit framework needs iteration). **Decision:** Merged into decisions.md for team adoption.
+
 ### Cross-Org Authentication Docs (v0.8.26)
 Created docs/src/content/docs/scenarios/cross-org-auth.md covering GitHub personal + Enterprise Managed Users (EMU) multi-account auth. Three solutions documented: (1) gh auth switch for manual account toggling; (2) Copilot instructions (.github/copilot-instructions.md) for account mapping documentation; (3) Squad skill pattern for auth error detection and recovery. Covered git credential helpers (per-host and per-org), EMU hostname variations (github.com vs dedicated instances), and common error messages (HTTP 401, authentication required). Added cross-references in troubleshooting.md (new section), enterprise-platforms.md (authentication section), and navigation.ts. Updated test/docs-build.test.ts with 'cross-org-auth' in EXPECTED_SCENARIOS. Pattern: Microsoft Style Guide (sentence-case), "Try this" prompts at top, problem/solution structure, practical examples over abstractions, links to related pages at bottom.
 
 ### Scannability Framework (v0.8.25)
 Format selection is a scannability decision, not style preference. Paragraphs for narrative/concepts (3-4 sentences max). Bullets for scannable items (features, options, non-sequential steps). Tables for comparisons or structured reference data (config, API params). Quotes/indents for callouts/warnings. Decision test: if reader hunts for one item in a paragraph, convert to bullets/table. This framework is now a hard rule in charter under SCANNABILITY REVIEW.
+
+### Docs Catalog Audit (2026)
+Full audit of the Astro-based docs site. Key patterns and findings:
+
+**Orphaned pages (exist but not in navigation.ts):** 15 total — `get-started/choose-your-interface.md`, `guide/faq.md`, `guide/build-autonomous-agent.md`, `guide/github-auth-setup.md`, `features/built-in-roles.md`, `features/context-hygiene.md`, `features/cost-tracking.md`, `features/issue-templates.md`, `reference/vscode-troubleshooting.md`, and 6 root-level legacy files (`guide.md`, `sample-prompts.md`, `tips-and-tricks.md`, `tour-first-session.md`, `tour-github-issues.md`, `tour-gitlab-issues.md`).
+
+**Stale content:** `whatsnew.md` reports v0.8.2 as current; actual is v0.8.26+. `insider-program.md` uses deprecated `npx github:` install format and references old `.ai-team/` directory name throughout.
+
+**Duplicate/overlap pairs:** `choosing-your-path.md` (in nav) vs `choose-your-interface.md` (orphan, more complete); root-level `sample-prompts.md` vs `guide/sample-prompts.md`; root-level `tips-and-tricks.md` vs `guide/tips-and-tricks.md`; root-level `tour-first-session.md` vs `get-started/first-session.md`.
+
+**Content quality:** All actively-navved pages are well-written, follow Microsoft Style Guide, and use correct install commands. Format standards (H1, experimental callout, "Try this" block, HR, H2 sections) are inconsistently applied — some orphaned pages like `built-in-roles.md` and `cost-tracking.md` lack the standard header/callout pattern.
+
+**Structural issues:** `features/team-setup.md` has a duplicate `## How Init Works` heading (merge artifact). `features/streams.md` nav title is "Streams" but H1 is "Squad SubSquads" (mismatch). `guide/faq.md` is a high-value page completely invisible from the sidebar. `features/built-in-roles.md` is a comprehensive roles reference also invisible from nav.
+
+**Gap:** No dedicated FAQ entry point, no changelog page, cookbook section is thin (one page), no user-facing explanation of the NASA Mission Control naming scheme for agents.
+
+**Navigation:** Zero dead nav links (every nav slug has a matching file). All orphan pages are linked internally from other pages so they are reachable — but not browseable via sidebar.
