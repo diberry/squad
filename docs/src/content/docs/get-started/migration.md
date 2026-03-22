@@ -29,6 +29,10 @@
 | `.ai-team/` directory | `.squad/` directory |
 | v0.5.4 (beta) | v0.8.x (latest) |
 
+> **Distribution changed at v0.8.0**
+>
+> Versions before v0.8.0 were distributed exclusively through GitHub (`npx github:bradygaster/squad`). Starting with v0.8.0, Squad moved to npm under two packages: `@bradygaster/squad-cli` (CLI) and `@bradygaster/squad-sdk` (SDK). The `npx github:` path no longer works for any version. If you see it referenced in older docs or blog posts for versions before v0.8.0, that was historically accurate — but you can't use it today. For v0.8.0 and later, use `npm install -g @bradygaster/squad-cli`.
+
 ---
 
 ## Scenario 1: Brand New User
@@ -212,7 +216,7 @@ The `squad` command works the same way. Your `.squad/` directory does not need t
 
 ## Scenario 5: Was Using npx github: Distribution
 
-The GitHub-native distribution (`npx github:bradygaster/squad`) has been removed. Squad is now distributed exclusively through npm.
+The GitHub-native distribution (`npx github:bradygaster/squad`) has been removed. Squad is now distributed exclusively through npm. This change happened at v0.8.0 — versions before v0.8.0 only ever existed on GitHub, so if you were on a pre-0.8.0 version, v0.8.0 is where the npm packages began.
 
 ### Switch
 
