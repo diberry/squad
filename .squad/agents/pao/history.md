@@ -80,3 +80,5 @@ Full audit of the Astro-based docs site. Key patterns and findings:
 **Gap:** No dedicated FAQ entry point, no changelog page, cookbook section is thin (one page), no user-facing explanation of the NASA Mission Control naming scheme for agents.
 
 **Navigation:** Zero dead nav links (every nav slug has a matching file). All orphan pages are linked internally from other pages so they are reachable — but not browseable via sidebar.
+
+📌 **Team update (2026-03-22T12:46:00Z):** Booster implemented automated version sync for `whatsnew.md` (finding #1). Script reads `package.json` version, updates "Current Release" heading on every prebuild, with Vitest test gate. Heading now correct (v0.8.25+), will stay in sync automatically on all future builds. Finding #1 resolved.

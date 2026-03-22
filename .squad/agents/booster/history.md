@@ -68,3 +68,13 @@ Analyzed 20 CI runs from March 15. Identified 3 distinct failure categories:
 3. TypeScript workspace reference health check (catch SDK/CLI type mismatches early)
 4. Better failure grouping/attribution in CI UI (distinguish "new gate" vs "regression")
 5. Spell check dictionary maintenance workflow (easier to add known-good usernames/terms)
+
+### whatsnew.md Version Sync — March 22, 2026
+**What was built:** scripts/sync-whatsnew-version.mjs — strips -build.N suffix from package.json version, finds the ## v{X} — Current Release heading in docs/src/content/docs/whatsnew.md, and replaces it with the current clean semver. Idempotent; writes only when changed.
+
+**Test added:** 	est/whatsnew-version-sync.test.ts — Vitest test that asserts the Current Release heading in whatsnew.md matches the stripped package.json version. Fails CI when versions diverge.
+
+**Hook:** Appended 
+ode scripts/sync-whatsnew-version.mjs to the prebuild npm script (runs after bump-build.mjs, so it always sees the bumped version). Also set SKIP_BUILD_BUMP=1 guard pattern documented for CI validate runs.
+
+**Immediate fix:** Updated the stale ## v0.8.2 — Current Release heading to ## v0.8.25 — Current Release to match the actual package.json version at time of work.

@@ -6179,3 +6179,36 @@ Orphaned get-started/choose-your-interface.md is significantly more complete tha
 - **All actively-navved pages** follow Microsoft Style Guide, use correct install commands
 - **Blog section healthy** — 28 posts, consistent format
 - **Concepts section clean** — well-structured
+
+---
+
+## whatsnew.md "Current Release" Version Sync
+
+**By:** Booster (CI/CD Engineer)  
+**Status:** Implemented  
+**Date:** 2026-03-22
+
+### Problem
+
+`docs/src/content/docs/whatsnew.md` contains a `## v{X} — Current Release` heading that drifts from `package.json` version during build cycles. Manually updating it during releases is error-prone and easy to skip, eroding team trust in release docs.
+
+### Decision
+
+Implement automated version sync via prebuild script:
+
+1. **scripts/sync-whatsnew-version.mjs** — Reads `package.json` version, strips pre-release suffixes (e.g., `-build.N`), finds `## v{X} — Current Release` heading in whatsnew.md, replaces it if needed (idempotent, no-ops if already correct).
+2. **Prebuild hook** — Wire into `package.json` `"prebuild"` script to run after `bump-build.mjs`, so it always sees freshly bumped version.
+3. **Test gate** — Add Vitest test (`test/whatsnew-version-sync.test.ts`) that fails CI if heading and `package.json` are out of sync.
+
+### Rationale
+
+- Root cause: No automated gate. Version bumps fire via `bump-build.mjs` but `whatsnew.md` update was manual and skipped.
+- **Prebuild** (not build) ensures it runs on every local `npm run build` + CI, keeping the file always current.
+- Idempotent design allows safe use with `SKIP_BUILD_BUMP=1` (validate-only builds still sync).
+- Test is the safety net: even manual edits to wrong version are caught.
+
+### Alternatives Rejected
+
+- **Git hook (pre-commit):** Not portable across all contributors and Copilot agents.
+- **Test-only, no script:** Would fail CI but give no remediation path.
+- **Modify bump-build.mjs:** Out of scope per Booster charter (don't modify internal bump logic).
