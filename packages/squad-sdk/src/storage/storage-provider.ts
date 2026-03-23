@@ -28,6 +28,11 @@ export interface StorageProvider {
 
   /**
    * Return `true` if the path exists (file or directory).
+   *
+   * ⚠️ TOCTOU WARNING: Do not use exists() as a guard before read/write.
+   * Between the exists() check and the subsequent operation, the file can
+   * be deleted, replaced, or swapped by another process. Instead, call
+   * read() directly and handle `undefined` (ENOENT) in the result.
    */
   exists(filePath: string): Promise<boolean>;
 
@@ -67,6 +72,9 @@ export interface StorageProvider {
   /**
    * Synchronous exists check.
    * @deprecated Prefer `exists()`. Will be removed in Wave 2.
+   *
+   * ⚠️ TOCTOU: Same race condition warning as exists(). Prefer read()
+   * with undefined check over exists() → read() patterns.
    */
   existsSync(filePath: string): boolean;
 }
