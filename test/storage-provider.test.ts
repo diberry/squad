@@ -338,6 +338,47 @@ describe('symlink traversal protection', () => {
     const content = await confinedProvider.read('link.txt');
     expect(content).toBe('internal data');
   });
+
+  testOrSkip('blocks write through symlink directory to outside rootDir (ENOENT bypass)', async () => {
+    const { symlink, mkdir: mkdirFs } = await import('fs/promises');
+    const { existsSync } = await import('fs');
+
+    // Create an outside target directory
+    const outsideTarget = join(outsideDir, 'escape-target');
+    await mkdirFs(outsideTarget, { recursive: true });
+
+    // Create a symlink DIRECTORY inside rootDir pointing outside
+    const symlinkDir = join(rootDir, 'link-dir');
+    await symlink(outsideTarget, symlinkDir, 'dir');
+
+    // Attempt to write a NEW file through the symlink directory.
+    // The file doesn't exist yet, so realpath on the full path throws ENOENT.
+    // The old code would blindly trust the resolved path and follow the symlink.
+    await expect(confinedProvider.write('link-dir/newfile.txt', 'malicious'))
+      .rejects.toThrow(/Symlink traversal blocked/);
+
+    // Verify the file was NOT written outside rootDir
+    expect(existsSync(join(outsideTarget, 'newfile.txt'))).toBe(false);
+  });
+
+  testOrSkip('blocks writeSync through symlink directory to outside rootDir (ENOENT bypass)', () => {
+    const { symlinkSync, mkdirSync: mkdirSyncFs, existsSync } = require('fs');
+
+    // Create an outside target directory
+    const outsideTarget = join(outsideDir, 'escape-target-sync');
+    mkdirSyncFs(outsideTarget, { recursive: true });
+
+    // Create a symlink DIRECTORY inside rootDir pointing outside
+    const symlinkDir = join(rootDir, 'link-dir-sync');
+    symlinkSync(outsideTarget, symlinkDir, 'dir');
+
+    // Attempt writeSync through the symlink directory
+    expect(() => confinedProvider.writeSync('link-dir-sync/newfile.txt', 'malicious'))
+      .toThrow(/Symlink traversal blocked/);
+
+    // Verify the file was NOT written outside rootDir
+    expect(existsSync(join(outsideTarget, 'newfile.txt'))).toBe(false);
+  });
 });
 
 // ── deleteDir ────────────────────────────────────────────────────────────────

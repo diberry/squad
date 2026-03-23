@@ -38,8 +38,24 @@ export class FSStorageProvider implements StorageProvider {
       }
       return real;
     } catch (err: unknown) {
-      // If path doesn't exist yet (ENOENT), that's OK for write operations
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return resolved;
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Walk up to nearest existing ancestor and verify it resolves within rootDir
+        let checkPath = resolved;
+        while (checkPath !== this.rootDir) {
+          checkPath = dirname(checkPath);
+          try {
+            const realAncestor = await realpath(checkPath);
+            if (!realAncestor.startsWith(this.rootDir + sep) && realAncestor !== this.rootDir) {
+              throw new Error(`Symlink traversal blocked: ${filePath}`);
+            }
+            return resolved;
+          } catch (ancestorErr: unknown) {
+            if ((ancestorErr as NodeJS.ErrnoException).code === 'ENOENT') continue;
+            throw ancestorErr;
+          }
+        }
+        return resolved;
+      }
       throw err;
     }
   }
@@ -62,8 +78,24 @@ export class FSStorageProvider implements StorageProvider {
       }
       return real;
     } catch (err: unknown) {
-      // If path doesn't exist yet (ENOENT), that's OK for write operations
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return resolved;
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Walk up to nearest existing ancestor and verify it resolves within rootDir
+        let checkPath = resolved;
+        while (checkPath !== this.rootDir) {
+          checkPath = dirname(checkPath);
+          try {
+            const realAncestor = realpathSync(checkPath);
+            if (!realAncestor.startsWith(this.rootDir + sep) && realAncestor !== this.rootDir) {
+              throw new Error(`Symlink traversal blocked: ${filePath}`);
+            }
+            return resolved;
+          } catch (ancestorErr: unknown) {
+            if ((ancestorErr as NodeJS.ErrnoException).code === 'ENOENT') continue;
+            throw ancestorErr;
+          }
+        }
+        return resolved;
+      }
       throw err;
     }
   }
