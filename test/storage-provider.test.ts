@@ -443,3 +443,66 @@ describe('deleteDir', () => {
     await rm(rootDir, { recursive: true, force: true });
   });
 });
+
+// ── concurrent writes ────────────────────────────────────────────────────────
+
+describe('concurrent writes', () => {
+  it('handles multiple simultaneous writes to different files', async () => {
+    const writes = Array.from({ length: 10 }, (_, i) =>
+      provider.write(join(tmpDir, `concurrent-${i}.txt`), `data-${i}`)
+    );
+    await Promise.all(writes);
+    for (let i = 0; i < 10; i++) {
+      const content = await provider.read(join(tmpDir, `concurrent-${i}.txt`));
+      expect(content).toBe(`data-${i}`);
+    }
+  });
+
+  it('handles concurrent writes to the same file (last writer wins)', async () => {
+    const file = join(tmpDir, 'race.txt');
+    const writes = Array.from({ length: 5 }, (_, i) =>
+      provider.write(file, `writer-${i}`)
+    );
+    await Promise.all(writes);
+    const content = await provider.read(file);
+    expect(content).toMatch(/^writer-[0-4]$/);
+  });
+
+  it('handles concurrent appends without data loss', async () => {
+    const file = join(tmpDir, 'append-race.txt');
+    const appends = Array.from({ length: 10 }, (_, i) =>
+      provider.append(file, `line-${i}\n`)
+    );
+    await Promise.all(appends);
+    const content = await provider.read(file);
+    for (let i = 0; i < 10; i++) {
+      expect(content).toContain(`line-${i}`);
+    }
+  });
+
+  it('handles concurrent reads and writes', async () => {
+    const file = join(tmpDir, 'rw-race.txt');
+    await provider.write(file, 'initial');
+
+    const ops = [
+      provider.read(file),
+      provider.write(file, 'updated'),
+      provider.read(file),
+      provider.append(file, '-appended'),
+      provider.read(file),
+    ];
+    const results = await Promise.all(ops);
+    expect(typeof results[0]).toBe('string');
+    expect(typeof results[2]).toBe('string');
+    expect(typeof results[4]).toBe('string');
+  });
+
+  it('handles concurrent directory creation via writes', async () => {
+    const writes = Array.from({ length: 5 }, (_, i) =>
+      provider.write(join(tmpDir, 'shared-parent', `file-${i}.txt`), `content-${i}`)
+    );
+    await Promise.all(writes);
+    const entries = await provider.list(join(tmpDir, 'shared-parent'));
+    expect(entries.length).toBe(5);
+  });
+});
