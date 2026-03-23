@@ -37,7 +37,7 @@ jobs:
         working-directory: docs
         run: npm run build
         env:
-          SQUAD_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.9.1' }}
+          SQUAD_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           GITHUB_SHA: ${{ github.sha }}
 
       - name: Upload Pages artifact
