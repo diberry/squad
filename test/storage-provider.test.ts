@@ -14,6 +14,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { FSStorageProvider } from '../packages/squad-sdk/src/storage/fs-storage-provider.js';
 import type { StorageProvider } from '../packages/squad-sdk/src/storage/storage-provider.js';
+import { StorageError } from '../packages/squad-sdk/src/storage/storage-error.js';
 
 let provider: StorageProvider;
 let tmpDir: string;
@@ -441,6 +442,27 @@ describe('deleteDir', () => {
     await expect(confinedProvider.deleteDir('../outside')).rejects.toThrow(/Path traversal blocked/);
 
     await rm(rootDir, { recursive: true, force: true });
+  });
+});
+
+// ── StorageError ─────────────────────────────────────────────────────────────
+
+describe('StorageError', () => {
+  it('wraps permission errors without leaking paths', async () => {
+    const file = join(tmpDir, 'readonly.txt');
+    await provider.write(file, 'data');
+    const { chmod } = await import('fs/promises');
+    await chmod(file, 0o444);
+    try {
+      await provider.write(file, 'overwrite');
+      expect.fail('Expected StorageError to be thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(StorageError);
+      expect((err as StorageError).code).toBe('EPERM');
+      expect((err as StorageError).message).not.toContain(tmpDir);
+    } finally {
+      await chmod(file, 0o644);
+    }
   });
 });
 

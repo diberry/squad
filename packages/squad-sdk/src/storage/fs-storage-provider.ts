@@ -2,6 +2,7 @@ import { readFile, writeFile, appendFile, access, readdir, unlink, mkdir, realpa
 import { readFileSync, writeFileSync, existsSync as fsExistsSync, mkdirSync, realpathSync } from 'fs';
 import { dirname, resolve, sep } from 'path';
 import type { StorageProvider } from './storage-provider.js';
+import { StorageError } from './storage-error.js';
 
 /**
  * FSStorageProvider — Node.js `fs` implementation of StorageProvider.
@@ -132,20 +133,28 @@ export class FSStorageProvider implements StorageProvider {
       return await readFile(safePath, 'utf-8');
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
-      throw err;
+      throw new StorageError('read', filePath, err as NodeJS.ErrnoException);
     }
   }
 
   async write(filePath: string, data: string): Promise<void> {
     const safePath = await this.assertSafePath(filePath);
-    await mkdir(dirname(safePath), { recursive: true });
-    await writeFile(safePath, data, 'utf-8');
+    try {
+      await mkdir(dirname(safePath), { recursive: true });
+      await writeFile(safePath, data, 'utf-8');
+    } catch (err: unknown) {
+      throw new StorageError('write', filePath, err as NodeJS.ErrnoException);
+    }
   }
 
   async append(filePath: string, data: string): Promise<void> {
     const safePath = await this.assertSafePath(filePath);
-    await mkdir(dirname(safePath), { recursive: true });
-    await appendFile(safePath, data, 'utf-8');
+    try {
+      await mkdir(dirname(safePath), { recursive: true });
+      await appendFile(safePath, data, 'utf-8');
+    } catch (err: unknown) {
+      throw new StorageError('append', filePath, err as NodeJS.ErrnoException);
+    }
   }
 
   async exists(filePath: string): Promise<boolean> {
@@ -164,7 +173,7 @@ export class FSStorageProvider implements StorageProvider {
       return await readdir(safePath);
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
-      throw err;
+      throw new StorageError('list', dirPath, err as NodeJS.ErrnoException);
     }
   }
 
@@ -174,7 +183,7 @@ export class FSStorageProvider implements StorageProvider {
       await unlink(safePath);
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
-      throw err;
+      throw new StorageError('delete', filePath, err as NodeJS.ErrnoException);
     }
   }
 
@@ -184,14 +193,18 @@ export class FSStorageProvider implements StorageProvider {
       return readFileSync(safePath, 'utf-8');
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
-      throw err;
+      throw new StorageError('read', filePath, err as NodeJS.ErrnoException);
     }
   }
 
   writeSync(filePath: string, data: string): void {
     const safePath = this.assertSafePathSync(filePath);
-    mkdirSync(dirname(safePath), { recursive: true });
-    writeFileSync(safePath, data, 'utf-8');
+    try {
+      mkdirSync(dirname(safePath), { recursive: true });
+      writeFileSync(safePath, data, 'utf-8');
+    } catch (err: unknown) {
+      throw new StorageError('write', filePath, err as NodeJS.ErrnoException);
+    }
   }
 
   existsSync(filePath: string): boolean {
@@ -205,7 +218,7 @@ export class FSStorageProvider implements StorageProvider {
       await rm(safePath, { recursive: true, force: true });
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
-      throw err;
+      throw new StorageError('deleteDir', dirPath, err as NodeJS.ErrnoException);
     }
   }
 }
