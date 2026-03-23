@@ -21,18 +21,57 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   private async assertSafePath(filePath: string): Promise<string> {
-    // TODO: implement path traversal and symlink protection
-    return filePath;
+    if (!this.rootDir) return filePath;
+    
+    const resolved = resolve(this.rootDir, filePath);
+    
+    // Check if resolved path is within rootDir
+    if (!resolved.startsWith(this.rootDir + sep) && resolved !== this.rootDir) {
+      throw new Error(`Path traversal blocked: ${filePath}`);
+    }
+    
+    // Check for symlink traversal
+    try {
+      const real = await realpath(resolved);
+      if (!real.startsWith(this.rootDir + sep) && real !== this.rootDir) {
+        throw new Error(`Symlink traversal blocked: ${filePath}`);
+      }
+      return real;
+    } catch (err: unknown) {
+      // If path doesn't exist yet (ENOENT), that's OK for write operations
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return resolved;
+      throw err;
+    }
   }
 
   private assertSafePathSync(filePath: string): string {
-    // TODO: implement path traversal and symlink protection (sync)
-    return filePath;
+    if (!this.rootDir) return filePath;
+    
+    const resolved = resolve(this.rootDir, filePath);
+    
+    // Check if resolved path is within rootDir
+    if (!resolved.startsWith(this.rootDir + sep) && resolved !== this.rootDir) {
+      throw new Error(`Path traversal blocked: ${filePath}`);
+    }
+    
+    // Check for symlink traversal
+    try {
+      const real = realpathSync(resolved);
+      if (!real.startsWith(this.rootDir + sep) && real !== this.rootDir) {
+        throw new Error(`Symlink traversal blocked: ${filePath}`);
+      }
+      return real;
+    } catch (err: unknown) {
+      // If path doesn't exist yet (ENOENT), that's OK for write operations
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return resolved;
+      throw err;
+    }
   }
 
   async read(filePath: string): Promise<string | undefined> {
+    const safePath = await this.assertSafePath(filePath);
     try {
-      return await readFile(filePath, 'utf-8');
+      return await readFile(safePath, 'utf-8');
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
       throw err;
@@ -40,18 +79,21 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   async write(filePath: string, data: string): Promise<void> {
-    await mkdir(dirname(filePath), { recursive: true });
-    await writeFile(filePath, data, 'utf-8');
+    const safePath = await this.assertSafePath(filePath);
+    await mkdir(dirname(safePath), { recursive: true });
+    await writeFile(safePath, data, 'utf-8');
   }
 
   async append(filePath: string, data: string): Promise<void> {
-    await mkdir(dirname(filePath), { recursive: true });
-    await appendFile(filePath, data, 'utf-8');
+    const safePath = await this.assertSafePath(filePath);
+    await mkdir(dirname(safePath), { recursive: true });
+    await appendFile(safePath, data, 'utf-8');
   }
 
   async exists(filePath: string): Promise<boolean> {
+    const safePath = await this.assertSafePath(filePath);
     try {
-      await access(filePath);
+      await access(safePath);
       return true;
     } catch {
       return false;
@@ -59,8 +101,9 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   async list(dirPath: string): Promise<string[]> {
+    const safePath = await this.assertSafePath(dirPath);
     try {
-      return await readdir(dirPath);
+      return await readdir(safePath);
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw err;
@@ -68,8 +111,9 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   async delete(filePath: string): Promise<void> {
+    const safePath = await this.assertSafePath(filePath);
     try {
-      await unlink(filePath);
+      await unlink(safePath);
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
       throw err;
@@ -77,8 +121,9 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   readSync(filePath: string): string | undefined {
+    const safePath = this.assertSafePathSync(filePath);
     try {
-      return readFileSync(filePath, 'utf-8');
+      return readFileSync(safePath, 'utf-8');
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
       throw err;
@@ -86,16 +131,23 @@ export class FSStorageProvider implements StorageProvider {
   }
 
   writeSync(filePath: string, data: string): void {
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, data, 'utf-8');
+    const safePath = this.assertSafePathSync(filePath);
+    mkdirSync(dirname(safePath), { recursive: true });
+    writeFileSync(safePath, data, 'utf-8');
   }
 
   existsSync(filePath: string): boolean {
-    return fsExistsSync(filePath);
+    const safePath = this.assertSafePathSync(filePath);
+    return fsExistsSync(safePath);
   }
 
   async deleteDir(dirPath: string): Promise<void> {
-    // TODO: implement recursive directory deletion with safety checks
-    throw new Error('Not implemented');
+    const safePath = await this.assertSafePath(dirPath);
+    try {
+      await rm(safePath, { recursive: true, force: true });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw err;
+    }
   }
 }

@@ -290,7 +290,11 @@ describe('symlink traversal protection', () => {
     await rm(outsideDir, { recursive: true, force: true });
   });
 
-  it('blocks read via symlink pointing outside rootDir', async () => {
+  // Skip symlink tests on Windows due to permission requirements
+  const isWindows = process.platform === 'win32';
+  const testOrSkip = isWindows ? it.skip : it;
+
+  testOrSkip('blocks read via symlink pointing outside rootDir', async () => {
     const { symlink } = await import('fs/promises');
     const outsideFile = join(outsideDir, 'secret.txt');
     const symlinkPath = join(rootDir, 'link-to-outside');
@@ -301,7 +305,7 @@ describe('symlink traversal protection', () => {
     await expect(confinedProvider.read('link-to-outside')).rejects.toThrow(/Symlink traversal blocked/);
   });
 
-  it('blocks write via symlink pointing outside rootDir', async () => {
+  testOrSkip('blocks write via symlink pointing outside rootDir', async () => {
     const { symlink } = await import('fs/promises');
     const outsideFile = join(outsideDir, 'target.txt');
     const symlinkPath = join(rootDir, 'evil-link');
@@ -312,7 +316,7 @@ describe('symlink traversal protection', () => {
     await expect(confinedProvider.write('evil-link', 'overwrite')).rejects.toThrow(/Symlink traversal blocked/);
   });
 
-  it('blocks exists check via symlink', async () => {
+  testOrSkip('blocks exists check via symlink', async () => {
     const { symlink } = await import('fs/promises');
     const outsideFile = join(outsideDir, 'exists.txt');
     const symlinkPath = join(rootDir, 'link');
@@ -323,7 +327,7 @@ describe('symlink traversal protection', () => {
     await expect(confinedProvider.exists('link')).rejects.toThrow(/Symlink traversal blocked/);
   });
 
-  it('allows symlinks within rootDir pointing to other paths within rootDir', async () => {
+  testOrSkip('allows symlinks within rootDir pointing to other paths within rootDir', async () => {
     const { symlink } = await import('fs/promises');
     const targetPath = join(rootDir, 'target.txt');
     const linkPath = join(rootDir, 'link.txt');
