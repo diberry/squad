@@ -17,9 +17,20 @@ export class FSStorageProvider implements StorageProvider {
   private readonly rootDir?: string;
 
   constructor(rootDir?: string) {
-    this.rootDir = rootDir ? resolve(rootDir) : undefined;
+    this.rootDir = rootDir ? realpathSync(resolve(rootDir)) : undefined;
   }
 
+  /**
+   * Validates that filePath resolves within rootDir and does not escape
+   * via path traversal or symlinks.
+   *
+   * ⚠️ TOCTOU: This is a user-space check. Between validation and the
+   * subsequent fs operation, a path component could theoretically be
+   * swapped for a symlink. This is an inherent limitation of user-space
+   * path validation on POSIX systems. For defense-in-depth, callers
+   * operating in hostile environments should use OS-level confinement
+   * (chroot, namespaces, or sandboxing) in addition to this check.
+   */
   private async assertSafePath(filePath: string): Promise<string> {
     if (!this.rootDir) return filePath;
     
