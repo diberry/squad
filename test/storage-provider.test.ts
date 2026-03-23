@@ -208,3 +208,169 @@ describe('sync/async parity', () => {
     expect(provider.existsSync(file)).toBe(await provider.exists(file));
   });
 });
+
+// ── path traversal protection ────────────────────────────────────────────────
+
+describe('path traversal protection', () => {
+  let confinedProvider: StorageProvider;
+  let rootDir: string;
+
+  beforeEach(async () => {
+    rootDir = await mkdtemp(join(tmpdir(), 'squad-confined-'));
+    confinedProvider = new FSStorageProvider(rootDir);
+  });
+
+  afterEach(async () => {
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
+  it('blocks relative path traversal with ../', async () => {
+    await expect(confinedProvider.read('../etc/passwd')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks absolute path outside rootDir', async () => {
+    await expect(confinedProvider.write('/tmp/evil.txt', 'hack')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('allows normal operations within rootDir', async () => {
+    await confinedProvider.write('subdir/file.txt', 'safe');
+    const content = await confinedProvider.read('subdir/file.txt');
+    expect(content).toBe('safe');
+  });
+
+  it('blocks traversal in write', async () => {
+    await expect(confinedProvider.write('../../etc/shadow', 'bad')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks traversal in append', async () => {
+    await expect(confinedProvider.append('../outside.log', 'entry')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks traversal in exists', async () => {
+    await expect(confinedProvider.exists('../../.env')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks traversal in list', async () => {
+    await expect(confinedProvider.list('..')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks traversal in delete', async () => {
+    await expect(confinedProvider.delete('../victim.txt')).rejects.toThrow(/Path traversal blocked/);
+  });
+
+  it('blocks traversal in sync methods', () => {
+    expect(() => confinedProvider.readSync('../../secret.txt')).toThrow(/Path traversal blocked/);
+    expect(() => confinedProvider.writeSync('../bad.txt', 'data')).toThrow(/Path traversal blocked/);
+    expect(() => confinedProvider.existsSync('../../.ssh/id_rsa')).toThrow(/Path traversal blocked/);
+  });
+
+  it('allows operations at rootDir itself', async () => {
+    await confinedProvider.write('root-file.txt', 'at root');
+    expect(await confinedProvider.exists('root-file.txt')).toBe(true);
+    const entries = await confinedProvider.list('.');
+    expect(entries).toContain('root-file.txt');
+  });
+});
+
+// ── symlink traversal protection ─────────────────────────────────────────────
+
+describe('symlink traversal protection', () => {
+  let confinedProvider: StorageProvider;
+  let rootDir: string;
+  let outsideDir: string;
+
+  beforeEach(async () => {
+    rootDir = await mkdtemp(join(tmpdir(), 'squad-symlink-root-'));
+    outsideDir = await mkdtemp(join(tmpdir(), 'squad-symlink-outside-'));
+    confinedProvider = new FSStorageProvider(rootDir);
+  });
+
+  afterEach(async () => {
+    await rm(rootDir, { recursive: true, force: true });
+    await rm(outsideDir, { recursive: true, force: true });
+  });
+
+  it('blocks read via symlink pointing outside rootDir', async () => {
+    const { symlink } = await import('fs/promises');
+    const outsideFile = join(outsideDir, 'secret.txt');
+    const symlinkPath = join(rootDir, 'link-to-outside');
+
+    await provider.write(outsideFile, 'secret data');
+    await symlink(outsideFile, symlinkPath);
+
+    await expect(confinedProvider.read('link-to-outside')).rejects.toThrow(/Symlink traversal blocked/);
+  });
+
+  it('blocks write via symlink pointing outside rootDir', async () => {
+    const { symlink } = await import('fs/promises');
+    const outsideFile = join(outsideDir, 'target.txt');
+    const symlinkPath = join(rootDir, 'evil-link');
+
+    await provider.write(outsideFile, 'initial');
+    await symlink(outsideFile, symlinkPath);
+
+    await expect(confinedProvider.write('evil-link', 'overwrite')).rejects.toThrow(/Symlink traversal blocked/);
+  });
+
+  it('blocks exists check via symlink', async () => {
+    const { symlink } = await import('fs/promises');
+    const outsideFile = join(outsideDir, 'exists.txt');
+    const symlinkPath = join(rootDir, 'link');
+
+    await provider.write(outsideFile, 'data');
+    await symlink(outsideFile, symlinkPath);
+
+    await expect(confinedProvider.exists('link')).rejects.toThrow(/Symlink traversal blocked/);
+  });
+
+  it('allows symlinks within rootDir pointing to other paths within rootDir', async () => {
+    const { symlink } = await import('fs/promises');
+    const targetPath = join(rootDir, 'target.txt');
+    const linkPath = join(rootDir, 'link.txt');
+
+    await confinedProvider.write('target.txt', 'internal data');
+    await symlink(targetPath, linkPath);
+
+    const content = await confinedProvider.read('link.txt');
+    expect(content).toBe('internal data');
+  });
+});
+
+// ── deleteDir ────────────────────────────────────────────────────────────────
+
+describe('deleteDir', () => {
+  it('recursively removes a directory and all contents', async () => {
+    const dir = join(tmpDir, 'to-delete');
+    await provider.write(join(dir, 'file1.txt'), 'a');
+    await provider.write(join(dir, 'subdir', 'file2.txt'), 'b');
+
+    await provider.deleteDir(dir);
+
+    expect(await provider.exists(dir)).toBe(false);
+    expect(await provider.exists(join(dir, 'file1.txt'))).toBe(false);
+    expect(await provider.exists(join(dir, 'subdir', 'file2.txt'))).toBe(false);
+  });
+
+  it('is a no-op when directory does not exist', async () => {
+    const dir = join(tmpDir, 'nonexistent-dir');
+    await expect(provider.deleteDir(dir)).resolves.toBeUndefined();
+  });
+
+  it('removes nested directory structures', async () => {
+    const dir = join(tmpDir, 'deep');
+    await provider.write(join(dir, 'a', 'b', 'c', 'file.txt'), 'nested');
+
+    await provider.deleteDir(dir);
+
+    expect(await provider.exists(dir)).toBe(false);
+  });
+
+  it('blocks deleteDir traversal when rootDir is set', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'squad-delete-confined-'));
+    const confinedProvider = new FSStorageProvider(rootDir);
+
+    await expect(confinedProvider.deleteDir('../outside')).rejects.toThrow(/Path traversal blocked/);
+
+    await rm(rootDir, { recursive: true, force: true });
+  });
+});

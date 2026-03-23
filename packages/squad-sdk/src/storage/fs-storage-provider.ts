@@ -1,6 +1,6 @@
-import { readFile, writeFile, appendFile, access, readdir, unlink, mkdir } from 'fs/promises';
-import { readFileSync, writeFileSync, existsSync as fsExistsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { readFile, writeFile, appendFile, access, readdir, unlink, mkdir, realpath, rm } from 'fs/promises';
+import { readFileSync, writeFileSync, existsSync as fsExistsSync, mkdirSync, realpathSync } from 'fs';
+import { dirname, resolve, sep } from 'path';
 import type { StorageProvider } from './storage-provider.js';
 
 /**
@@ -11,8 +11,25 @@ import type { StorageProvider } from './storage-provider.js';
  * - Appends create the file (and parent dirs) if missing.
  * - delete is a no-op when the file does not exist.
  * - list returns an empty array for a missing directory.
+ * - Optional `rootDir` confines all operations to a specific directory tree.
  */
 export class FSStorageProvider implements StorageProvider {
+  private readonly rootDir?: string;
+
+  constructor(rootDir?: string) {
+    this.rootDir = rootDir ? resolve(rootDir) : undefined;
+  }
+
+  private async assertSafePath(filePath: string): Promise<string> {
+    // TODO: implement path traversal and symlink protection
+    return filePath;
+  }
+
+  private assertSafePathSync(filePath: string): string {
+    // TODO: implement path traversal and symlink protection (sync)
+    return filePath;
+  }
+
   async read(filePath: string): Promise<string | undefined> {
     try {
       return await readFile(filePath, 'utf-8');
@@ -75,5 +92,10 @@ export class FSStorageProvider implements StorageProvider {
 
   existsSync(filePath: string): boolean {
     return fsExistsSync(filePath);
+  }
+
+  async deleteDir(dirPath: string): Promise<void> {
+    // TODO: implement recursive directory deletion with safety checks
+    throw new Error('Not implemented');
   }
 }

@@ -42,6 +42,12 @@ export interface StorageProvider {
    */
   delete(filePath: string): Promise<void>;
 
+  /**
+   * Recursively delete a directory and all its contents.
+   * No-op if the directory does not exist (ENOENT).
+   */
+  deleteDir(dirPath: string): Promise<void>;
+
   // ── Synchronous variants (Wave 1 compat) ────────────────────────────────
   // These exist so callers that cannot be made async in Wave 1 still work.
   // They will be removed in Wave 2; migrate to the async versions now.
