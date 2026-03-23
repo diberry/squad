@@ -1,7 +1,7 @@
 ---
 title: "What's New in v0.9.0: Personal Squad, Worktrees, Cooperative Rate Limiting, and More"
 date: 2026-03-23
-author: PAO
+author: bradygaster
 wave: 8
 tags: [squad, release, v0.9.0, features, personal-squad, worktree, rate-limiting, economy-mode]
 status: published
@@ -193,7 +193,7 @@ No more hunting for telemetry wiring. One call, full observability.
 
 **Upgrade section**: New dedicated docs guide for trouble-free version bumps, with platform-specific steps for Windows, macOS, Linux.
 
-**npx purged**: All user-facing docs now reference `npm install -g @bradygaster/squad-cli`. No npx.
+**Consistent install path**: All user-facing docs now reference `npm install -g @bradygaster/squad-cli`.
 
 **Astro features**: 10 new Astro features implemented — section badges, improved search with Pagefind, better syntax highlighting.
 
@@ -230,7 +230,7 @@ No more hunting for telemetry wiring. One call, full observability.
 - ✅ **5 major features** (Personal Squad, Worktrees, Capability Discovery, Cooperative Rate Limiting, Economy Mode)
 - ✅ **Auto-wired telemetry** in one call
 - ✅ **P0 upgrade fixes** across Windows, Node compatibility, and error surfacing
-- ✅ **Docs refresh** — README -46%, new upgrade guide, npx purged
+- ✅ **Docs refresh** — README -46%, new upgrade guide, consistent install path
 - ✅ **3,963+ tests passing**, 150 test files
 - ✅ **Community contributions** from 8+ contributors
 
