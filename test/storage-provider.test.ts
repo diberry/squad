@@ -381,6 +381,30 @@ describe('symlink traversal protection', () => {
   });
 });
 
+// ── cross-platform path handling ─────────────────────────────────────────
+
+describe('cross-platform path handling', () => {
+  it('allows access with different case on case-insensitive platforms', async () => {
+    if (process.platform !== 'win32' && process.platform !== 'darwin') {
+      return; // Only relevant on case-insensitive filesystems
+    }
+    const root = await mkdtemp(join(tmpdir(), 'squad-case-test-'));
+    const confinedProvider = new FSStorageProvider(root);
+
+    await confinedProvider.write('test.txt', 'hello');
+
+    // Build an alternate-cased root path
+    const altCase = root.charAt(0) === root.charAt(0).toUpperCase()
+      ? root.charAt(0).toLowerCase() + root.slice(1)
+      : root.charAt(0).toUpperCase() + root.slice(1);
+
+    const result = await confinedProvider.read(join(altCase, 'test.txt'));
+    expect(result).toBe('hello');
+
+    await rm(root, { recursive: true, force: true });
+  });
+});
+
 // ── deleteDir ────────────────────────────────────────────────────────────────
 
 describe('deleteDir', () => {

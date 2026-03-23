@@ -14,10 +14,25 @@ import type { StorageProvider } from './storage-provider.js';
  * - Optional `rootDir` confines all operations to a specific directory tree.
  */
 export class FSStorageProvider implements StorageProvider {
+  private static readonly CASE_INSENSITIVE = process.platform === 'win32' || process.platform === 'darwin';
   private readonly rootDir?: string;
 
   constructor(rootDir?: string) {
     this.rootDir = rootDir ? realpathSync(resolve(rootDir)) : undefined;
+  }
+
+  private pathStartsWith(fullPath: string, prefix: string): boolean {
+    if (FSStorageProvider.CASE_INSENSITIVE) {
+      return fullPath.toLowerCase().startsWith(prefix.toLowerCase());
+    }
+    return fullPath.startsWith(prefix);
+  }
+
+  private pathEquals(a: string, b: string): boolean {
+    if (FSStorageProvider.CASE_INSENSITIVE) {
+      return a.toLowerCase() === b.toLowerCase();
+    }
+    return a === b;
   }
 
   /**
@@ -37,14 +52,14 @@ export class FSStorageProvider implements StorageProvider {
     const resolved = resolve(this.rootDir, filePath);
     
     // Check if resolved path is within rootDir
-    if (!resolved.startsWith(this.rootDir + sep) && resolved !== this.rootDir) {
+    if (!this.pathStartsWith(resolved, this.rootDir + sep) && !this.pathEquals(resolved, this.rootDir)) {
       throw new Error(`Path traversal blocked: ${filePath}`);
     }
     
     // Check for symlink traversal
     try {
       const real = await realpath(resolved);
-      if (!real.startsWith(this.rootDir + sep) && real !== this.rootDir) {
+      if (!this.pathStartsWith(real, this.rootDir + sep) && !this.pathEquals(real, this.rootDir)) {
         throw new Error(`Symlink traversal blocked: ${filePath}`);
       }
       return real;
@@ -52,11 +67,11 @@ export class FSStorageProvider implements StorageProvider {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         // Walk up to nearest existing ancestor and verify it resolves within rootDir
         let checkPath = resolved;
-        while (checkPath !== this.rootDir) {
+        while (!this.pathEquals(checkPath, this.rootDir)) {
           checkPath = dirname(checkPath);
           try {
             const realAncestor = await realpath(checkPath);
-            if (!realAncestor.startsWith(this.rootDir + sep) && realAncestor !== this.rootDir) {
+            if (!this.pathStartsWith(realAncestor, this.rootDir + sep) && !this.pathEquals(realAncestor, this.rootDir)) {
               throw new Error(`Symlink traversal blocked: ${filePath}`);
             }
             return resolved;
@@ -77,14 +92,14 @@ export class FSStorageProvider implements StorageProvider {
     const resolved = resolve(this.rootDir, filePath);
     
     // Check if resolved path is within rootDir
-    if (!resolved.startsWith(this.rootDir + sep) && resolved !== this.rootDir) {
+    if (!this.pathStartsWith(resolved, this.rootDir + sep) && !this.pathEquals(resolved, this.rootDir)) {
       throw new Error(`Path traversal blocked: ${filePath}`);
     }
     
     // Check for symlink traversal
     try {
       const real = realpathSync(resolved);
-      if (!real.startsWith(this.rootDir + sep) && real !== this.rootDir) {
+      if (!this.pathStartsWith(real, this.rootDir + sep) && !this.pathEquals(real, this.rootDir)) {
         throw new Error(`Symlink traversal blocked: ${filePath}`);
       }
       return real;
@@ -92,11 +107,11 @@ export class FSStorageProvider implements StorageProvider {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         // Walk up to nearest existing ancestor and verify it resolves within rootDir
         let checkPath = resolved;
-        while (checkPath !== this.rootDir) {
+        while (!this.pathEquals(checkPath, this.rootDir)) {
           checkPath = dirname(checkPath);
           try {
             const realAncestor = realpathSync(checkPath);
-            if (!realAncestor.startsWith(this.rootDir + sep) && realAncestor !== this.rootDir) {
+            if (!this.pathStartsWith(realAncestor, this.rootDir + sep) && !this.pathEquals(realAncestor, this.rootDir)) {
               throw new Error(`Symlink traversal blocked: ${filePath}`);
             }
             return resolved;
