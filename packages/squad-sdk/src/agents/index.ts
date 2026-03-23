@@ -6,8 +6,9 @@
  * Injects dynamic context via session hooks instead of string templates.
  */
 
-import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname, basename } from 'node:path';
+import { FSStorageProvider } from '../storage/fs-storage-provider.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
 import { randomUUID } from 'node:crypto';
 import { parseCharterMarkdown } from './charter-compiler.js';
 import { EventBus } from '../client/event-bus.js';
@@ -125,12 +126,21 @@ export interface AgentSessionInfo {
 // --- Charter Compiler ---
 
 export class CharterCompiler {
+  private storage: StorageProvider;
+
+  constructor(storage: StorageProvider = new FSStorageProvider()) {
+    this.storage = storage;
+  }
+
   /**
    * Load and compile a charter.md file into an AgentCharter.
    * Parses identity/model sections from markdown.
    */
   async compile(charterPath: string): Promise<AgentCharter> {
-    const content = await readFile(charterPath, 'utf-8');
+    const content = await this.storage.read(charterPath);
+    if (content === undefined) {
+      throw new Error(`Charter file not found: ${charterPath}`);
+    }
     const parsed = parseCharterMarkdown(content);
 
     const name = parsed.identity.name ?? basename(dirname(charterPath));
@@ -156,14 +166,13 @@ export class CharterCompiler {
    */
   async compileAll(teamRoot: string): Promise<AgentCharter[]> {
     const agentsDir = join(teamRoot, '.squad', 'agents');
-    const entries = await readdir(agentsDir, { withFileTypes: true });
+    const entries = await this.storage.list(agentsDir);
     const charters: AgentCharter[] = [];
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name === 'scribe' || entry.name.startsWith('_')) continue;
+    for (const name of entries) {
+      if (name === 'scribe' || name.startsWith('_')) continue;
 
-      const charterPath = join(agentsDir, entry.name, 'charter.md');
+      const charterPath = join(agentsDir, name, 'charter.md');
       try {
         charters.push(await this.compile(charterPath));
       } catch {
