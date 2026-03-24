@@ -227,5 +227,57 @@ export function runStorageProviderContractTests(
         expect(await provider.read('contract/multi.txt')).toBe('v3');
       });
     });
+
+    // ── LIKE wildcard safety (%, _) ───────────────────────────────────────
+
+    describe('LIKE wildcard safety (%, _)', () => {
+      it('list() with % in path returns only correct entries', async () => {
+        await provider.write('contract/wc/dir/100%_done.txt', 'complete');
+        await provider.write('contract/wc/dir/normal.txt', 'normal');
+        const entries = await provider.list('contract/wc/dir');
+        expect(entries.sort()).toEqual(['100%_done.txt', 'normal.txt']);
+      });
+
+      it('list() with _ in path returns only expected entries', async () => {
+        await provider.write('contract/wc/udir/file_v2.txt', 'versioned');
+        await provider.write('contract/wc/udir/readme.txt', 'info');
+        const entries = await provider.list('contract/wc/udir');
+        expect(entries.sort()).toEqual(['file_v2.txt', 'readme.txt']);
+      });
+
+      it('list() does not treat % as wildcard — a% matches only literal a% dir', async () => {
+        await provider.write('contract/wc/a/b.txt', 'wrong');
+        await provider.write('contract/wc/a%/c.txt', 'right');
+        const entries = await provider.list('contract/wc/a%');
+        expect(entries).toEqual(['c.txt']);
+      });
+
+      it('list() does not treat _ as single-char wildcard', async () => {
+        await provider.write('contract/wc/ab/x.txt', 'wrong');
+        await provider.write('contract/wc/a_/y.txt', 'right');
+        const entries = await provider.list('contract/wc/a_');
+        expect(entries).toEqual(['y.txt']);
+      });
+
+      it('existsSync with % in path checks literally', () => {
+        provider.writeSync('contract/wc/pct%dir/test.txt', 'data');
+        expect(provider.existsSync('contract/wc/pct%dir/test.txt')).toBe(true);
+        expect(provider.existsSync('contract/wc/pctXdir/test.txt')).toBe(false);
+      });
+
+      it('existsSync with _ in path checks literally', () => {
+        provider.writeSync('contract/wc/under_dir/test.txt', 'data');
+        expect(provider.existsSync('contract/wc/under_dir/test.txt')).toBe(true);
+        expect(provider.existsSync('contract/wc/underXdir/test.txt')).toBe(false);
+      });
+
+      it('deleteDir with % only deletes literal match, not wildcard matches', async () => {
+        await provider.write('contract/wc/del%dir/target.txt', 'delete-me');
+        await provider.write('contract/wc/delXdir/keep.txt', 'keep-me');
+        await provider.deleteDir('contract/wc/del%dir');
+        expect(await provider.exists('contract/wc/del%dir/target.txt')).toBe(false);
+        expect(await provider.exists('contract/wc/delXdir/keep.txt')).toBe(true);
+      });
+    });
   });
 }

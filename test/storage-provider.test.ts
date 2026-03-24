@@ -1145,4 +1145,77 @@ describe('SQLiteStorageProvider — SQLite-specific', () => {
     expect(() => provider.existsSync('any.txt')).toThrow(/not initialized/i);
     expect(() => provider.listSync('dir')).toThrow(/not initialized/i);
   });
+
+  // ── LIKE wildcard regression (escapeLike) ───────────────────────────────
+
+  describe('LIKE wildcard regression — escapeLike()', () => {
+    it('list() with % in file path returns it correctly', async () => {
+      const dbPath = join(tmpDir, 'wc-pct-list.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      await provider.write('dir/100%_done.txt', 'complete');
+      await provider.write('dir/normal.txt', 'ok');
+      const entries = await provider.list('dir');
+      expect(entries.sort()).toEqual(['100%_done.txt', 'normal.txt']);
+    });
+
+    it('list() with _ in file path returns only expected entries', async () => {
+      const dbPath = join(tmpDir, 'wc-under-list.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      await provider.write('dir/file_v2.txt', 'versioned');
+      await provider.write('dir/readme.txt', 'info');
+      const entries = await provider.list('dir');
+      expect(entries.sort()).toEqual(['file_v2.txt', 'readme.txt']);
+    });
+
+    it('list("a%") returns only files under literal a% dir, not a/', async () => {
+      const dbPath = join(tmpDir, 'wc-pct-dir.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      await provider.write('a/b.txt', 'wrong');
+      await provider.write('a%/c.txt', 'right');
+      const entries = await provider.list('a%');
+      expect(entries).toEqual(['c.txt']);
+    });
+
+    it('list("a_") returns only files under literal a_ dir, not ab/', async () => {
+      const dbPath = join(tmpDir, 'wc-under-dir.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      await provider.write('ab/x.txt', 'wrong');
+      await provider.write('a_/y.txt', 'right');
+      const entries = await provider.list('a_');
+      expect(entries).toEqual(['y.txt']);
+    });
+
+    it('existsSync with % in path checks literally', async () => {
+      const dbPath = join(tmpDir, 'wc-pct-exists.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      provider.writeSync('pct%dir/test.txt', 'data');
+      expect(provider.existsSync('pct%dir/test.txt')).toBe(true);
+      expect(provider.existsSync('pctXdir/test.txt')).toBe(false);
+    });
+
+    it('existsSync with _ in path checks literally', async () => {
+      const dbPath = join(tmpDir, 'wc-under-exists.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      provider.writeSync('under_dir/test.txt', 'data');
+      expect(provider.existsSync('under_dir/test.txt')).toBe(true);
+      expect(provider.existsSync('underXdir/test.txt')).toBe(false);
+    });
+
+    it('deleteDir with % only deletes the literal directory', async () => {
+      const dbPath = join(tmpDir, 'wc-pct-deldir.db');
+      const provider = new SQLiteStorageProvider(dbPath);
+      await provider.init();
+      await provider.write('del%dir/target.txt', 'delete-me');
+      await provider.write('delXdir/keep.txt', 'keep-me');
+      await provider.deleteDir('del%dir');
+      expect(await provider.exists('del%dir/target.txt')).toBe(false);
+      expect(await provider.exists('delXdir/keep.txt')).toBe(true);
+    });
+  });
 });
