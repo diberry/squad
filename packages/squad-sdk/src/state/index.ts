@@ -53,6 +53,7 @@ export { createAgentHandle } from './handles.js';
 // Collection facades
 export {
   AgentsCollection,
+  ConfigCollection,
   DecisionsCollection,
   LogCollection,
   RoutingCollection,
@@ -60,6 +61,8 @@ export {
   TeamCollection,
   TemplatesCollection,
 } from './collections.js';
+
+export type { ConfigFileData } from './collections.js';
 
 // SquadState facade
 export { SquadState } from './squad-state.js';

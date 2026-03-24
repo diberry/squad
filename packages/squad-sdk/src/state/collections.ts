@@ -17,7 +17,7 @@ import type {
   TeamMember,
 } from './domain-types.js';
 import type { SkillDefinition } from '../skills/skill-loader.js';
-import { NotFoundError } from './domain-types.js';
+import { NotFoundError, ParseError } from './domain-types.js';
 import { resolveCollectionPath } from './schema.js';
 import { createAgentHandle } from './handles.js';
 import { parseDecisions, serializeDecision, serializeDecisions } from './io/decisions-io.js';
@@ -102,7 +102,11 @@ export class DecisionsCollection {
     if (content === undefined) {
       return [];
     }
-    return parseDecisions(content).map(toDomainDecision);
+    try {
+      return parseDecisions(content).map(toDomainDecision);
+    } catch (err) {
+      throw new ParseError('decisions', err instanceof Error ? err.message : String(err), { cause: err });
+    }
   }
 
   /** Append a new decision. Date is auto-generated if not provided. */
@@ -163,7 +167,11 @@ export class RoutingCollection {
     if (content === undefined) {
       throw new NotFoundError('routing');
     }
-    return toRoutingConfig(parseRouting(content));
+    try {
+      return toRoutingConfig(parseRouting(content));
+    } catch (err) {
+      throw new ParseError('routing', err instanceof Error ? err.message : String(err), { cause: err });
+    }
   }
 
   /** Write back a full routing configuration. */
@@ -215,7 +223,11 @@ export class TeamCollection {
     if (content === undefined) {
       throw new NotFoundError('team');
     }
-    return toTeamConfig(parseTeam(content));
+    try {
+      return toTeamConfig(parseTeam(content));
+    } catch (err) {
+      throw new ParseError('team', err instanceof Error ? err.message : String(err), { cause: err });
+    }
   }
 
   /** Write back a full team configuration. */
@@ -278,6 +290,53 @@ export class TemplatesCollection {
   /** Check if a template exists. */
   async exists(id: string): Promise<boolean> {
     const filePath = `${this.rootDir}/${resolveCollectionPath('templates', id)}`;
+    return this.storage.exists(filePath);
+  }
+}
+
+// ── ConfigCollection ──────────────────────────────────────────────────────
+
+/** Serializable subset of config stored in `.squad/config.json`. */
+export interface ConfigFileData {
+  cacheEnabled?: boolean;
+  cacheTtlMs?: number;
+}
+
+const DEFAULT_CONFIG: Required<ConfigFileData> = {
+  cacheEnabled: false,
+  cacheTtlMs: 300_000,
+};
+
+export class ConfigCollection {
+  constructor(
+    private readonly storage: StorageProvider,
+    private readonly rootDir: string,
+  ) {}
+
+  /** Read and parse `.squad/config.json`. Returns defaults when file is missing or invalid. */
+  async get(): Promise<ConfigFileData> {
+    const filePath = `${this.rootDir}/${resolveCollectionPath('config')}`;
+    const content = await this.storage.read(filePath);
+    if (content === undefined) {
+      return { ...DEFAULT_CONFIG };
+    }
+    try {
+      const parsed = JSON.parse(content) as ConfigFileData;
+      return { ...DEFAULT_CONFIG, ...parsed };
+    } catch {
+      return { ...DEFAULT_CONFIG };
+    }
+  }
+
+  /** Write config to `.squad/config.json`. */
+  async update(config: ConfigFileData): Promise<void> {
+    const filePath = `${this.rootDir}/${resolveCollectionPath('config')}`;
+    await this.storage.write(filePath, JSON.stringify(config, null, 2) + '\n');
+  }
+
+  /** Check if `.squad/config.json` exists. */
+  async exists(): Promise<boolean> {
+    const filePath = `${this.rootDir}/${resolveCollectionPath('config')}`;
     return this.storage.exists(filePath);
   }
 }

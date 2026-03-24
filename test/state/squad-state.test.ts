@@ -524,6 +524,49 @@ describe('SquadState', () => {
     });
   });
 
+  // ── ConfigCollection ──────────────────────────────────────────────────
+
+  describe('config', () => {
+    describe('get()', () => {
+      it('returns parsed config when file exists', async () => {
+        storage.writeSync(
+          `${ROOT}/.squad/config.json`,
+          JSON.stringify({ cacheEnabled: true, cacheTtlMs: 60_000 }),
+        );
+        const s = await SquadState.create(storage, ROOT);
+        const config = await s.config.get();
+        expect(config.cacheEnabled).toBe(true);
+        expect(config.cacheTtlMs).toBe(60_000);
+      });
+
+      it('returns defaults when file is missing', async () => {
+        const config = await state.config.get();
+        expect(config.cacheEnabled).toBe(false);
+        expect(config.cacheTtlMs).toBe(300_000);
+      });
+    });
+
+    describe('update()', () => {
+      it('persists config and is readable', async () => {
+        await state.config.update({ cacheEnabled: true, cacheTtlMs: 120_000 });
+        const config = await state.config.get();
+        expect(config.cacheEnabled).toBe(true);
+        expect(config.cacheTtlMs).toBe(120_000);
+      });
+    });
+
+    describe('exists()', () => {
+      it('returns false when config.json is missing', async () => {
+        expect(await state.config.exists()).toBe(false);
+      });
+
+      it('returns true after config is written', async () => {
+        await state.config.update({ cacheEnabled: false });
+        expect(await state.config.exists()).toBe(true);
+      });
+    });
+  });
+
   // ── LogCollection ─────────────────────────────────────────────────────
 
   describe('log', () => {

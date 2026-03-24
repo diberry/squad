@@ -118,6 +118,7 @@ export {
   createAgentHandle,
   // Collection facades
   AgentsCollection,
+  ConfigCollection,
   DecisionsCollection,
   LogCollection,
   RoutingCollection,
@@ -127,6 +128,7 @@ export {
   // Top-level facade
   SquadState,
 } from './state/index.js';
+export type { ConfigFileData } from './state/index.js';
 export type {
   Agent,
   Decision,

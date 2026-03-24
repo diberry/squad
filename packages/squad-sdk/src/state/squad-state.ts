@@ -11,6 +11,7 @@
 import type { StorageProvider } from '../storage/storage-provider.js';
 import {
   AgentsCollection,
+  ConfigCollection,
   DecisionsCollection,
   LogCollection,
   RoutingCollection,
@@ -22,6 +23,7 @@ import { NotFoundError } from './domain-types.js';
 
 export class SquadState {
   readonly agents: AgentsCollection;
+  readonly config: ConfigCollection;
   readonly decisions: DecisionsCollection;
   readonly routing: RoutingCollection;
   readonly team: TeamCollection;
@@ -34,6 +36,7 @@ export class SquadState {
     private readonly rootDir: string,
   ) {
     this.agents = new AgentsCollection(storage, rootDir);
+    this.config = new ConfigCollection(storage, rootDir);
     this.decisions = new DecisionsCollection(storage, rootDir);
     this.routing = new RoutingCollection(storage, rootDir);
     this.team = new TeamCollection(storage, rootDir);
