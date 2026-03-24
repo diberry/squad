@@ -941,8 +941,12 @@ runStorageProviderContractTests('InMemoryStorageProvider', async () => {
   return { provider, cleanup: async () => provider.clear() };
 });
 
-// SQLiteStorageProvider will be added once DPS builds it — leave a commented-out placeholder
-// runStorageProviderContractTests('SQLiteStorageProvider', async () => {
-//   const db = new SQLiteStorageProvider(':memory:');
-//   return { provider: db, cleanup: async () => db.close() };
-// });
+import { SQLiteStorageProvider } from '../packages/squad-sdk/src/storage/sqlite-storage-provider.js';
+
+runStorageProviderContractTests('SQLiteStorageProvider', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'squad-sqlite-test-'));
+  const dbPath = join(tmpDir, 'test.db');
+  const provider = new SQLiteStorageProvider(dbPath);
+  await provider.init();
+  return { provider, cleanup: async () => rmSync(tmpDir, { recursive: true, force: true }) };
+});
