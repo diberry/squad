@@ -1,5 +1,5 @@
 import { readFile, writeFile, appendFile, access, readdir, unlink, mkdir, realpath, rm } from 'fs/promises';
-import { readFileSync, writeFileSync, existsSync as fsExistsSync, mkdirSync, realpathSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync as fsExistsSync, mkdirSync, realpathSync, readdirSync } from 'fs';
 import { dirname, resolve, sep } from 'path';
 import type { StorageProvider } from './storage-provider.js';
 import { StorageError } from './storage-error.js';
@@ -210,6 +210,16 @@ export class FSStorageProvider implements StorageProvider {
   existsSync(filePath: string): boolean {
     const safePath = this.assertSafePathSync(filePath);
     return fsExistsSync(safePath);
+  }
+
+  listSync(dirPath: string): string[] {
+    const safePath = this.assertSafePathSync(dirPath);
+    try {
+      return readdirSync(safePath);
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw new StorageError('list', dirPath, err as NodeJS.ErrnoException);
+    }
   }
 
   async deleteDir(dirPath: string): Promise<void> {

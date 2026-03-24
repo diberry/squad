@@ -77,4 +77,12 @@ export interface StorageProvider {
    * with undefined check over exists() → read() patterns.
    */
   existsSync(filePath: string): boolean;
+
+  /**
+   * Synchronous directory listing.
+   * Returns entry names directly inside dirPath.
+   * Returns empty array if directory does not exist.
+   * @deprecated Prefer `list()`. Will be removed in Wave 2.
+   */
+  listSync(dirPath: string): string[];
 }

@@ -31,6 +31,24 @@ export default [
 
       // Prevent console.log in production; allow warn/error
       "no-console": ["warn", { allow: ["warn", "error"] }],
+
+      // Prefer StorageProvider over raw fs imports (#481)
+      "no-restricted-imports": ["warn", {
+        paths: [
+          { name: "fs", message: "Use StorageProvider instead of direct fs imports. See #481." },
+          { name: "node:fs", message: "Use StorageProvider instead of direct node:fs imports. See #481." },
+          { name: "fs/promises", message: "Use StorageProvider instead of direct fs/promises imports. See #481." },
+          { name: "node:fs/promises", message: "Use StorageProvider instead of direct node:fs/promises imports. See #481." },
+        ],
+      }],
+    },
+  },
+
+  // fs-storage-provider is the one file that legitimately uses raw fs
+  {
+    files: ["packages/**/storage/fs-storage-provider.ts"],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
 
