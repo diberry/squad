@@ -44,32 +44,3 @@ There is no `claude-haiku-4.6`. The latest haiku is `claude-haiku-4.5`. Never bu
 
 ### ModelId Type
 `ModelId = string` in `runtime/config.ts` — not a discriminated union. New model IDs can be added to the catalog without TypeScript changes beyond the catalog and chain arrays.
-
-### StorageProvider Security Hardening (Phase 1)
-**Date:** 2026-03-22  
-**Branch:** `diberry/sa-phase1-interface`  
-**Context:** Addressed RETRO security findings and Flight architectural blocker for Wave 2 migration.
-
-**Changes implemented:**
-1. **Path Traversal Protection** — Added optional `rootDir?: string` constructor parameter to `FSStorageProvider`. When set, all methods resolve paths and verify they remain within the root directory using `path.resolve()` and prefix checking with `path.sep`. Attempts to escape via `../` or absolute paths throw `Path traversal blocked` error.
-
-2. **Symlink Traversal Protection** — After path resolution, `assertSafePath` calls `fs.realpath()` to resolve symlinks and verifies the real path is still within `rootDir`. Blocks symlinks that point outside the confined directory. Handles ENOENT gracefully for write operations where the target doesn't exist yet.
-
-3. **deleteDir Method** — Added `deleteDir(dirPath: string): Promise<void>` to the `StorageProvider` interface and implemented in `FSStorageProvider` using `fs.rm(..., { recursive: true, force: true })`. No-op on ENOENT. Subject to the same rootDir confinement checks.
-
-**Pattern used:**
-- Two private helper methods: `assertSafePath(filePath: string): Promise<string>` (async) and `assertSafePathSync(filePath: string): string` (sync)
-- Both return the safe resolved path or throw if traversal is blocked
-- Called at the top of every public method (read, write, append, exists, list, delete, deleteDir, and their sync variants)
-- When `rootDir` is undefined, helpers return the path unchanged (backward compatible)
-
-**Test approach:**
-- TDD RED→GREEN discipline: failing tests committed first, then implementation
-- 39 tests pass, 4 symlink tests skipped on Windows (require admin privileges)
-- All original 25 tests remain passing (providers without rootDir are unrestricted)
-- New test sections: "path traversal protection", "symlink traversal protection", "deleteDir"
-
-**Type system impact:**
-- Constructor signature change: `new FSStorageProvider(rootDir?: string)`
-- Interface extension: added `deleteDir(dirPath: string): Promise<void>`
-- No breaking changes to existing method signatures
