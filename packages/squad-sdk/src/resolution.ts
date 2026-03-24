@@ -13,7 +13,7 @@
  */
 
 // TODO: statSync/mkdirSync still use raw fs — StorageProvider needs sync isDirectory() and mkdir()
-import { statSync, mkdirSync } from 'node:fs';
+import fs, { statSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { StorageProvider } from './storage/storage-provider.js';

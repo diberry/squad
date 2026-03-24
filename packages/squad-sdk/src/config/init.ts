@@ -721,13 +721,13 @@ export async function initSquad(options: InitOptions, storage: StorageProvider =
 
   for (const cf of castingFiles) {
     const dest = join(castingDir, cf.name);
-    if (!existsSync(dest)) {
+    if (!storage.existsSync(dest)) {
       // Try to copy from SDK templates first, fall back to inline defaults
       const templateSrc = templatesDir ? join(templatesDir, cf.templateName) : null;
-      if (templateSrc && existsSync(templateSrc)) {
+      if (templateSrc && storage.existsSync(templateSrc)) {
         cpSync(templateSrc, dest);
       } else {
-        await writeFile(dest, cf.fallback, 'utf-8');
+        await storage.write(dest, cf.fallback);
       }
       createdFiles.push(toRelativePath(dest));
     } else {
