@@ -131,6 +131,8 @@ Researched and proposed CI pipeline for pre-rendering Mermaid diagrams to PNG be
 - **Option C:** Astro integration plugin (seamless but complex/maintenance burden)
 
 **Recommendation:** Option B (npm prebuild) + Option A (CI safety net). Tool: `@mermaid-js/mermaid-cli` (mmdc). Source files: `.mmd` in `docs/src/content/docs/*/diagrams/`, output PNGs in `*/images/` (git-ignored). Enables live diagram authoring locally, fresh renders in CI. Proposal doc: `docs/research/ci-mermaid-rendering-proposal.md`. Decision: `.squad/decisions/inbox/pao-ci-mermaid.md`.
+Researched and proposed CI pipeline for pre-rendering Mermaid diagrams to PNG before docs build. Evaluated three approaches: Option A (GitHub Actions pre-build, CI-only, poor local DX), Option B (npm prebuild script, local + CI, excellent DX), Option C (Astro integration plugin, seamless but complex/maintenance burden). **Recommendation:** Option B (npm prebuild) + Option A (CI safety net). Tool: `@mermaid-js/mermaid-cli` (mmdc). Source files: `.mmd` in `docs/src/content/docs/*/diagrams/`, output PNGs in `*/images/` (git-ignored, generated). Benefits: excellent local DX (live diagram authoring), reliable CI (always fresh PNGs), simple implementation (npm lifecycle hook). Proposal: `docs/research/ci-mermaid-rendering-proposal.md`. Decision: `.squad/decisions/inbox/pao-ci-mermaid.md`. Enables authors to iterate on diagrams in real-time, reduces client-side rendering load.
+
 ### Issue Triage (2026-03-22T06:44:01Z)
 
 **Flight triaged 6 unlabeled issues and filed 1 new issue.**
@@ -257,3 +259,12 @@ Completed full PRD based on research findings. **Document:** `docs/research/jsdo
 - Four-phase approach breaks large effort into digestible increments (Phase 0 validation before JSDoc audit helps mitigate risk of TypeDoc setup failing)
 
 **Decision:** PRD approved for handoff to implementation team. Ready for execution on next sprint.
+### Architecture Diagrams PNG Conversion (2026-03-24)
+
+Converted all 7 Mermaid diagrams from the architecture page to optimized PNG images. **Process:** (1) extracted Mermaid source from squad/pao-arch-diagram branch; (2) ran `mmdc` (mermaid-cli v11.12.0) with `-b transparent -t neutral` flags to generate 7 PNG files (36–124 KB each); (3) created new `squad/pao-arch-docs` branch from dev; (4) updated `docs/src/content/docs/concepts/architecture.md` with PNG references and collapsed Mermaid source blocks; (5) added 2-3 paragraph intro explaining Squad's orchestration model at a glance.
+
+**Diagrams rendered:** User Interaction Flow (sequence), Component Architecture (layered graph), State Management (drop-box pattern), Parallel Execution Model (3-mode routing), Casting & Persistent Naming (knowledge compounds), Decision & Knowledge Flow (full cycle), Git Worktree Lifecycle (worktree-local strategy).
+
+**Key pattern:** PNG images render in docs for clarity and performance; collapsed `<details>` blocks preserve Mermaid source for readers who want to copy/adapt. Structure follows Microsoft Style Guide: sentence-case headings, active voice, second person ("you"), present tense, practical descriptions. Intro contextualizes: "Squad is a programmable multi-agent orchestration runtime" + isolation/persistence/portability principles + preview of layer-by-layer explanation.
+
+**Learning:** Mermaid-cli succeeds with direct call (`mmdc` binary) after global npm install; avoid `npx` wrapper on this machine. Transparent PNG background + neutral theme keeps diagrams legible in both light/dark doc modes. Backtick-escaping in Mermaid `subgraph` labels is brittle; use simpler node labels and rely on Mermaid's rendering. All PNG files committed; docs site Astro will serve from content directory via relative paths (`./images/architecture-*.png`).
