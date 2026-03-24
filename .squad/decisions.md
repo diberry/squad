@@ -7653,3 +7653,38 @@ Meta-references to "npm publish" in echo, grep, and YAML `name:` lines are exclu
 - `init --global` now suppresses GitHub workflows (they're meaningless in the global config dir).
 - `RunInitOptions` has a new `isGlobal` field.
 
+---
+
+### 2026-03-24: Phase 2 StorageProvider Migration — Approved (Multi-Reviewer)
+**By:** Flight (Architecture), FIDO (Quality), RETRO (Security)
+**Date:** 2026-03-24
+
+**What:** StorageProvider Phase 2 migration approval across all three review pillars:
+
+**Flight (Architecture):** ✅ APPROVED
+- DI wiring consistent across 31 migrated files
+- No breaking changes (backward compatible by design)
+- Residual 
+ode:fs imports justified and tracked (#481)
+- Phase 3 readiness: Clean. Recommend listSync() addition.
+
+**FIDO (Quality):** ✅ APPROVED (conditional)
+- 186/186 tests pass (6 skipped Windows symlinks, expected)
+- All 11 StorageProvider interface methods tested
+- Security coverage 9/10 (path traversal, symlinks, error sanitization strong)
+- Critical gap: InMemoryStorageProvider needed in Phase 3 for DI injection tests
+
+**RETRO (Security):** ✅ APPROVED
+- No new attack surface introduced
+- Unrooted FSStorageProvider() maintains pre-migration privilege model (by design)
+- 12 residual raw fs calls in justified contexts (config-derived paths)
+- All residual risks LOW/INFO grade — accepted for Phase 2
+
+**Why:** Phase 2 is a safe mechanical DI-wiring change that establishes the abstraction boundary for Phase 3 alternative backends (SQLiteStorageProvider, AzureStorageProvider).
+
+**Next Steps:**
+1. Merge Phase 2 to main
+2. Phase 3: Add listSync(), stat() methods; create InMemoryStorageProvider
+3. Introduce rooted FSStorageProvider callers for confinement
+4. Add lint rule: no-raw-fs-in-sdk for src/
+
