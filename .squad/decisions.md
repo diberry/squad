@@ -18826,3 +18826,73 @@ When 2FA is set to `auth-and-writes`, npm expects the user to provide a time-bas
 **Date:** 2026-03-23  
 **Status:** APPROVED FOR IMPLEMENTATION
 
+---
+
+## Phase 2 Review Verdicts (2026-03-24)
+
+### Flight Lead — Phase 2 Architecture Review
+**Date:** 2026-03-24T14:05:59Z  
+**Verdict:** ✅ APPROVE WITH NOTES
+
+SquadState facade demonstrates clean layering, type safety, and proper StorageProvider isolation. Zero circular imports. Architecture is production-ready.
+
+**Non-Blocking Follow-ups:**
+1. Populate or optionalize `RoutingConfig.moduleOwnership/principles` and `TeamConfig.projectContext` — assign EECOM
+2. Add SkillsCollection, TemplatesCollection when needed (Phase 3)
+3. Wire up cache config when cache layer ships
+
+### CONTROL Engineer — Phase 2 Type Safety Audit
+**Date:** 2026-03-24T14:05:59Z  
+**Verdict:** ✅ APPROVE
+
+Phase 2 state module demonstrates production-grade TypeScript engineering. Zero `any` types. All type contracts sound. Build passes with zero errors (strict mode, noUncheckedIndexedAccess enabled).
+
+### FIDO Quality — Phase 2 Coverage Audit
+**Date:** 2026-03-24T14:05:59Z  
+**Verdict:** ✅ APPROVED FOR MERGE
+
+83 comprehensive tests (43 integration + 40 gap coverage). 98.21% statement coverage, 100% critical path coverage. All public APIs covered, error hierarchy tested, Unicode edge cases verified, data integrity validated via round-trip tests.
+
+---
+
+### 2026-03-24T12:35Z: User directive — Storage provider work routing
+**By:** Dina (via Copilot)  
+**What:** All storage provider concerns, issues, notes, and bugs for future work should be filed on diberry/squad (Dina's fork), not bradygaster/squad. Keep Brady's repo noise-free.  
+**Why:** User request — captured for team memory.
+
+### 2026-03-24T07-01: User directive — Code fences
+**By:** Dina (via Copilot)  
+**What:** Always make sure code fences in issues, PRs, docs, and JSDoc are done correctly — proper language tags, correct syntax, no broken fences.  
+**Why:** User request — captured for team memory.
+
+### 2026-03-24T06-52: User directive — Single branch for storage provider
+**By:** Dina (via Copilot)  
+**What:** All storage provider work should be on 1 single branch (diberry/sa-phase1-interface).  
+**Why:** User request — captured for team memory.
+
+### Collection Facade Pattern for Thin Collections
+**Date:** 2026-03-24  
+**Author:** EECOM  
+
+Thin collections that don't need structured parsing (Templates, Log) use direct storage read/write without IO-layer parsers. Skills reuse `parseSkillFile` from `skill-loader.ts` rather than duplicating frontmatter parsing. All three follow the same constructor signature for consistency.
+
+**Consequence:** Adding future collections is straightforward — follow the thin pattern unless structured parsing is needed. Risk: If skill-loader ever imports from state, circular dep risk exists, but currently skill-loader only imports from utils/.
+
+### CI Mermaid → PNG Rendering Decision
+**Date:** 2026-03-24  
+**Requestor:** Dina  
+**Owner:** PAO (DevRel)
+
+**Decision:** Pre-render Mermaid diagrams to PNG at build time using npm `prebuild` script hook.
+
+- **Primary tool:** `@mermaid-js/mermaid-cli` (mmdc)
+- **Source files:** `.mmd` files in `docs/src/content/docs/*/diagrams/`
+- **Output:** PNGs in `docs/src/content/docs/*/images/` (git-ignored, generated)
+- **Execution:** Local dev + CI (same script everywhere)
+
+**Why:** Authors iterate on diagrams in real-time. Single prebuild script reused locally + CI. Simple npm lifecycle hook; no GitHub Actions changes needed.
+
+**Timeline:** Week 1 — implement + migrate + test locally; Week 1 — merge to dev, verify CI, deploy to main; Week 2 — document for team.
+
+**Rollback:** If mmdc/Puppeteer proves problematic, revert to inline mermaid code blocks (slower but safe).
+
