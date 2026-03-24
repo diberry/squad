@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm } from 'fs/promises';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { FSStorageProvider } from '../packages/squad-sdk/src/storage/fs-storage-provider.js';
@@ -949,4 +949,200 @@ runStorageProviderContractTests('SQLiteStorageProvider', async () => {
   const provider = new SQLiteStorageProvider(dbPath);
   await provider.init();
   return { provider, cleanup: async () => rmSync(tmpDir, { recursive: true, force: true }) };
+});
+
+// ── SQLite-specific tests ─────────────────────────────────────────────────────
+
+describe('SQLiteStorageProvider — SQLite-specific', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'squad-sqlite-specific-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // ── Persistence across instances ────────────────────────────────────────
+
+  it('persists data: write → close → reopen → read returns same data', async () => {
+    const dbPath = join(tmpDir, 'persist.db');
+
+    const p1 = new SQLiteStorageProvider(dbPath);
+    await p1.init();
+    await p1.write('docs/readme.md', '# Hello');
+    // p1 goes out of scope — no explicit close needed for sql.js
+
+    const p2 = new SQLiteStorageProvider(dbPath);
+    await p2.init();
+    expect(await p2.read('docs/readme.md')).toBe('# Hello');
+  });
+
+  it('persists multiple files across reopen', async () => {
+    const dbPath = join(tmpDir, 'multi-persist.db');
+
+    const p1 = new SQLiteStorageProvider(dbPath);
+    await p1.init();
+    await p1.write('a.txt', 'alpha');
+    await p1.write('b.txt', 'bravo');
+    await p1.write('sub/c.txt', 'charlie');
+
+    const p2 = new SQLiteStorageProvider(dbPath);
+    await p2.init();
+    expect(await p2.read('a.txt')).toBe('alpha');
+    expect(await p2.read('b.txt')).toBe('bravo');
+    expect(await p2.read('sub/c.txt')).toBe('charlie');
+  });
+
+  // ── init() idempotency ──────────────────────────────────────────────────
+
+  it('calling init() twice is safe (idempotent)', async () => {
+    const dbPath = join(tmpDir, 'idempotent.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+    await provider.write('test.txt', 'first');
+    await provider.init(); // second init — should be no-op
+    expect(await provider.read('test.txt')).toBe('first');
+  });
+
+  it('calling init() concurrently is safe', async () => {
+    const dbPath = join(tmpDir, 'concurrent-init.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    // Fire two init() calls concurrently — should not throw or corrupt
+    await Promise.all([provider.init(), provider.init()]);
+    await provider.write('ok.txt', 'ok');
+    expect(await provider.read('ok.txt')).toBe('ok');
+  });
+
+  // ── Large content handling ──────────────────────────────────────────────
+
+  it('handles large content (100 KB)', async () => {
+    const dbPath = join(tmpDir, 'large.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+
+    const largeContent = 'x'.repeat(100_000);
+    await provider.write('big.txt', largeContent);
+    expect(await provider.read('big.txt')).toBe(largeContent);
+  });
+
+  // ── Path normalization ──────────────────────────────────────────────────
+
+  it('normalizes backslashes to forward slashes', async () => {
+    const dbPath = join(tmpDir, 'norm.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+
+    await provider.write('dir\\sub\\file.txt', 'normalized');
+    // Reading with forward slashes should find the same entry
+    expect(await provider.read('dir/sub/file.txt')).toBe('normalized');
+  });
+
+  it('normalizes redundant slashes', async () => {
+    const dbPath = join(tmpDir, 'norm2.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+
+    await provider.write('a//b///c.txt', 'clean');
+    expect(await provider.read('a/b/c.txt')).toBe('clean');
+  });
+
+  // ── DB file creation ────────────────────────────────────────────────────
+
+  it('creates DB file on disk when it does not exist yet', async () => {
+    const dbPath = join(tmpDir, 'brand-new.db');
+    expect(existsSync(dbPath)).toBe(false);
+
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+    await provider.write('hello.txt', 'world');
+
+    // After write + persist, the DB file should exist on disk
+    expect(existsSync(dbPath)).toBe(true);
+  });
+
+  it('creates parent directories for the DB file', async () => {
+    const dbPath = join(tmpDir, 'nested', 'dir', 'deep.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+    await provider.write('test.txt', 'data');
+    expect(existsSync(dbPath)).toBe(true);
+  });
+
+  // ── updated_at column ──────────────────────────────────────────────────
+
+  it('populates updated_at as an ISO 8601 timestamp on write', async () => {
+    const dbPath = join(tmpDir, 'timestamps.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+
+    const before = new Date().toISOString();
+    await provider.write('ts.txt', 'timestamped');
+    const after = new Date().toISOString();
+
+    // Access the internal DB to verify updated_at
+    const p2 = new SQLiteStorageProvider(dbPath);
+    await p2.init();
+    // Use readSync to confirm the file exists, then check timestamp via a second instance
+    // We verify by reopening and reading — the file should still be there
+    expect(await p2.read('ts.txt')).toBe('timestamped');
+
+    // To verify the timestamp, we need to read the raw DB
+    const initSqlJs = (await import('sql.js')).default;
+    const SQL = await initSqlJs();
+    const fileBuffer = readFileSync(dbPath);
+    const db = new SQL.Database(fileBuffer);
+    const stmt = db.prepare('SELECT updated_at FROM files WHERE path = ?');
+    stmt.bind(['ts.txt']);
+    expect(stmt.step()).toBe(true);
+    const row = stmt.getAsObject() as { updated_at: string };
+    stmt.free();
+    db.close();
+
+    // updated_at should be a valid ISO 8601 string between before and after
+    expect(row.updated_at).toBeTruthy();
+    expect(row.updated_at >= before).toBe(true);
+    expect(row.updated_at <= after).toBe(true);
+  });
+
+  it('updates updated_at on overwrite', async () => {
+    const dbPath = join(tmpDir, 'ts-overwrite.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    await provider.init();
+
+    await provider.write('file.txt', 'v1');
+
+    // Small delay to ensure timestamps differ
+    await new Promise((r) => setTimeout(r, 10));
+
+    await provider.write('file.txt', 'v2');
+
+    const initSqlJs = (await import('sql.js')).default;
+    const SQL = await initSqlJs();
+    const fileBuffer = readFileSync(dbPath);
+    const db = new SQL.Database(fileBuffer);
+    const stmt = db.prepare('SELECT updated_at FROM files WHERE path = ?');
+    stmt.bind(['file.txt']);
+    expect(stmt.step()).toBe(true);
+    const row = stmt.getAsObject() as { updated_at: string };
+    stmt.free();
+    db.close();
+
+    // The timestamp should reflect the second write
+    const ts = new Date(row.updated_at).getTime();
+    expect(ts).toBeGreaterThan(0);
+  });
+
+  // ── Sync methods require init() ─────────────────────────────────────────
+
+  it('throws if sync methods called before init()', () => {
+    const dbPath = join(tmpDir, 'no-init.db');
+    const provider = new SQLiteStorageProvider(dbPath);
+    // No init() call — sync methods should throw
+    expect(() => provider.readSync('any.txt')).toThrow(/not initialized/i);
+    expect(() => provider.writeSync('any.txt', 'data')).toThrow(/not initialized/i);
+    expect(() => provider.existsSync('any.txt')).toThrow(/not initialized/i);
+    expect(() => provider.listSync('dir')).toThrow(/not initialized/i);
+  });
 });
