@@ -1,5 +1,5 @@
 import { posix } from 'path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs';
 import { dirname } from 'path';
 import type { StorageProvider } from './storage-provider.js';
 
@@ -88,13 +88,20 @@ export class SQLiteStorageProvider implements StorageProvider {
     return posix.normalize(p.replace(/\\/g, '/')).replace(/\/+$/, '');
   }
 
-  /** Persist the in-memory DB to disk. */
+  /** Escape SQL LIKE wildcards so user-supplied paths are matched literally. */
+  private escapeLike(value: string): string {
+    return value.replace(/[%_]/g, char => `\\${char}`);
+  }
+
+  /** Persist the in-memory DB to disk (atomic write-then-rename). */
   private persist(): void {
     const db = this.ensureDb();
     const data = db.export();
     const buffer = Buffer.from(data);
     mkdirSync(dirname(this.dbPath), { recursive: true });
-    writeFileSync(this.dbPath, buffer);
+    const tmpPath = this.dbPath + '.tmp';
+    writeFileSync(tmpPath, buffer);
+    renameSync(tmpPath, this.dbPath);
   }
 
   private now(): string {
@@ -142,7 +149,7 @@ export class SQLiteStorageProvider implements StorageProvider {
     await this.ready();
     const db = this.ensureDb();
     const dir = this.norm(dirPath);
-    db.run('DELETE FROM files WHERE path = ? OR path LIKE ?', [dir, `${dir}/%`]);
+    db.run('DELETE FROM files WHERE path = ? OR path LIKE ? ESCAPE \'\\\'', [dir, `${this.escapeLike(dir)}/%`]);
     this.persist();
   }
 
@@ -172,9 +179,9 @@ export class SQLiteStorageProvider implements StorageProvider {
     const key = this.norm(filePath);
     // Exact file match OR directory prefix match
     const stmt = db.prepare(
-      'SELECT 1 FROM files WHERE path = ? OR path LIKE ? LIMIT 1',
+      'SELECT 1 FROM files WHERE path = ? OR path LIKE ? ESCAPE \'\\\' LIMIT 1',
     );
-    stmt.bind([key, `${key}/%`]);
+    stmt.bind([key, `${this.escapeLike(key)}/%`]);
     const found = stmt.step();
     stmt.free();
     return found;
@@ -184,8 +191,8 @@ export class SQLiteStorageProvider implements StorageProvider {
     const db = this.ensureDb();
     const dir = this.norm(dirPath);
     const prefix = dir + '/';
-    const stmt = db.prepare('SELECT path FROM files WHERE path LIKE ?');
-    stmt.bind([`${prefix}%`]);
+    const stmt = db.prepare('SELECT path FROM files WHERE path LIKE ? ESCAPE \'\\\'');
+    stmt.bind([`${this.escapeLike(dir)}/%`]);
     const entries = new Set<string>();
     while (stmt.step()) {
       const row = stmt.getAsObject() as { path: string };
