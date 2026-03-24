@@ -13,7 +13,7 @@ import type { Agent, HistoryEntry, HistorySection } from './domain-types.js';
 import type { ParsedHistory } from '../agents/history-shadow.js';
 import { parseHistory, serializeHistoryAppend } from './io/history-io.js';
 import { parseTeam, serializeTeam } from './io/team-io.js';
-import { NotFoundError } from './domain-types.js';
+import { NotFoundError, ParseError } from './domain-types.js';
 import { resolveCollectionPath } from './schema.js';
 
 // ── History Section Mapping ────────────────────────────────────────────────
@@ -109,7 +109,12 @@ export function createAgentHandle(
         if (content === undefined) {
           return [];
         }
-        const parsed = parseHistory(content);
+        let parsed;
+        try {
+          parsed = parseHistory(content);
+        } catch (err) {
+          throw new ParseError('history', err instanceof Error ? err.message : String(err), { cause: err });
+        }
         return parsedHistoryToEntries(parsed, section);
       })();
     },
@@ -159,7 +164,12 @@ export function createAgentHandle(
         throw new NotFoundError('team');
       }
 
-      const agents = parseTeam(teamContent);
+      let agents;
+      try {
+        agents = parseTeam(teamContent);
+      } catch (err) {
+        throw new ParseError('team', err instanceof Error ? err.message : String(err), { cause: err });
+      }
       const lowerName = name.toLowerCase();
       const idx = agents.findIndex((a) => a.name.toLowerCase() === lowerName);
       if (idx === -1) {
