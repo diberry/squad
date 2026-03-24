@@ -13,8 +13,10 @@ import { mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { FSStorageProvider } from '../packages/squad-sdk/src/storage/fs-storage-provider.js';
+import { InMemoryStorageProvider } from '../packages/squad-sdk/src/storage/in-memory-storage-provider.js';
 import type { StorageProvider } from '../packages/squad-sdk/src/storage/storage-provider.js';
 import { StorageError } from '../packages/squad-sdk/src/storage/storage-error.js';
+import { parseSkillFile } from '../packages/squad-sdk/src/skills/skill-loader.js';
 
 let provider: StorageProvider;
 let tmpDir: string;
@@ -526,5 +528,398 @@ describe('concurrent writes', () => {
     await Promise.all(writes);
     const entries = await provider.list(join(tmpDir, 'shared-parent'));
     expect(entries.length).toBe(5);
+  });
+});
+
+// ── listSync (FSStorageProvider) ─────────────────────────────────────────────
+
+describe('FSStorageProvider listSync', () => {
+  it('returns entry names for a populated directory', () => {
+    provider.writeSync(join(tmpDir, 'ls-dir', 'a.txt'), 'a');
+    provider.writeSync(join(tmpDir, 'ls-dir', 'b.txt'), 'b');
+    const entries = provider.listSync(join(tmpDir, 'ls-dir'));
+    expect(entries.sort()).toEqual(['a.txt', 'b.txt']);
+  });
+
+  it('returns empty array for ENOENT directory', () => {
+    expect(provider.listSync(join(tmpDir, 'no-such-dir'))).toEqual([]);
+  });
+
+  it('returns only direct children', () => {
+    provider.writeSync(join(tmpDir, 'ls2', 'file.txt'), 'x');
+    provider.writeSync(join(tmpDir, 'ls2', 'sub', 'deep.txt'), 'y');
+    const entries = provider.listSync(join(tmpDir, 'ls2'));
+    expect(entries.sort()).toEqual(['file.txt', 'sub']);
+  });
+
+  it('blocks traversal when rootDir is set', async () => {
+    const { mkdtemp: mkd } = await import('fs/promises');
+    const root = await mkd(join(tmpdir(), 'squad-ls-confined-'));
+    const confined = new FSStorageProvider(root);
+    expect(() => confined.listSync('../')).toThrow(/traversal blocked/i);
+    await rm(root, { recursive: true, force: true });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// InMemoryStorageProvider
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('InMemoryStorageProvider', () => {
+  let mem: InMemoryStorageProvider;
+
+  beforeEach(() => {
+    mem = new InMemoryStorageProvider();
+  });
+
+  // ── Async methods ──────────────────────────────────────────────────────────
+
+  describe('read()', () => {
+    it('returns undefined for missing key', async () => {
+      expect(await mem.read('missing.txt')).toBeUndefined();
+    });
+
+    it('reads previously written content', async () => {
+      await mem.write('f.txt', 'hello');
+      expect(await mem.read('f.txt')).toBe('hello');
+    });
+  });
+
+  describe('write()', () => {
+    it('stores content', async () => {
+      await mem.write('a.txt', 'A');
+      expect(mem.snapshot().get('a.txt')).toBe('A');
+    });
+
+    it('overwrites existing content', async () => {
+      await mem.write('a.txt', 'first');
+      await mem.write('a.txt', 'second');
+      expect(await mem.read('a.txt')).toBe('second');
+    });
+  });
+
+  describe('append()', () => {
+    it('creates file if missing', async () => {
+      await mem.append('new.txt', 'start');
+      expect(await mem.read('new.txt')).toBe('start');
+    });
+
+    it('appends to existing content', async () => {
+      await mem.write('log.txt', 'A');
+      await mem.append('log.txt', 'B');
+      expect(await mem.read('log.txt')).toBe('AB');
+    });
+  });
+
+  describe('exists()', () => {
+    it('returns false for missing key', async () => {
+      expect(await mem.exists('ghost')).toBe(false);
+    });
+
+    it('returns true for existing file', async () => {
+      await mem.write('present.txt', '');
+      expect(await mem.exists('present.txt')).toBe(true);
+    });
+
+    it('returns true for implicit directory (prefix match)', async () => {
+      await mem.write('dir/child.txt', '');
+      expect(await mem.exists('dir')).toBe(true);
+    });
+  });
+
+  describe('list()', () => {
+    it('returns empty array for missing directory', async () => {
+      expect(await mem.list('empty')).toEqual([]);
+    });
+
+    it('returns direct children only', async () => {
+      await mem.write('d/a.txt', '');
+      await mem.write('d/b.txt', '');
+      await mem.write('d/sub/c.txt', '');
+      const entries = await mem.list('d');
+      expect(entries.sort()).toEqual(['a.txt', 'b.txt', 'sub']);
+    });
+  });
+
+  describe('delete()', () => {
+    it('removes a file', async () => {
+      await mem.write('x.txt', 'val');
+      await mem.delete('x.txt');
+      expect(await mem.read('x.txt')).toBeUndefined();
+    });
+
+    it('no-op for missing file', async () => {
+      await expect(mem.delete('nope')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('deleteDir()', () => {
+    it('removes directory and all children', async () => {
+      await mem.write('rm/a.txt', '');
+      await mem.write('rm/sub/b.txt', '');
+      await mem.deleteDir('rm');
+      expect(mem.snapshot().size).toBe(0);
+    });
+
+    it('no-op for missing directory', async () => {
+      await expect(mem.deleteDir('void')).resolves.toBeUndefined();
+    });
+  });
+
+  // ── Sync methods ───────────────────────────────────────────────────────────
+
+  describe('readSync()', () => {
+    it('returns undefined for missing key', () => {
+      expect(mem.readSync('nope')).toBeUndefined();
+    });
+
+    it('reads content', () => {
+      mem.writeSync('s.txt', 'data');
+      expect(mem.readSync('s.txt')).toBe('data');
+    });
+  });
+
+  describe('writeSync()', () => {
+    it('stores content', () => {
+      mem.writeSync('w.txt', 'val');
+      expect(mem.snapshot().get('w.txt')).toBe('val');
+    });
+
+    it('overwrites existing content', () => {
+      mem.writeSync('w.txt', 'first');
+      mem.writeSync('w.txt', 'second');
+      expect(mem.readSync('w.txt')).toBe('second');
+    });
+  });
+
+  describe('existsSync()', () => {
+    it('returns false for missing key', () => {
+      expect(mem.existsSync('no')).toBe(false);
+    });
+
+    it('returns true for file', () => {
+      mem.writeSync('yes.txt', '');
+      expect(mem.existsSync('yes.txt')).toBe(true);
+    });
+
+    it('returns true for implicit directory', () => {
+      mem.writeSync('dir/child.txt', 'x');
+      expect(mem.existsSync('dir')).toBe(true);
+    });
+  });
+
+  describe('listSync()', () => {
+    it('returns empty array for missing directory', () => {
+      expect(mem.listSync('no-dir')).toEqual([]);
+    });
+
+    it('returns direct children', () => {
+      mem.writeSync('ls/alpha.txt', '');
+      mem.writeSync('ls/beta.txt', '');
+      mem.writeSync('ls/nested/gamma.txt', '');
+      expect(mem.listSync('ls').sort()).toEqual(['alpha.txt', 'beta.txt', 'nested']);
+    });
+
+    it('deduplicates nested entries', () => {
+      mem.writeSync('d/sub/a.txt', '');
+      mem.writeSync('d/sub/b.txt', '');
+      expect(mem.listSync('d')).toEqual(['sub']);
+    });
+  });
+
+  // ── Test helpers ───────────────────────────────────────────────────────────
+
+  describe('snapshot()', () => {
+    it('returns a copy of internal state', () => {
+      mem.writeSync('a', '1');
+      const snap = mem.snapshot();
+      mem.writeSync('b', '2');
+      expect(snap.size).toBe(1);
+    });
+  });
+
+  describe('clear()', () => {
+    it('removes all files', () => {
+      mem.writeSync('a', '1');
+      mem.writeSync('b', '2');
+      mem.clear();
+      expect(mem.snapshot().size).toBe(0);
+    });
+  });
+
+  // ── Edge cases ─────────────────────────────────────────────────────────────
+
+  describe('edge cases', () => {
+    it('handles empty string content', async () => {
+      await mem.write('empty.txt', '');
+      expect(await mem.read('empty.txt')).toBe('');
+      expect(await mem.exists('empty.txt')).toBe(true);
+    });
+
+    it('normalizes trailing slashes', async () => {
+      await mem.write('dir/file.txt', 'ok');
+      expect(mem.listSync('dir/')).toContain('file.txt');
+    });
+
+    it('normalizes double slashes', async () => {
+      await mem.write('dir//file.txt', 'ok');
+      expect(await mem.read('dir/file.txt')).toBe('ok');
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// StorageError — extended
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('StorageError path sanitization', () => {
+  it('strips absolute path, keeps basename', () => {
+    const cause = Object.assign(new Error('EACCES'), { code: 'EACCES' }) as NodeJS.ErrnoException;
+    const err = new StorageError('read', '/home/user/secret/.squad/config.json', cause);
+    expect(err.message).not.toContain('/home/user/secret');
+    expect(err.message).toContain('config.json');
+  });
+
+  it('preserves operation and code', () => {
+    const cause = Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) as NodeJS.ErrnoException;
+    const err = new StorageError('write', 'test.txt', cause);
+    expect(err.operation).toBe('write');
+    expect(err.code).toBe('ENOENT');
+  });
+
+  it('preserves original cause', () => {
+    const cause = Object.assign(new Error('EIO'), { code: 'EIO' }) as NodeJS.ErrnoException;
+    const err = new StorageError('delete', 'x', cause);
+    expect(err.cause).toBe(cause);
+    expect(err.name).toBe('StorageError');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DI injection — InMemoryStorageProvider as drop-in
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('DI injection — InMemoryStorageProvider', () => {
+  it('satisfies StorageProvider contract (typed assignment)', () => {
+    const sp: StorageProvider = new InMemoryStorageProvider();
+    sp.writeSync('config.json', '{"key":"value"}');
+    expect(sp.readSync('config.json')).toBe('{"key":"value"}');
+    expect(sp.existsSync('config.json')).toBe(true);
+    expect(sp.existsSync('missing.json')).toBe(false);
+    expect(sp.readSync('missing.json')).toBeUndefined();
+  });
+
+  it('parseSkillFile works with InMemory-loaded content', () => {
+    const sp = new InMemoryStorageProvider();
+    const skillContent = [
+      '---',
+      'name: Test Skill',
+      'domain: testing',
+      'triggers: [vitest, jest]',
+      'roles: [tester]',
+      '---',
+      'This is a test skill body.',
+    ].join('\n');
+
+    sp.writeSync('skills/my-skill/SKILL.md', skillContent);
+    const raw = sp.readSync('skills/my-skill/SKILL.md');
+    expect(raw).toBeDefined();
+
+    const skill = parseSkillFile('my-skill', raw!);
+    expect(skill).toBeDefined();
+    expect(skill!.id).toBe('my-skill');
+    expect(skill!.name).toBe('Test Skill');
+    expect(skill!.domain).toBe('testing');
+    expect(skill!.triggers).toEqual(['vitest', 'jest']);
+    expect(skill!.agentRoles).toEqual(['tester']);
+    expect(skill!.content).toContain('test skill body');
+  });
+
+  it('InMemory write+read+delete lifecycle matches FSStorageProvider semantics', async () => {
+    const sp: StorageProvider = new InMemoryStorageProvider();
+    await sp.write('lifecycle.txt', 'created');
+    expect(await sp.read('lifecycle.txt')).toBe('created');
+    expect(await sp.exists('lifecycle.txt')).toBe(true);
+    await sp.delete('lifecycle.txt');
+    expect(await sp.read('lifecycle.txt')).toBeUndefined();
+    expect(await sp.exists('lifecycle.txt')).toBe(false);
+  });
+
+  it('InMemory list + listSync match async/sync behavior', async () => {
+    const sp = new InMemoryStorageProvider();
+    sp.writeSync('dir/a.txt', '');
+    sp.writeSync('dir/b.txt', '');
+    sp.writeSync('dir/sub/c.txt', '');
+    
+    const asyncList = (await sp.list('dir')).sort();
+    const syncList = sp.listSync('dir').sort();
+    expect(asyncList).toEqual(syncList);
+    expect(asyncList).toEqual(['a.txt', 'b.txt', 'sub']);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cross-provider contract — both providers behave identically
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('cross-provider contract', () => {
+  let fsRoot: string;
+
+  beforeEach(async () => {
+    fsRoot = await mkdtemp(join(tmpdir(), 'squad-xprovider-'));
+  });
+
+  afterEach(async () => {
+    await rm(fsRoot, { recursive: true, force: true });
+  });
+
+  function providers(): Array<{ name: string; sp: StorageProvider }> {
+    return [
+      { name: 'FSStorageProvider', sp: new FSStorageProvider(fsRoot) },
+      { name: 'InMemoryStorageProvider', sp: new InMemoryStorageProvider() },
+    ];
+  }
+
+  it('read returns undefined for missing files', async () => {
+    for (const { name, sp } of providers()) {
+      expect(await sp.read('missing.txt'), `${name}`).toBeUndefined();
+    }
+  });
+
+  it('write + read roundtrip', async () => {
+    for (const { name, sp } of providers()) {
+      await sp.write('round.txt', 'trip');
+      expect(await sp.read('round.txt'), `${name}`).toBe('trip');
+    }
+  });
+
+  it('list returns empty for missing dir', async () => {
+    for (const { name, sp } of providers()) {
+      expect(await sp.list('no-dir'), `${name}`).toEqual([]);
+    }
+  });
+
+  it('listSync returns empty for missing dir', () => {
+    for (const { name, sp } of providers()) {
+      expect(sp.listSync('no-dir'), `${name}`).toEqual([]);
+    }
+  });
+
+  it('delete is no-op for missing file', async () => {
+    for (const { sp } of providers()) {
+      await expect(sp.delete('ghost.txt')).resolves.toBeUndefined();
+    }
+  });
+
+  it('existsSync returns false for missing', () => {
+    for (const { sp } of providers()) {
+      expect(sp.existsSync('nope')).toBe(false);
+    }
+  });
+
+  it('readSync returns undefined for missing', () => {
+    for (const { sp } of providers()) {
+      expect(sp.readSync('nope')).toBeUndefined();
+    }
   });
 });
