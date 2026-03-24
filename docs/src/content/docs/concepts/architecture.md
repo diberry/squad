@@ -280,6 +280,106 @@ graph TB
 
 ---
 
+## Git Worktree Lifecycle
+
+When worktree mode is enabled, Squad creates a dedicated git worktree for each issue. This isolates branch work, avoids disrupting the main checkout, and allows multiple agents to collaborate safely on the same issue. Here's the complete lifecycle:
+
+```mermaid
+graph TB
+    subgraph TRIGGER["🎯 Trigger"]
+        ISSUE["Issue assigned<br/>label: squad:agent<br/>e.g., #42"]
+    end
+    
+    subgraph SETUP["🏗️ Worktree Setup"]
+        CHECK["Check worktree mode<br/>squad.config.ts"]
+        LIST["Check existing<br/>git worktree list"]
+        EXISTS{Worktree<br/>exists?}
+        CREATE["Create worktree<br/>git worktree add ../squad-42<br/>-b squad/42-fix-login main"]
+        REUSE["Reuse existing<br/>worktree"]
+        LINK["Link node_modules<br/>ln -s ../squad/node_modules"]
+    end
+    
+    subgraph WORK["👥 Agent Work (Parallel)"]
+        AGENT1["Agent 1<br/>reads charter + history"]
+        AGENT2["Agent 2<br/>shares same worktree"]
+        SHARED[".squad/ state<br/>worktree-local<br/>separate per branch"]
+    end
+    
+    subgraph COMMIT["📝 Commit & Push"]
+        MODIFY["Modify files<br/>in worktree"]
+        COMMIT_MSG["git commit<br/>message with Co-authored trailer"]
+        PUSH["git push origin squad/42-fix-login"]
+    end
+    
+    subgraph PR["🔀 PR Flow"]
+        CREATE_PR["gh pr create<br/>--base dev"]
+        REVIEW["PR reviewed<br/>agents + humans"]
+        MERGE["Merge PR<br/>to dev/main"]
+    end
+    
+    subgraph MERGE_STATE["🔗 State Merge"]
+        MERGE_DECISION["Merge .squad/ via<br/>merge=union driver<br/>(append-only)"]
+        DECISIONS_COMBINED["decisions.md +<br/>history.md combined"]
+    end
+    
+    subgraph CLEANUP["🧹 Cleanup"]
+        REMOVE_WT["git worktree remove<br/>{worktree_path}"]
+        DELETE_BRANCH["git branch -d<br/>squad/42-fix-login"]
+    end
+    
+    subgraph STRATEGY["Strategy Comparison"]
+        LOCAL["worktree-local<br/>(Recommended)<br/>Each branch has own<br/>.squad/ state<br/>Merges via git"]
+        MAIN["main-checkout<br/>All worktrees share<br/>main repo's .squad/<br/>Simpler but<br/>NOT concurrent-safe"]
+    end
+    
+    TRIGGER --> CHECK
+    CHECK --> LIST
+    LIST --> EXISTS
+    EXISTS -->|Yes| REUSE
+    EXISTS -->|No| CREATE
+    REUSE & CREATE --> LINK
+    LINK --> AGENT1 & AGENT2
+    AGENT1 & AGENT2 --> SHARED
+    SHARED --> MODIFY
+    MODIFY --> COMMIT_MSG
+    COMMIT_MSG --> PUSH
+    PUSH --> CREATE_PR
+    CREATE_PR --> REVIEW
+    REVIEW --> MERGE
+    MERGE --> MERGE_DECISION
+    MERGE_DECISION --> DECISIONS_COMBINED
+    DECISIONS_COMBINED --> REMOVE_WT
+    REMOVE_WT --> DELETE_BRANCH
+    
+    DELETE_BRANCH -.-> STRATEGY
+    
+    style TRIGGER fill:#3498db
+    style SETUP fill:#2ecc71
+    style WORK fill:#f39c12
+    style COMMIT fill:#9b59b6
+    style PR fill:#e74c3c
+    style MERGE_STATE fill:#1abc9c
+    style CLEANUP fill:#e67e22
+    style STRATEGY fill:#34495e
+```
+
+**Worktree-local vs main-checkout strategy:**
+
+- **Worktree-local** (recommended) — Each worktree gets its own `.squad/` branch-local state. When the PR merges, the `merge=union` driver combines decisions and histories from all branches automatically. Safe for concurrent multi-agent sessions.
+- **Main-checkout** — All worktrees share the main repo's `.squad/` state on disk. Changes are immediately visible but **not safe for concurrent work**—use only with one active session at a time.
+
+**Key steps:**
+
+1. **Check worktree mode** — Look for `worktrees: true` in config or `SQUAD_WORKTREES` env var.
+2. **Reuse if exists** — Before creating, run `git worktree list` to check if worktree for this issue already exists.
+3. **Create branch** — `git worktree add {path} -b squad/{issue}-{slug} {base_branch}`.
+4. **Link dependencies** — Symlink `node_modules` from main repo to save build time.
+5. **Multiple agents** — 2+ agents can safely work in the same worktree for the same issue.
+6. **Merge state** — `.squad/` files merge via `merge=union` driver (append-only, no conflicts).
+7. **Cleanup** — After PR merge, remove worktree and delete branch.
+
+---
+
 ## Casting & Persistent Naming
 
 Agents have permanent names from a thematic universe (e.g., Apollo 13 / NASA Mission Control). Names persist across sessions and repos:
