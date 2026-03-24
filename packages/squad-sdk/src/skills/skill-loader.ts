@@ -98,7 +98,7 @@ export function loadSkillsFromDirectory(
   const skills: SkillDefinition[] = [];
   let entries: string[];
   try {
-    // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
+    // TODO: readdirSync with withFileTypes needed — listSync() exists but lacks Dirent support (#481)
     entries = readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
   } catch {
     return [];
