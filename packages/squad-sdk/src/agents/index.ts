@@ -166,6 +166,9 @@ export class CharterCompiler {
    */
   async compileAll(teamRoot: string): Promise<AgentCharter[]> {
     const agentsDir = join(teamRoot, '.squad', 'agents');
+    if (!await this.storage.exists(agentsDir)) {
+      throw new Error(`Agents directory not found: ${agentsDir}`);
+    }
     const entries = await this.storage.list(agentsDir);
     const charters: AgentCharter[] = [];
 

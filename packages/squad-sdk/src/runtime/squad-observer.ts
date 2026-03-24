@@ -104,7 +104,7 @@ export class SquadObserver {
       eventBus: config.eventBus,
       debounceMs: config.debounceMs ?? 200,
     };
-    this.storage = config.storage ?? new FSStorageProvider(config.squadDir);
+    this.storage = config.storage ?? new FSStorageProvider();
   }
 
   /**
@@ -113,7 +113,7 @@ export class SquadObserver {
    */
   start(): void {
     if (this.running) return;
-    if (!this.storage.existsSync('.')) {
+    if (!this.storage.existsSync(this.config.squadDir)) {
       throw new Error(`Squad directory not found: ${this.config.squadDir}`);
     }
 
@@ -199,7 +199,7 @@ export class SquadObserver {
   private processChange(filename: string): void {
     const absolutePath = path.join(this.config.squadDir, filename);
     const category = classifyFile(filename);
-    const exists = this.storage.existsSync(filename);
+    const exists = this.storage.existsSync(absolutePath);
 
     // Determine change type — basic heuristic since fs.watch doesn't tell us
     const changeType: SquadFileChange['changeType'] = exists ? 'modified' : 'deleted';
