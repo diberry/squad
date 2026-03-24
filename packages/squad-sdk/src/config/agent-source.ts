@@ -3,8 +3,9 @@
  * Pluggable agent discovery and loading
  */
 
-import * as fs from 'fs/promises';
 import * as path from 'path';
+import type { StorageProvider } from '../storage/index.js';
+import { FSStorageProvider } from '../storage/index.js';
 
 export interface AgentSource {
   readonly name: string;
@@ -83,7 +84,10 @@ export class LocalAgentSource implements AgentSource {
   readonly name = 'local';
   readonly type = 'local' as const;
 
-  constructor(private basePath: string) {}
+  constructor(
+    private basePath: string,
+    private storage: StorageProvider = new FSStorageProvider(),
+  ) {}
 
   /**
    * Resolve the agents directory, preferring .squad/agents over .ai-team/agents.
@@ -91,12 +95,10 @@ export class LocalAgentSource implements AgentSource {
   private async resolveAgentsDir(): Promise<string | null> {
     for (const dir of AGENT_DIRS) {
       const fullPath = path.join(this.basePath, dir);
-      try {
-        const stat = await fs.stat(fullPath);
-        if (stat.isDirectory()) return fullPath;
-      } catch {
-        // directory doesn't exist, try next
-      }
+      // TODO: storage.exists() cannot distinguish files from directories;
+      // original used fs.stat().isDirectory(). Acceptable here because
+      // AGENT_DIRS entries are always directories in practice.
+      if (await this.storage.exists(fullPath)) return fullPath;
     }
     return null;
   }
@@ -106,27 +108,23 @@ export class LocalAgentSource implements AgentSource {
     if (!agentsDir) return [];
 
     const manifests: AgentManifest[] = [];
-    let entries: import('fs').Dirent[];
+    let entries: string[];
     try {
-      entries = await fs.readdir(agentsDir, { withFileTypes: true });
+      entries = await this.storage.list(agentsDir);
     } catch {
       return [];
     }
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const charterPath = path.join(agentsDir, entry.name, 'charter.md');
-      try {
-        const content = await fs.readFile(charterPath, 'utf-8');
-        const meta = parseCharterMetadata(content);
-        manifests.push({
-          name: meta.name || entry.name,
-          role: meta.role || 'agent',
-          source: 'local',
-        });
-      } catch {
-        // Skip agents with missing/unreadable charter
-      }
+    for (const entryName of entries) {
+      const charterPath = path.join(agentsDir, entryName, 'charter.md');
+      const content = await this.storage.read(charterPath);
+      if (!content) continue;
+      const meta = parseCharterMetadata(content);
+      manifests.push({
+        name: meta.name || entryName,
+        role: meta.role || 'agent',
+        source: 'local',
+      });
     }
 
     return manifests;
@@ -137,22 +135,13 @@ export class LocalAgentSource implements AgentSource {
     if (!agentsDir) return null;
 
     const charterPath = path.join(agentsDir, name, 'charter.md');
-    let charter: string;
-    try {
-      charter = await fs.readFile(charterPath, 'utf-8');
-    } catch {
-      return null;
-    }
+    const charter = await this.storage.read(charterPath);
+    if (!charter) return null;
 
     const meta = parseCharterMetadata(charter);
 
     // Optionally read history.md
-    let history: string | undefined;
-    try {
-      history = await fs.readFile(path.join(agentsDir, name, 'history.md'), 'utf-8');
-    } catch {
-      // history is optional
-    }
+    const history = await this.storage.read(path.join(agentsDir, name, 'history.md'));
 
     return {
       name: meta.name || name,
@@ -170,11 +159,7 @@ export class LocalAgentSource implements AgentSource {
     const agentsDir = await this.resolveAgentsDir();
     if (!agentsDir) return null;
 
-    try {
-      return await fs.readFile(path.join(agentsDir, name, 'charter.md'), 'utf-8');
-    } catch {
-      return null;
-    }
+    return await this.storage.read(path.join(agentsDir, name, 'charter.md')) ?? null;
   }
 }
 
