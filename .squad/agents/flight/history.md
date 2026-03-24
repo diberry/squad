@@ -19,6 +19,24 @@ When a major incident occurs, file 9+ GitHub issues documenting root causes and 
 
 ### Release Governance Directives (2026-03-23)
 Brady established strict release governance: (1) Surgeon owns all publishing (not Coordinator); (2) strict adherence to playbook; (3) document problems so they don't recur; (4) CI/CD is top priority; (5) written playbooks for everything; (6) no improvisation. Captured for team memory and enforced in team decisions.
+### StorageProvider Phase 2 Planning — SquadState Facade (2026-03-28)
+
+**Scope:** Phase 1 delivered low-level I/O abstraction (StorageProvider + 3 impls + 218 tests). Phase 2 builds a domain-typed facade (SquadState) on top, adding:
+- Typed domain entities (Agent, Decision, HistoryEntry, RoutingRule)
+- CollectionEntityMap enforcing compile-time type safety for collections
+- Round-trip markdown parsers/serializers for all `.squad/` documents
+- AgentHandle pattern for typed agent state access
+- Upstream integration points (charter-compiler, casting-engine, history-shadow)
+
+**Key insight:** Phase 2 operates at the *domain level*, not file paths. Reuse existing markdown parsing logic from config/agents modules rather than rewriting. Three independent work streams can parallelize (types, I/O, facade).
+
+**Task breakdown:** 21 tasks across 3 parallel streams + integration + tests. SquadState class is the merge point; wiring happens post-facade. No breaking changes to public SDK API — all integration is internal refactoring.
+
+**Risk mitigations:** Keep Phase 1 StorageProvider untouched; inherit append-only atomicity from Phase 1; run contract tests on all 3 impls; zero `@ts-ignore` in state layer; target 368+ passing tests (Phase 1 + Phase 2 contract + IO).
+
+**Phasing:** 3 weeks. Week 1 types + IO, Week 2 facade + tests, Week 3 wiring + validation. Agent assignments: CONTROL (types), EECOM (facade + wiring), FIDO (tests).
+
+Plan written to `.squad/decisions/inbox/flight-phase2-plan.md`.
 
 ### Adoption Tracking Architecture
 Three-tier opt-in system: Tier 1 (aggregate-only, `.github/adoption/`) ships first; Tier 2 (opt-in registry) designed next; Tier 3 (public showcase) launches when ≥5 projects opt in. `.squad/` is for team state only, not adoption data. Never list individual repos without owner consent.
