@@ -4,7 +4,6 @@
  */
 
 import { join, basename } from 'node:path';
-import { readdirSync } from 'node:fs';
 import type { StorageProvider } from '../storage/storage-provider.js';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 
@@ -88,8 +87,7 @@ function readAgents(projectDir: string, storage: StorageProvider): AgentCharter[
   const agentsDir = join(projectDir, '.github', 'agents');
   if (!storage.existsSync(agentsDir)) return [];
 
-  // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
-  const files = readdirSync(agentsDir).filter(f => f.endsWith('.md'));
+  const files = storage.listSync(agentsDir).filter(f => f.endsWith('.md'));
   const agents: AgentCharter[] = [];
   for (const f of files) {
     const content = storage.readSync(join(agentsDir, f));
@@ -150,16 +148,15 @@ export function exportSquadConfig(
       }
     }
     if (source) {
-      // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
       if (source.layout === 'nested') {
-        const entries = readdirSync(source.dir);
+        const entries = storage.listSync(source.dir);
         for (const name of entries) {
           if (storage.existsSync(join(source.dir, name, 'SKILL.md'))) {
             skills.push(name);
           }
         }
       } else {
-        const skillFiles = readdirSync(source.dir).filter(f => f.endsWith('.md'));
+        const skillFiles = storage.listSync(source.dir).filter(f => f.endsWith('.md'));
         skills.push(...skillFiles.map(f => basename(f, '.md')));
       }
     }

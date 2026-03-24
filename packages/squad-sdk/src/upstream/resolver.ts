@@ -9,7 +9,6 @@
  * @module upstream/resolver
  */
 
-import { readdirSync } from 'node:fs'; // TODO: Remove when StorageProvider gains listSync (#481)
 import path from 'node:path';
 import type { StorageProvider } from '../storage/storage-provider.js';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
@@ -67,8 +66,7 @@ function readSkills(squadDir: string, storage: StorageProvider): Array<{ name: s
 
   const skills: Array<{ name: string; content: string }> = [];
   try {
-    // TODO: Replace readdirSync with storage.listSync when StorageProvider gains sync list (#481)
-    for (const entry of readdirSync(source.dir)) {
+    for (const entry of storage.listSync(source.dir)) {
       const skillFile = source.layout === 'nested'
         ? path.join(source.dir, entry, 'SKILL.md')
         : path.join(source.dir, entry);
