@@ -122,6 +122,27 @@ Full audit of the Astro-based docs site. Key patterns and findings:
 **Navigation:** Zero dead nav links (every nav slug has a matching file). All orphan pages are linked internally from other pages so they are reachable — but not browseable via sidebar.
 
 📌 **Team update (2026-03-22T12:46:00Z):** Booster implemented automated version sync for `whatsnew.md` (finding #1). Script reads `package.json` version, updates "Current Release" heading on every prebuild, with Vitest test gate. Heading now correct (v0.8.25+), will stay in sync automatically on all future builds. Finding #1 resolved.
+
+### JSDoc API Reference Research (2026-03-23)
+
+Completed research on generating JSDoc-based API reference documentation for Squad SDK. Key findings:
+
+**Current State:** Squad SDK has 60–80% JSDoc coverage across major modules (state: 81%, config: 8%). 136 TypeScript source files, no existing TypeDoc config.
+
+**Tool Recommendation:** **TypeDoc + typedoc-plugin-markdown** — no Starlight migration needed. Seamless integration with existing Astro 5 + Tailwind 4 + Pagefind. Markdown output drops directly into content collections. Auto-generates via Astro integration hook on `npm run build`.
+
+**Alternatives Evaluated:** 
+- ❌ Starlight migration: would break existing docs structure and custom branding
+- ❌ api-extractor: overkill for open-source SDK; designed for strict monorepo contracts
+
+**Effort Estimate:** 5–6 hours (setup only) → 13–18 hours (setup + JSDoc improvements) → 15–22 hours (with CI/CD automation).
+
+**StorageProvider & State Module:** Phase 2 state layer is API-docs ready (81% coverage, well-structured types, clear interface contract). Gaps: add @param/@return tags to state/io functions.
+
+**URL Structure:** `/api/classes/squad-coordinator/`, `/api/interfaces/storage-provider/`, etc. Pagefind indexes automatically.
+
+**Deliverable:** Full research at `docs/research/jsdoc-api-reference-research.md` with configuration templates, implementation roadmap (4 phases), and tool comparison matrix. Decision summary at `.squad/decisions/inbox/pao-jsdoc-research.md`.
+
 ### Issue Triage (2026-03-22T06:44:01Z)
 
 **Flight triaged 6 unlabeled issues and filed 1 new issue.**
@@ -214,3 +235,37 @@ Teams MCP critical update: Office 365 Connectors retired Dec 2024 → Power Auto
 **Commit:** `docs: rewrite PUBLISH-README.md as release playbook (#564)` on squad/release-hardening branch.
 
 📌 **Team update (2026-03-24T06-release-hardening):** Release playbook rewrite (#564) completed. PUBLISH-README.md transformed from v0.8.22 stub to living 232-line playbook with 11 sections: Overview, Pre-Flight Checklist, Publish via CI (recommended), Publish via workflow_dispatch, Insider Channel, Workspace Publish Policy, Manual Local Publish (emergency fallback), 422 Race Condition & npm Errors, Post-Publish Verification, Version Bump After Publish, Legacy Publish Scripts. Absorbed issues #558, #559, #560 into unified decision tree. Microsoft Style Guide enforced; version-agnostic; all commands runnable. Scannability: checklist format, bash code blocks, error reference table. Committed to squad/release-hardening.
+### JSDoc API Reference PRD (2026-03-24)
+
+Completed full PRD based on research findings. **Document:** `docs/research/jsdoc-api-reference-prd.md`.
+
+**Structure (8 major sections):**
+1. Problem Statement — 5 concrete gaps (no dedicated API ref, uneven JSDoc coverage, discoverability, StorageProvider docs lag, Pagefind misses API symbols)
+2. Goals & Success Metrics — 4 primary goals, 8 measurable targets (100% JSDoc coverage, 50+ auto-documented symbols, searchable API)
+3. Key User Scenarios — 4 personas (SDK consumer, contributor, agent author, evaluator) with today vs future workflows
+4. Scope — clear in/out boundaries (TypeDoc + JSDoc improvements in; CLI ref gen, Starlight migration, multi-version docs out)
+5. Approach — architecture (TypeDoc in Astro hook), config template (typedoc.json), output/URL structure, build integration code, JSDoc improvement plan with effort table
+6. Implementation Phases — 4 phases: Phase 0 (setup/PoC, 1–2 days), Phase 1 (JSDoc audit, 5–6 hrs), Phase 2 (integration/nav, 3–4 hrs), Phase 3 (CI/CD optional, 2–4 hrs)
+7. Risks & Mitigations — 7 risks (TypeDoc breaks on changes, stale markdown, link validation strictness, Pagefind misses, config maintenance, build perf, breaking changes) with specific mitigations
+8. Architecture Review section — 4 items for CONTROL to review (TypeScript export strategy, TypeDoc config, JSDoc standards, stability commitments)
+
+**Key decisions baked into PRD:**
+- TypeDoc + typedoc-plugin-markdown (not Starlight, not api-extractor) — zero migration, Markdown-first, Pagefind-compatible
+- Astro integration hook auto-runs TypeDoc on build (single step: `npm run build`)
+- Generated output goes to docs/src/content/docs/reference/api/ (one file per symbol)
+- JSDoc improvement priority: config/schema.ts (8% → 100%), state/io/ functions (@param/@return tags), StorageProvider interface audit
+- Total effort: 13–18 hours (8–12 JSDoc + 5–6 setup)
+
+**Style & Tone:**
+- Written for Flight-level review/approval (actionable, opinionated, specific)
+- Includes code examples (typedoc.json, Astro hook, JSDoc template)
+- References research doc for detailed findings
+- PRD as decision/commitment document — not advisory, but directive
+
+**Learnings:**
+- PRD structure differs from research (research = exploratory findings/options; PRD = chosen path + tactical roadmap)
+- Recommendation section in PRD serves as binding decision (TypeDoc chosen, rationale locked in)
+- Architecture Review section ensures TypeScript team reviews export strategy and JSDoc standards early — prevents rework later
+- Four-phase approach breaks large effort into digestible increments (Phase 0 validation before JSDoc audit helps mitigate risk of TypeDoc setup failing)
+
+**Decision:** PRD approved for handoff to implementation team. Ready for execution on next sprint.
