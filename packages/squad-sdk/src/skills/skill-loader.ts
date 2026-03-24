@@ -17,6 +17,7 @@
  */
 
 import * as path from 'node:path';
+import { readdirSync } from 'node:fs';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 import type { StorageProvider } from '../storage/storage-provider.js';
 import { normalizeEol } from '../utils/normalize-eol.js';
@@ -87,21 +88,18 @@ export function parseFrontmatter(
  *     skill-b/SKILL.md
  *
  * Malformed or missing files are silently skipped.
- *
- * TODO: Callers must be updated to await this function (now async).
- * Affected: skills/index.ts re-export, parsers.ts, samples/skill-discovery,
- * test/skills.test.ts, test/parser-contracts.test.ts, test/crlf-normalization.test.ts
  */
-export async function loadSkillsFromDirectory(
+export function loadSkillsFromDirectory(
   dir: string,
   storage: StorageProvider = new FSStorageProvider(),
-): Promise<SkillDefinition[]> {
-  if (!await storage.exists(dir)) return [];
+): SkillDefinition[] {
+  if (!storage.existsSync(dir)) return [];
 
   const skills: SkillDefinition[] = [];
   let entries: string[];
   try {
-    entries = await storage.list(dir);
+    // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
+    entries = readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
   } catch {
     return [];
   }
@@ -110,7 +108,7 @@ export async function loadSkillsFromDirectory(
     const skillFile = path.join(dir, entry, 'SKILL.md');
 
     try {
-      const raw = await storage.read(skillFile);
+      const raw = storage.readSync(skillFile);
       if (raw === undefined) continue;
       const skill = parseSkillFile(entry, raw);
       if (skill) skills.push(skill);

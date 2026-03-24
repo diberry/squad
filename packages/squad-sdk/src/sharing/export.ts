@@ -4,6 +4,7 @@
  */
 
 import { join, basename } from 'node:path';
+import { readdirSync } from 'node:fs';
 import type { StorageProvider } from '../storage/storage-provider.js';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 
@@ -74,23 +75,24 @@ export function anonymizeContent(content: string): string {
   return result;
 }
 
-async function readTeamConfig(projectDir: string, storage: StorageProvider): Promise<Record<string, unknown>> {
+function readTeamConfig(projectDir: string, storage: StorageProvider): Record<string, unknown> {
   const teamFile = join(projectDir, '.ai-team', 'team.md');
-  const content = await storage.read(teamFile);
+  const content = storage.readSync(teamFile);
   if (content !== undefined) {
     return { teamFile: content };
   }
   return {};
 }
 
-async function readAgents(projectDir: string, storage: StorageProvider): Promise<AgentCharter[]> {
+function readAgents(projectDir: string, storage: StorageProvider): AgentCharter[] {
   const agentsDir = join(projectDir, '.github', 'agents');
-  if (!(await storage.exists(agentsDir))) return [];
+  if (!storage.existsSync(agentsDir)) return [];
 
-  const files = (await storage.list(agentsDir)).filter(f => f.endsWith('.md'));
+  // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
+  const files = readdirSync(agentsDir).filter(f => f.endsWith('.md'));
   const agents: AgentCharter[] = [];
   for (const f of files) {
-    const content = await storage.read(join(agentsDir, f));
+    const content = storage.readSync(join(agentsDir, f));
     if (content === undefined) continue;
     const name = basename(f, '.md').replace('.agent', '');
     agents.push({ name, role: name, content });
@@ -98,9 +100,9 @@ async function readAgents(projectDir: string, storage: StorageProvider): Promise
   return agents;
 }
 
-async function readRoutingRules(projectDir: string, storage: StorageProvider): Promise<ExportRoutingRule[]> {
+function readRoutingRules(projectDir: string, storage: StorageProvider): ExportRoutingRule[] {
   const routingFile = join(projectDir, '.ai-team', 'routing.md');
-  const content = await storage.read(routingFile);
+  const content = storage.readSync(routingFile);
   if (content === undefined) return [];
 
   const rules: ExportRoutingRule[] = [];
@@ -116,15 +118,12 @@ async function readRoutingRules(projectDir: string, storage: StorageProvider): P
 
 /**
  * Export a Squad project configuration as a bundle.
- *
- * TODO: Callers (test/sharing.test.ts, test/e2e-migration.test.ts) must be
- * updated to await this function after the sync→async migration.
  */
-export async function exportSquadConfig(
+export function exportSquadConfig(
   projectDir: string,
   options?: ExportOptions,
   storage: StorageProvider = new FSStorageProvider(),
-): Promise<ExportBundle> {
+): ExportBundle {
   const opts: Required<ExportOptions> = {
     includeHistory: options?.includeHistory ?? false,
     includeSkills: options?.includeSkills ?? true,
@@ -132,9 +131,9 @@ export async function exportSquadConfig(
     anonymize: options?.anonymize ?? false,
   };
 
-  const config = await readTeamConfig(projectDir, storage);
-  let agents = await readAgents(projectDir, storage);
-  let routingRules = await readRoutingRules(projectDir, storage);
+  const config = readTeamConfig(projectDir, storage);
+  let agents = readAgents(projectDir, storage);
+  let routingRules = readRoutingRules(projectDir, storage);
   const skills: string[] = [];
 
   if (opts.includeSkills) {
@@ -145,21 +144,22 @@ export async function exportSquadConfig(
     ];
     let source: typeof skillSources[number] | undefined;
     for (const s of skillSources) {
-      if (await storage.exists(s.dir)) {
+      if (storage.existsSync(s.dir)) {
         source = s;
         break;
       }
     }
     if (source) {
+      // TODO: StorageProvider lacks listSync — residual readdirSync (#481)
       if (source.layout === 'nested') {
-        const entries = await storage.list(source.dir);
+        const entries = readdirSync(source.dir);
         for (const name of entries) {
-          if (await storage.exists(join(source.dir, name, 'SKILL.md'))) {
+          if (storage.existsSync(join(source.dir, name, 'SKILL.md'))) {
             skills.push(name);
           }
         }
       } else {
-        const skillFiles = (await storage.list(source.dir)).filter(f => f.endsWith('.md'));
+        const skillFiles = readdirSync(source.dir).filter(f => f.endsWith('.md'));
         skills.push(...skillFiles.map(f => basename(f, '.md')));
       }
     }

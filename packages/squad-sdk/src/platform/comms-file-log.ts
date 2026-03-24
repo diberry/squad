@@ -9,6 +9,7 @@
  */
 
 import { join } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 import type { StorageProvider } from '../storage/storage-provider.js';
 import { safeTimestamp } from '../utils/safe-timestamp.js';
@@ -23,7 +24,8 @@ export class FileLogCommunicationAdapter implements CommunicationAdapter {
     private readonly storage: StorageProvider = new FSStorageProvider(),
   ) {
     this.commsDir = join(squadRoot, '.squad', 'comms');
-    // Directory creation deferred to first write — StorageProvider.write() creates parent dirs.
+    // TODO: StorageProvider lacks mkdirSync — residual fs mkdirSync (#481)
+    mkdirSync(this.commsDir, { recursive: true });
   }
 
   async postUpdate(options: {
