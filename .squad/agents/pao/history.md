@@ -122,6 +122,15 @@ Full audit of the Astro-based docs site. Key patterns and findings:
 **Navigation:** Zero dead nav links (every nav slug has a matching file). All orphan pages are linked internally from other pages so they are reachable — but not browseable via sidebar.
 
 📌 **Team update (2026-03-22T12:46:00Z):** Booster implemented automated version sync for `whatsnew.md` (finding #1). Script reads `package.json` version, updates "Current Release" heading on every prebuild, with Vitest test gate. Heading now correct (v0.8.25+), will stay in sync automatically on all future builds. Finding #1 resolved.
+
+### CI Mermaid Rendering Proposal (2026-03-25)
+
+Researched and proposed CI pipeline for pre-rendering Mermaid diagrams to PNG before docs build. Evaluated three approaches:
+- **Option A:** GitHub Actions pre-build step (CI-only; poor local DX)
+- **Option B:** npm `prebuild` script hook (local + CI; excellent DX)
+- **Option C:** Astro integration plugin (seamless but complex/maintenance burden)
+
+**Recommendation:** Option B (npm prebuild) + Option A (CI safety net). Tool: `@mermaid-js/mermaid-cli` (mmdc). Source files: `.mmd` in `docs/src/content/docs/*/diagrams/`, output PNGs in `*/images/` (git-ignored). Enables live diagram authoring locally, fresh renders in CI. Proposal doc: `docs/research/ci-mermaid-rendering-proposal.md`. Decision: `.squad/decisions/inbox/pao-ci-mermaid.md`.
 ### Issue Triage (2026-03-22T06:44:01Z)
 
 **Flight triaged 6 unlabeled issues and filed 1 new issue.**
