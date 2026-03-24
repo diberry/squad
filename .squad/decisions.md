@@ -7653,3 +7653,255 @@ Meta-references to "npm publish" in echo, grep, and YAML `name:` lines are exclu
 - `init --global` now suppresses GitHub workflows (they're meaningless in the global config dir).
 - `RunInitOptions` has a new `isGlobal` field.
 
+## Phase 2 State Facade Decisions (2026-03-24)
+
+### CI Workflow Audit — March 2026
+**By:** Booster (CI/CD Engineer)  
+**Date:** 2026-03-23
+
+**Summary:** CI is NOT a disaster. 15 workflow files total — 7 load-bearing (essential), 7 administrative, 1 ghost (to delete).
+
+**Key findings:**
+- ✅ Workflow set is lean, well-organized, non-overlapping
+- 🚨 Ghost workflow: `publish-npm.yml` deleted but GitHub index still lists it (returns 422)
+- ⚠️ Implicit ordering: `squad-release` and `squad-npm-publish` both trigger on `release: published`, no explicit dependency
+- ✅ Type safety strong, Zero hidden tech debt
+
+**Action items:**
+1. Delete ghost `publish-npm.yml` via GitHub API
+2. Decide: keep or delete `ci-rerun.yml` (optional, useful for debugging)
+3. Optional: add explicit job dependency from `squad-release` to `squad-npm-publish`
+
+**Authorship:** bradygaster (65%), Copilot (10%), others (24%)
+
+---
+
+### Pre-publish Preflight Gate
+**By:** Booster (CI/CD Engineer)  
+**Date:** 2026-03-23
+
+**Decision:** Added `preflight` job to `squad-npm-publish.yml` that runs BEFORE all publish jobs.
+
+**What it does:**
+1. Scans all `packages/*/package.json` for `file:` references in any dependency section
+2. Validates all versions are valid semver
+3. Blocks entire publish pipeline if any violation found
+
+**Rationale:** v0.9.1 release shipped with `file:` references (local monorepo paths), breaking global installs. Preflight catches this at zero cost (no npm ci, no build — just JSON reads).
+
+**Impact:** All squad members — publish pipeline will now reject PRs with `file:` references in dependencies.
+
+---
+
+### State Module Type Naming
+**By:** CONTROL (TypeScript Engineer)  
+**Date:** 2026-03-24
+
+**Decisions:**
+1. **`StateError` not `StorageError`** — New error base class avoids collision with existing `StorageError`
+2. **Aliased barrel exports** — Main SDK barrel re-exports state types with aliases (`StateTeamConfig`, etc.) to avoid namespace conflicts
+3. **`ReadonlyMap` for ownership** — `RoutingConfig.moduleOwnership` uses `ReadonlyMap<string, string>` to prevent mutation
+
+**Impact:** No breaking changes; future SquadState implementation will be generic over `CollectionName`
+
+---
+
+### User Directive: Release Governance
+**By:** Brady (via Copilot)  
+**Date:** 2026-03-23T10:08:00Z
+
+**Directives:**
+1. Coordinator should NOT release. Releases are Brady's responsibility.
+2. Strict adherence to same release process every time. No improvisation.
+3. Document problems thoroughly to avoid repeating them.
+4. CI/CD and release quality is TOP priority.
+5. Release scramble logs should be scrubbed — file issues instead.
+6. Every release must follow written, step-by-step playbook.
+
+**Why:** v0.9.0→v0.9.1 incident burned ~8 hours and excessive Actions minutes.
+
+---
+
+### User Directive: No npx in Docs
+**By:** Brady (via Copilot)  
+**Date:** 2026-03-23T00-17-57Z
+
+**Directive:** Stop mentioning npx in README, docs, all user-facing content. Distribution is `npm install -g` only.
+
+**Why:** npx path is deprecated, causes confusion.
+
+---
+
+### History IO Section-Split Strategy
+**By:** EECOM (Core Dev)  
+**Date:** 2026-07-24
+
+**Decision:** `parseHistory()` in `state/io/history-io.ts` uses header-position-based section splitter instead of regex.
+
+**Why:** JavaScript doesn't support `\Z` (Perl end-of-string anchor). Existing regex `(?=^##\s|\Z)` silently fails on last section. IO layer uses `RegExp.exec()` with `g` flag to find headers, then `substring()` between positions — more robust.
+
+**Impact:** Existing `readHistory()` in `history-shadow.ts` NOT modified (per task rules). Bug is latent there but doesn't cause practical issues (appendToHistory always creates sections above existing content).
+
+---
+
+### SquadState Case-Insensitive Lookup
+**By:** EECOM (Core Dev)  
+**Date:** 2026-07-25
+
+**Decision:** `AgentHandle.update()` uses case-insensitive comparison (`toLowerCase()`) for agent lookup.
+
+**Why:** Team.md parser normalizes agent names to kebab-case. Direct comparison fails when calling with display names like `EECOM`. Case-insensitive matching solves this without coupling to parser internals.
+
+---
+
+### `version` Subcommand Handled Inline
+**By:** EECOM (Core Dev)  
+**Date:** 2026-07-15
+
+**Decision:** Handle `squad version` inline in `cli-entry.ts` alongside `--version`/`-v`, not as separate command file.
+
+**Rationale:** Trivial handlers (just print a value) don't warrant their own module. Same output, same code path as `--version`. Follows precedent: `help` is also inline.
+
+---
+
+### JSDoc API Reference PRD Complete
+**By:** PAO (DevRel)  
+**Date:** 2026-03-24
+
+**Decision:** TypeDoc + typedoc-plugin-markdown for API reference generation (not Starlight, not api-extractor).
+
+**Why TypeDoc:**
+- ✅ Zero Astro migration
+- ✅ Markdown-first output
+- ✅ Pagefind-ready
+- ✅ Simple config
+- ✅ Industry standard
+
+**Four-phase roadmap:** Phase 0 (setup), Phase 1 (JSDoc improvements), Phase 2 (Astro integration), Phase 3 (CI automation).
+
+**100% JSDoc coverage required** for all exported symbols before generation.
+
+---
+
+### JSDoc API Reference Research
+**By:** PAO (DevRel)  
+**Date:** 2026-03-24
+
+**Recommendation:** TypeDoc + typedoc-plugin-markdown (no Starlight migration needed).
+
+**JSDoc Coverage Audit:** 60–80% across major modules (state: 81%, config: 8%)
+
+**Setup Strategy:**
+1. Install TypeDoc + markdown plugin
+2. Create `typedoc.json` at project root
+3. Add Astro integration hook to `docs/astro.config.mjs`
+4. `npm run build` auto-generates API docs
+
+**Effort:** 5–6 hours setup only; 13–18 hours with JSDoc improvements
+
+---
+
+### npm-Only Distribution (No npx)
+**By:** PAO (DevRel)  
+**Date:** 2026
+
+**Decision:** All user-facing docs use `npm install -g @bradygaster/squad-cli` only. No npx references.
+
+**What changed:**
+- Removed all `npx @bradygaster/squad-cli` alternatives
+- Removed all `npx github:bradygaster/squad` (deprecated)
+- Replaced with `npm install -g` for installs, `squad` for usage
+- Insider builds: `npm install -g @bradygaster/squad-cli@insider` + `squad upgrade`
+
+**What was NOT changed:**
+- `npx` for dev tools (changeset, vitest, astro) — those aren't Squad CLI
+- Blog posts, historical docs — reflect what was true at the time
+- `agency` attribution strings — legally required (MIT license)
+
+---
+
+### README is Orientation, Not SDK Reference
+**By:** PAO (DevRel)  
+**Date:** 2025-07-24
+
+**Decision:** README's role is discovery + quick-start. SDK internals belong in docs site.
+
+**What changed:**
+- Removed ~212 lines of SDK deep-dive (duplicates what's in `reference/`)
+- Added compact SDK pointer section with links
+- Added dedicated "Upgrading" section
+- README: 512 → 331 lines
+
+**Going forward:** SDK API surface, hook pipeline, event-driven code → `docs/`. README links out.
+
+---
+
+### v0.9.0 Release Blog Post
+**By:** PAO (DevRel)  
+**Date:** 2026-03-23
+
+**Decision:** Created comprehensive v0.9.0 blog post (`docs/src/content/blog/028-v090-whats-new.md`).
+
+**Messaging:** "Personal Squad, Worktrees, and Cooperative Rate Limiting make multi-agent work safe and scalable at last."
+
+**10 shipped features documented:**
+- Personal Squad + ambient discovery
+- Worktree spawning
+- Machine capability discovery
+- Cooperative rate limiting
+- Economy mode
+- Auto-wire telemetry
+- Issue lifecycle template
+- KEDA external scaler
+- GAP analysis verification
+- Session recovery skill
+
+**Tone:** Factual, not hype. Demos over descriptions. No npx.
+
+---
+
+### v0.9.0 CHANGELOG Organization
+**By:** Surgeon (Release Manager)  
+**Date:** 2026-03-23
+
+**Decision:** v0.9.0 is MAJOR minor version bump (0.8.25 → 0.9.0) justified by 40+ commits, 6+ major features, new governance layer, breaking behavioral changes.
+
+**CHANGELOG organized by capability cluster:**
+- Personal Squad governance (4 entries)
+- Orchestration (worktree + cross-squad)
+- Capability discovery
+- Rate limiting & cost (3 entries)
+- Skills & governance (3 entries)
+- Docs improvements
+
+**Results:** 40+ commits organized, 6+ major features highlighted, 15+ stability fixes categorized.
+
+---
+
+### v0.9.0 → v0.9.1 Release Retrospective
+**By:** Surgeon (Release Manager)  
+**Date:** 2026-03-23
+
+**Incident:** v0.9.0 shipped with broken dependency reference (`file:../squad-sdk` in CLI package.json), hotfixed to v0.9.1. Total elapsed: 8 hours (should have been 10 minutes).
+
+**Root causes:**
+1. **Dependency validation gap** — No pre-publish scan for `file:` references
+2. **GitHub Actions cache race** — workflow_dispatch returned 422 after file deletion
+3. **npm workspace publish hang** — `-w` flag doesn't work with interactive 2FA
+4. **Coordinator decision-making** — Retried failed automation instead of escalating to fallback
+5. **No pre-publish checklist** — Missing dependency/version/CI validation
+
+**Action items (URGENT):**
+1. Add dependency validation to publish workflow (scan for `file:`, validate semver)
+2. Establish npm workspace publish policy (never use `-w` for publish; always `cd` into package)
+3. Mitigate GitHub Actions cache race condition
+4. Define escalation protocol (workflow_dispatch fails 2x → fallback to local publish immediately)
+5. Coordinate release readiness review (pre-flight checklist)
+6. Add smoke test post-publish
+
+**Process changes for next release:**
+1. Pre-publish validation (mandatory)
+2. Simplified publish flow (remove manual workflow_dispatch step)
+3. Explicit publish runbook (human-readable PUBLISH-README.md)
+4. Escalation to fallback (failfast)
+5. Package validation in CI (linter rule for `file:` references)
