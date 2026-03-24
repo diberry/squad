@@ -4,21 +4,6 @@
 
 ## Learnings
 
-### CI Workflow Audit & Preflight Patterns (2026-03-23 Release Incident)
-**Context:** v0.9.0 shipped with broken dependency reference (`file:../squad-sdk` in CLI package.json). Required hotfix. Used incident as opportunity to audit entire CI/CD system.
-
-**Audit findings:** 15 total workflow files. 7 load-bearing (ci, publish, release, preview, promote, insider variants). 7 administrative (triage, assign, labels, heartbeat, docs, link-check). 1 ghost (publish-npm.yml, deleted but GitHub index cached). No duplication. Authorship: 65% Brady, 10% Copilot (v0.9.1 scramble), 25% team.
-
-**Key patterns identified:**
-- Preflight gate (dependency scanning + semver validation) prevents dependency defects
-- Implicit ordering risk: squad-release and squad-npm-publish both trigger on `release: published` with no explicit job dependency (works but fragile)
-- Ghost workflow cleanup: GitHub's workflow index caches file names; deletion doesn't immediately invalidate; must wait 15+ minutes or manually refresh
-
-**Preflight job pattern:** Scans `packages/*/package.json` for:
-1. `file:` references (breaks published packages)
-2. Invalid semver versions (rejects malformed versions)
-Runs before smoke-test and all publish operations. Zero-cost gate (JSON reads only). Clear error messages with remediation instructions.
-
 ### CI Pipeline Status
 149 test files, 3,931 tests passing, ~89s runtime. Only failure: aspire-integration.test.ts (needs Docker daemon — pre-existing, expected). publish.yml triggers on `release: published` event with retry logic for npm registry propagation (5 attempts, 15s sleep).
 
@@ -84,15 +69,6 @@ Analyzed 20 CI runs from March 15. Identified 3 distinct failure categories:
 4. Better failure grouping/attribution in CI UI (distinguish "new gate" vs "regression")
 5. Spell check dictionary maintenance workflow (easier to add known-good usernames/terms)
 
-### whatsnew.md Version Sync — March 22, 2026
-**What was built:** scripts/sync-whatsnew-version.mjs — strips -build.N suffix from package.json version, finds the ## v{X} — Current Release heading in docs/src/content/docs/whatsnew.md, and replaces it with the current clean semver. Idempotent; writes only when changed.
-
-**Test added:** 	est/whatsnew-version-sync.test.ts — Vitest test that asserts the Current Release heading in whatsnew.md matches the stripped package.json version. Fails CI when versions diverge.
-
-**Hook:** Appended 
-ode scripts/sync-whatsnew-version.mjs to the prebuild npm script (runs after bump-build.mjs, so it always sees the bumped version). Also set SKIP_BUILD_BUMP=1 guard pattern documented for CI validate runs.
-
-**Immediate fix:** Updated the stale ## v0.8.2 — Current Release heading to ## v0.8.25 — Current Release to match the actual package.json version at time of work.
 ### CI Workflow Audit — March 23, 2026
 
 **Status:** Conducted full audit of 15 workflow files. Brady's perception ("complete nightmare, 12,000 workflows") is not accurate — the codebase is lean, well-organized, and 99% authored by Brady (bradygaster + Copilot).

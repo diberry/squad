@@ -4,23 +4,6 @@
 
 ## Learnings
 
-### Init scaffolding: casting dir + no-remote stderr (#579) (2025-07-18)
-
-**Context:** `squad init` in a fresh `git init` repo (no remote) printed `error: No such remote 'origin'` to stderr and `squad doctor` reported `casting/registry.json` missing. Two independent bugs in `packages/squad-sdk/src/config/init.ts`.
-
-**Fix 1 — Stderr leak:** Three `execFileSync('git', ['remote', 'get-url', 'origin'])` calls in `initSquad()` were missing `stdio: ['pipe','pipe','pipe']`. The try/catch caught the error but git's stderr still leaked to the console. Added stdio piping to all three call sites (lines ~713, ~732, ~1039).
-
-**Fix 2 — Missing casting files:** The init flow created the `.squad/casting/` directory but never populated it. Added a scaffolding block after directory creation that copies `casting-policy.json`, `casting-registry.json`, and `casting-history.json` from SDK templates (with inline fallbacks). Respects `skipExisting` — never overwrites user files.
-
-**Pattern:** When calling `execFileSync` for a git command inside a try/catch, always add `stdio: ['pipe','pipe','pipe']` to suppress stderr. The catch prevents a crash, but without piped stdio the error message still prints to the user's terminal.
-
-### CLI Version Subcommand Pattern (2026-03-23 Release Incident)
-**Context:** `squad version` returned "Unknown command: version" even though `squad --version` and `squad -v` worked fine. Classic "unwired command" bug but for a flag-to-subcommand gap rather than a missing import.
-
-**Pattern:** When a CLI flag works (`--foo`) but the equivalent subcommand doesn't (`foo`), the fix is almost always a single condition addition in `cli-entry.ts`. No separate command file needed for trivial handlers — inline alongside the flag handler. Added `cmd === 'version'` to the existing `--version`/`-v` condition. Also added `version` to help text command list.
-
-**Why inline works:** Trivial handlers that just print a value don't warrant their own module. Same output, same code path — no reason to split. Avoids adding a file the wiring test would require an import for. Precedent: `help` is also handled inline.
-
 ### `squad version` subcommand (2026-07-15)
 
 **Context:** Running `squad version` returned "Unknown command: version" because the subcommand was never routed in `cli-entry.ts`, even though `--version` and `-v` flags worked fine. Classic "unwired command" bug class, but for a flag-to-subcommand gap rather than a missing import.
@@ -252,19 +235,3 @@ Reviewed and merged PR #486 (two-layer signal handling + 22 tests). Improves gra
 ### Session 2 Summary (2026-03-22)
 
 Executed 3 tasks across 2 waves: economy mode (#500, PR #504), node:sqlite fix (#502, PR #506), rate limit UX (#464, PR #505). All PRs merged to dev.
-
-
-### Personal Squad Init via npx (#576) (2026-03-23)
-
-**Context:** `init --global` (used via npx to set up personal squad) created a full `.squad/` structure at `~/.config/squad/` but never created the `personal-squad/` subdirectory. `resolvePersonalSquadDir()` looks for `personal-squad/`, so subsequent repo-level `init` couldn't discover the user's personal agents.
-
-**Root cause:** Two separate concepts - `init --global` scaffolds a full squad, `personal init` creates `personal-squad/`. The `--global` flag never bridged between them.
-
-**Fix:**
-1. `resolution.ts` - Added `ensurePersonalSquadDir()` idempotent helper to SDK.
-2. `cli-entry.ts` - `init --global` now suppresses workflows and passes `isGlobal` flag.
-3. `init.ts` - After global init, calls `ensurePersonalSquadDir()`. After repo init, detects personal squad.
-4. `personal.ts` - Refactored to reuse `ensurePersonalSquadDir()`.
-5. `resolution.test.ts` - Added 3 tests.
-
-**Pattern:** `resolveGlobalSquadPath()` returns the container; `ensurePersonalSquadDir()` creates the subdirectory the rest of the system looks for.

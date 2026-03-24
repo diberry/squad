@@ -8,29 +8,6 @@ Docs live in docs/ with blog/, concepts/, cookbook/, getting-started/, guide/, f
 
 ## Learnings
 
-### Discussion Triage Patterns (2026-03-23 Release Incident)
-**Context:** v0.9.1 release completed; 15 open discussions analyzing whether community response patterns matched feature releases.
-
-**Pattern identified:** Feature releases without follow-up discussion closes = missed trust opportunity. When you ship features (personal squad, worktrees, economy mode, rate limiting), search discussions for matching feature-requests → respond + close proactively. This signals to community that you listen.
-
-**Triage workflow:**
-1. Map new features to open discussions (which discussions are solved by this release?)
-2. Respond: "This feature is now available in v0.9.1. See docs link."
-3. Close as resolved
-4. Consolidate: if discussion #463 is duplicate of #402, merge responses into #402, close #463
-5. Convert: if discussion reveals a bug or roadmap item, convert to issue with label (e.g., squad:eecom)
-6. Keep: if discussion is feedback or edge case, keep open; respond substantively
-
-**For v0.9.1 release:** 4 closed, 1 consolidated, 2 converted to issue, 8 kept. Result: community sees responsiveness; discussions become productivity tool, not backlog.
-
-**Critical finding:** Teams MCP docs need urgent update — Office 365 Connectors deprecated Dec 2024. Docs must purge old connector references and document Power Automate Workflows path (new successor).
-
-### Chinese README Workflow (2026-03-23 Release Incident)
-Community contributor (PR #572) provided Chinese README translation. Approved and merged as part of v0.9.1 release. Pattern: accept community translations; list contributors in CONTRIBUTORS.md; acknowledge in release notes.
-
-### Teams MCP Urgency Pattern (2026-03-23)
-External tool integrations deprecate. Office 365 Connectors retired Dec 2024. Docs mentioning deprecated tools create support burden and user confusion. Action: audit all external tool integration docs for deprecation; update with successor guidance (Power Automate Workflows for Teams).
-
 ### Blog Post Format
 YAML frontmatter: title, date, author, wave, tags, status, hero. Body: experimental warning, What Shipped, Why This Matters, Quick Stats, What's Next. 200-400 words for infrastructure releases. No hype — explain value.
 
@@ -94,34 +71,12 @@ Evaluated four docs pages from PR #331 (Tamir's blog analysis) against Squad-spe
 ### Boundary Review Execution (v0.8.26)
 Executed boundary review findings from PR #331: (1) Deleted ralph-operations.md (infrastructure around Squad, not Squad itself — moved to IRL); (2) Deleted proactive-communication.md (external tools/webhooks — moved to IRL); (3) Reframed issue-templates.md intro to clarify "GitHub feature configured for Squad" not "Squad feature"; (4) Updated EXPECTED_SCENARIOS in docs-build.test.ts to match remaining files. Pattern reinforced: boundary review = remove external infrastructure docs, reframe platform integration docs to clarify whose feature it is, keep Squad behavior/config docs. Changes staged for commit.
 
-### Docs Catalog Audit (2026-03-22)
-Full audit of the Astro docs site identified critical quality and navigation gaps. **Findings:** 0 dead nav links (healthy); 15 orphaned pages not discoverable via sidebar (FAQ, guides, reference pages, 6 legacy root files); 3 stale/broken pages using deprecated install syntax; 5 duplicate content conflicts. **Top 5 Actions:** (1) Add CI test to enforce nav coverage — catch orphaned pages automatically; (2) Delete 6 root-level legacy files (guide.md, sample-prompts.md, tips-and-tricks.md, tour-*.md) — deprecated syntax and not in nav; (3) Make whatsnew.md a release checklist artifact — current report (v0.8.2) vs actual (v0.8.26+) erodes trust; (4) Update insider-program.md to current install method — replace deprecated `npx github:` syntax; (5) Resolve choose-your-interface vs choosing-your-path duplication — one canonical page rule. **Skill Created:** docs-catalog-audit (low confidence; audit framework needs iteration). **Decision:** Merged into decisions.md for team adoption.
-
-### Docs Fire Fixes (post-audit, 2026-03-22)
-Fixed four fires from the catalog audit: (1) Updated `insider-program.md` — replaced all deprecated `npx github:bradygaster/squad#insider` commands with `npm install -g @bradygaster/squad-cli@insider`, and all `.ai-team/` references with `.squad/`; (2) Added six orphaned pages to `navigation.ts` — `guide/faq`, `guide/build-autonomous-agent`, `features/built-in-roles`, `features/context-hygiene`, `features/issue-templates`, `reference/vscode-troubleshooting`; (3) Deleted five stale root-level files via `git rm` (`guide.md`, `sample-prompts.md`, `tips-and-tricks.md`, `tour-first-session.md`, `tour-github-issues.md`); (4) Added `vscode-troubleshooting` to EXPECTED_REFERENCE in docs-build.test.ts — all 23 tests pass. New nav entries use sentence-case and "and" over ampersands per team decision.
+### Cross-Org Authentication Docs (v0.8.26)
 Created docs/src/content/docs/scenarios/cross-org-auth.md covering GitHub personal + Enterprise Managed Users (EMU) multi-account auth. Three solutions documented: (1) gh auth switch for manual account toggling; (2) Copilot instructions (.github/copilot-instructions.md) for account mapping documentation; (3) Squad skill pattern for auth error detection and recovery. Covered git credential helpers (per-host and per-org), EMU hostname variations (github.com vs dedicated instances), and common error messages (HTTP 401, authentication required). Added cross-references in troubleshooting.md (new section), enterprise-platforms.md (authentication section), and navigation.ts. Updated test/docs-build.test.ts with 'cross-org-auth' in EXPECTED_SCENARIOS. Pattern: Microsoft Style Guide (sentence-case), "Try this" prompts at top, problem/solution structure, practical examples over abstractions, links to related pages at bottom.
 
 ### Scannability Framework (v0.8.25)
 Format selection is a scannability decision, not style preference. Paragraphs for narrative/concepts (3-4 sentences max). Bullets for scannable items (features, options, non-sequential steps). Tables for comparisons or structured reference data (config, API params). Quotes/indents for callouts/warnings. Decision test: if reader hunts for one item in a paragraph, convert to bullets/table. This framework is now a hard rule in charter under SCANNABILITY REVIEW.
 
-### Docs Catalog Audit (2026)
-Full audit of the Astro-based docs site. Key patterns and findings:
-
-**Orphaned pages (exist but not in navigation.ts):** 15 total — `get-started/choose-your-interface.md`, `guide/faq.md`, `guide/build-autonomous-agent.md`, `guide/github-auth-setup.md`, `features/built-in-roles.md`, `features/context-hygiene.md`, `features/cost-tracking.md`, `features/issue-templates.md`, `reference/vscode-troubleshooting.md`, and 6 root-level legacy files (`guide.md`, `sample-prompts.md`, `tips-and-tricks.md`, `tour-first-session.md`, `tour-github-issues.md`, `tour-gitlab-issues.md`).
-
-**Stale content:** `whatsnew.md` reports v0.8.2 as current; actual is v0.8.26+. `insider-program.md` uses deprecated `npx github:` install format and references old `.ai-team/` directory name throughout.
-
-**Duplicate/overlap pairs:** `choosing-your-path.md` (in nav) vs `choose-your-interface.md` (orphan, more complete); root-level `sample-prompts.md` vs `guide/sample-prompts.md`; root-level `tips-and-tricks.md` vs `guide/tips-and-tricks.md`; root-level `tour-first-session.md` vs `get-started/first-session.md`.
-
-**Content quality:** All actively-navved pages are well-written, follow Microsoft Style Guide, and use correct install commands. Format standards (H1, experimental callout, "Try this" block, HR, H2 sections) are inconsistently applied — some orphaned pages like `built-in-roles.md` and `cost-tracking.md` lack the standard header/callout pattern.
-
-**Structural issues:** `features/team-setup.md` has a duplicate `## How Init Works` heading (merge artifact). `features/streams.md` nav title is "Streams" but H1 is "Squad SubSquads" (mismatch). `guide/faq.md` is a high-value page completely invisible from the sidebar. `features/built-in-roles.md` is a comprehensive roles reference also invisible from nav.
-
-**Gap:** No dedicated FAQ entry point, no changelog page, cookbook section is thin (one page), no user-facing explanation of the NASA Mission Control naming scheme for agents.
-
-**Navigation:** Zero dead nav links (every nav slug has a matching file). All orphan pages are linked internally from other pages so they are reachable — but not browseable via sidebar.
-
-📌 **Team update (2026-03-22T12:46:00Z):** Booster implemented automated version sync for `whatsnew.md` (finding #1). Script reads `package.json` version, updates "Current Release" heading on every prebuild, with Vitest test gate. Heading now correct (v0.8.25+), will stay in sync automatically on all future builds. Finding #1 resolved.
 ### Issue Triage (2026-03-22T06:44:01Z)
 
 **Flight triaged 6 unlabeled issues and filed 1 new issue.**
@@ -142,75 +97,3 @@ Brady directive: README was too long at 512 lines. Cut the SDK deep-dive block (
 
 ### v0.9.0 Release Blog Post (2026-03-23)
 Created `docs/src/content/blog/028-v090-whats-new.md` documenting Squad's biggest release: Personal Squad (ambient agent discovery + Ghost Protocol), Worktree Spawning (isolated branches per issue), Machine Capability Discovery (needs:* label routing), Cooperative Rate Limiting (predictive circuit breaker), Economy Mode (budget-aware model selection), Auto-Wired Telemetry, P0 upgrade fixes, and docs refresh. Blog format: frontmatter (title/date/author/wave/tags/status/hero) → experimental warning → "What Shipped" (10 features with H2 sections + callout boxes) → "Quick Stats" → "Breaking Changes" (none) → "Upgrading" → "What's Next". Messaging: clear, engaging, factual (no marketing fluff). Demonstrated: Personal Squad governance layer, worktree isolation, capability declaration, RAAS traffic-light pattern, economy fallback logic. Docs refresh section emphasized: README from 512→218 lines, dedicated upgrade guide, npx purged, Astro features, Teams MCP refresh, autonomous agents guide. Contributors: diberry (worktree tests + docs), wiisaacs (security review), community. No breaking changes — all additive opt-in features. Test discovery is dynamic (EXPECTED_BLOG uses filesystem scan), so new post auto-discovered; no test file changes needed. Pattern reinforced: each feature needs a story — if you can't explain it, it's not ready. Demos over descriptions (concrete code examples, YAML config blocks, Bash CLI examples).
-
-### Discussion Triage (2026-03-23)
-
-Analyzed 15 open discussions for response strategy:
-- **4 close-as-resolved** (#143, #169 — features now shipped; #402, #299 — answered with docs links)
-- **1 close-as-duplicate** (#463 → #402)
-- **2 convert-to-issue** (#161 root-copilot-hijack → bug/UX track; #534 enterprise-features → ongoing roadmap signal)
-- **8 keep-open** (ongoing feedback, feature signals, edge cases, follow-up potential)
-
-Key pattern: 15 discussions = 7 feature-request/feedback signals, 4 answered-by-feature-release, 4 documentation-clarity gaps. Community is engaged; v0.9.1 (per-agent models, skills system, human team members, watch mode) directly addressed 5+ discussions that were open for 2-4 weeks. Timing of releases + follow-up responses critical for community trust.
-
-**Documentation gaps identified:**
-- #440 (branch naming convention change) — needs migration guide in upgrade docs
-- #306 (multi-root workspaces) → future feature; docs should clarify current limitation
-- #140 (Teams MCP + Office 365 Connectors retirement) → docs refresh needed; Power Automate Workflows is the new path
-- #401 (mobile/remote control) → feature exploration, keep on radar
-- #161 (Coordinator hijacking) → document workarounds, prioritize UX fix for v1.0
-
-Teams MCP critical update: Office 365 Connectors retired Dec 2024 → Power Automate Workflows is successor. Docs mention of old Connectors should be purged; Teams webhook examples should link to Power Automate Workflow guide.
-
-### Community Engagement Wave (2026-03-24)
-
-**6 discussions closed as resolved:**
-- #463, #402 (per-agent model selection — shipped v0.9.1)
-- #324 (local-only operation without GitHub integration)
-- #299 (CLI vs Copilot agent — both viable)
-- #143 (Human team members now first-class feature)
-- #169 (Skills system shipped as core infrastructure)
-
-**8 discussions kept open with substantive replies:**
-- #534 (enterprise features) — asked clarifying questions on scope
-- #499 (Brady's v1.0 announcement) — explained `.squad/` regenerability plan
-- #440 (branch naming change) — acknowledged disruption, offered migration guidance
-- #401 (mobile/async control) — acknowledged use case, roadmap signal
-- #376 (best practices) — provided triage and routing patterns
-- #306 (multi-root support) — acknowledged limitation, kept open for feedback
-- #95 (casting system) — explained mature re-casting flow
-- #140 (Teams MCP) — critical guidance on Office 365 Connectors retirement → Power Automate Workflows
-
-**Pattern observed:** Feature-release timing + follow-up responses critical for community trust. v0.9.1 directly addressed 5+ discussions (models, skills, human members) that were open 2-4 weeks. Community triage now operational: 14 discussions reviewed, 6 closed, 8 kept active = 43% closure rate on resolved items.
-
-**Key insight:** Retirement of Microsoft Office 365 Connectors (Dec 2024) caught users mid-setup. Proactive notification of Teams Workflows alternative + Power Automate guidance essential for Teams MCP users.
-
-### Release Playbook Rewrite (#564, 2026-07-22)
-
-**Task:** Rewrite PUBLISH-README.md from a v0.8.22 version-specific stub (58 lines) into a living, version-agnostic release playbook.
-
-**Outcome:** 232-line playbook replacing entirely with 11 sections per Flight's spec:
-1. Overview — two publish channels, package order (SDK → CLI)
-2. Pre-Flight Checklist — runnable checklist with `grep`/`npm` commands
-3. Publish via CI (Recommended Path) — GitHub Release workflow
-4. Publish via workflow_dispatch — manual trigger fallback
-5. Insider Channel — insider branch + `@insider` tag for testing
-6. Workspace Publish Policy — reference to CI lint rule #557 (enforces `-w` flag)
-7. Manual Local Publish — emergency fallback with step-by-step commands
-8. 422 Race Condition & npm Errors — v0.9.1 incident + troubleshooting
-9. Post-Publish Verification — `npm view` + npx cold-install test
-10. Version Bump After Publish — preview version increment pattern
-11. Legacy Publish Scripts — deprecation notice for PowerShell scripts
-
-**Key decisions:**
-- Microsoft Style Guide enforced: sentence-case headings, active voice, "you" not "we", present tense
-- Version-agnostic: `<VERSION>` placeholder, no hardcoded version numbers
-- Scannability: checklist format, code blocks (bash not PowerShell for portability), tables for error reference
-- Accuracy: pulled from actual workflows (`squad-npm-publish.yml`, `squad-insider-publish.yml`) — preflight job, smoke test, publish stages, registry propagation retry logic (5× 15-second intervals)
-- Runnable: all commands copy-pasteable (e.g., `npm -w packages/squad-sdk pack --dry-run`)
-
-**Pattern:** Living playbook absorbs three related issues (#558 race conditions, #559 manual publish, #560 pre-flight checklist) into unified reference. No separate documents; all under one decision tree: try CI first, use manual only if CI broken. Workspace publish policy section references CI lint rule #557 (being added in parallel by FIDO); both docs + lint create enforcement + education.
-
-**Commit:** `docs: rewrite PUBLISH-README.md as release playbook (#564)` on squad/release-hardening branch.
-
-📌 **Team update (2026-03-24T06-release-hardening):** Release playbook rewrite (#564) completed. PUBLISH-README.md transformed from v0.8.22 stub to living 232-line playbook with 11 sections: Overview, Pre-Flight Checklist, Publish via CI (recommended), Publish via workflow_dispatch, Insider Channel, Workspace Publish Policy, Manual Local Publish (emergency fallback), 422 Race Condition & npm Errors, Post-Publish Verification, Version Bump After Publish, Legacy Publish Scripts. Absorbed issues #558, #559, #560 into unified decision tree. Microsoft Style Guide enforced; version-agnostic; all commands runnable. Scannability: checklist format, bash code blocks, error reference table. Committed to squad/release-hardening.
