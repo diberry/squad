@@ -30,6 +30,8 @@ Community contributor (PR #572) provided Chinese README translation. Approved an
 
 ### Teams MCP Urgency Pattern (2026-03-23)
 External tool integrations deprecate. Office 365 Connectors retired Dec 2024. Docs mentioning deprecated tools create support burden and user confusion. Action: audit all external tool integration docs for deprecation; update with successor guidance (Power Automate Workflows for Teams).
+### Architecture Diagrams (v0.9.0+)
+Visual documentation of Squad's architecture requires multiple layers to be understandable at 30-second glance. Key patterns: (1) Use sequence diagrams for message/decision flows (User → Coordinator → Agents → Git); (2) Use flowchart/graph diagrams for component architecture with color-coded layers (UI blue, orchestration green, execution orange, state purple, persistence gray, artifacts red); (3) Use drop-box pattern to illustrate parallel writes (agents write to inbox/ → Scribe merges → shared brain); (4) Show casting/persistent naming across session boundaries to explain knowledge portability. All diagrams render in Mermaid syntax on Astro docs site. Audience: developers evaluating Squad — "show don't tell" with concrete flows. Never expose SDK internals in architecture docs; keep focus on user-observable behavior (how to send messages, where team knowledge lives, how agents learn).
 
 ### Blog Post Format
 YAML frontmatter: title, date, author, wave, tags, status, hero. Body: experimental warning, What Shipped, Why This Matters, Quick Stats, What's Next. 200-400 words for infrastructure releases. No hype — explain value.
