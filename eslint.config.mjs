@@ -44,9 +44,12 @@ export default [
     },
   },
 
-  // fs-storage-provider is the one file that legitimately uses raw fs
+  // fs-storage-provider and sqlite-storage-provider legitimately use raw fs
   {
-    files: ["packages/**/storage/fs-storage-provider.ts"],
+    files: [
+      "packages/**/storage/fs-storage-provider.ts",
+      "packages/**/storage/sqlite-storage-provider.ts",
+    ],
     rules: {
       "no-restricted-imports": "off",
     },

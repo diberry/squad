@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm } from 'fs/promises';
+import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { FSStorageProvider } from '../packages/squad-sdk/src/storage/fs-storage-provider.js';
@@ -17,6 +18,7 @@ import { InMemoryStorageProvider } from '../packages/squad-sdk/src/storage/in-me
 import type { StorageProvider } from '../packages/squad-sdk/src/storage/storage-provider.js';
 import { StorageError } from '../packages/squad-sdk/src/storage/storage-error.js';
 import { parseSkillFile } from '../packages/squad-sdk/src/skills/skill-loader.js';
+import { runStorageProviderContractTests } from './storage-contract.js';
 
 let provider: StorageProvider;
 let tmpDir: string;
@@ -923,3 +925,24 @@ describe('cross-provider contract', () => {
     }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Contract Test Factory — same conformance suite for every StorageProvider
+// ═══════════════════════════════════════════════════════════════════════════════
+
+runStorageProviderContractTests('FSStorageProvider', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'sp-contract-'));
+  const provider = new FSStorageProvider(tmpDir);
+  return { provider, cleanup: async () => rmSync(tmpDir, { recursive: true, force: true }) };
+});
+
+runStorageProviderContractTests('InMemoryStorageProvider', async () => {
+  const provider = new InMemoryStorageProvider();
+  return { provider, cleanup: async () => provider.clear() };
+});
+
+// SQLiteStorageProvider will be added once DPS builds it — leave a commented-out placeholder
+// runStorageProviderContractTests('SQLiteStorageProvider', async () => {
+//   const db = new SQLiteStorageProvider(':memory:');
+//   return { provider: db, cleanup: async () => db.close() };
+// });
