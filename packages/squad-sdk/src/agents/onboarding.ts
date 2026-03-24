@@ -7,9 +7,9 @@
  * @module agents/onboarding
  */
 
-import { mkdir, writeFile, readFile } from 'fs/promises';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import type { StorageProvider } from '../storage/storage-provider.js';
+import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 
 // ============================================================================
 // Onboarding Types
@@ -318,7 +318,10 @@ function titleCase(str: string): string {
  * @param options - Onboarding options
  * @returns Result with created file paths
  */
-export async function onboardAgent(options: OnboardOptions): Promise<OnboardResult> {
+export async function onboardAgent(
+  options: OnboardOptions,
+  storage: StorageProvider = new FSStorageProvider()
+): Promise<OnboardResult> {
   const {
     teamRoot,
     agentName,
@@ -347,11 +350,11 @@ export async function onboardAgent(options: OnboardOptions): Promise<OnboardResu
   
   // Create agent directory
   const agentDir = join(teamRoot, '.squad', 'agents', normalizedName);
-  if (existsSync(agentDir)) {
+  if (await storage.exists(agentDir)) {
     throw new Error(`Agent directory already exists: ${agentDir}`);
   }
   
-  await mkdir(agentDir, { recursive: true });
+  // Write charter.md (storage.write auto-creates parent directories)
   
   // Determine display name
   const effectiveDisplayName = displayName || titleCase(normalizedName);
@@ -371,7 +374,7 @@ export async function onboardAgent(options: OnboardOptions): Promise<OnboardResu
   
   // Write charter.md
   const charterPath = join(agentDir, 'charter.md');
-  await writeFile(charterPath, charterContent, 'utf-8');
+  await storage.write(charterPath, charterContent);
   createdFiles.push(charterPath);
   
   // Generate history
@@ -384,7 +387,7 @@ export async function onboardAgent(options: OnboardOptions): Promise<OnboardResu
   
   // Write history.md
   const historyPath = join(agentDir, 'history.md');
-  await writeFile(historyPath, historyContent, 'utf-8');
+  await storage.write(historyPath, historyContent);
   createdFiles.push(historyPath);
   
   return {
@@ -409,16 +412,20 @@ export async function onboardAgent(options: OnboardOptions): Promise<OnboardResu
 export async function addAgentToConfig(
   teamRoot: string,
   agentName: string,
-  role: string
+  role: string,
+  storage: StorageProvider = new FSStorageProvider()
 ): Promise<boolean> {
   const configPath = join(teamRoot, 'squad.config.ts');
   
-  if (!existsSync(configPath)) {
+  if (!await storage.exists(configPath)) {
     return false; // No TypeScript config to update
   }
   
   try {
-    const content = await readFile(configPath, 'utf-8');
+    const content = await storage.read(configPath);
+    if (content === undefined) {
+      return false;
+    }
     
     // Simple heuristic: add routing rule if role matches common work types
     const workTypeMap: Record<string, string> = {
@@ -460,7 +467,7 @@ export async function addAgentToConfig(
       `rules: [\n${updatedRules}\n    ]`
     );
     
-    await writeFile(configPath, updatedContent, 'utf-8');
+    await storage.write(configPath, updatedContent);
     return true;
   } catch (error) {
     // Silently fail if we can't parse/update the config
