@@ -21,8 +21,8 @@ import { NotFoundError, ParseError } from './domain-types.js';
 import { resolveCollectionPath } from './schema.js';
 import { createAgentHandle } from './handles.js';
 import { parseDecisions, serializeDecision, serializeDecisions } from './io/decisions-io.js';
-import { parseRouting, serializeRouting } from './io/routing-io.js';
-import { parseTeam, serializeTeam } from './io/team-io.js';
+import { parseRouting, serializeRouting, type ParsedRouting } from './io/routing-io.js';
+import { parseTeam, serializeTeam, type ParsedTeam } from './io/team-io.js';
 import { parseSkillFile } from '../skills/skill-loader.js';
 import type { ParsedDecision } from './io/decisions-io.js';
 import type { ParsedRoutingRule } from './io/routing-io.js';
@@ -128,17 +128,17 @@ export class DecisionsCollection {
 
 // ── RoutingCollection ──────────────────────────────────────────────────────
 
-/** Map ParsedRoutingRule[] to RoutingConfig. */
-function toRoutingConfig(rules: ParsedRoutingRule[]): RoutingConfig {
+/** Map ParsedRouting to RoutingConfig. */
+function toRoutingConfig(parsed: ParsedRouting): RoutingConfig {
   return {
-    rules: rules.map(
+    rules: parsed.rules.map(
       (r): RoutingConfigRule => ({
         workType: r.workType,
         agents: r.agents,
         examples: r.examples ?? [],
       }),
     ),
-    moduleOwnership: new Map<string, string>(),
+    moduleOwnership: parsed.moduleOwnership,
     principles: [],
   };
 }
@@ -184,11 +184,11 @@ export class RoutingCollection {
 
 // ── TeamCollection ─────────────────────────────────────────────────────────
 
-/** Map ParsedAgent[] to TeamConfig. */
-function toTeamConfig(agents: ParsedAgent[]): TeamConfig {
+/** Map ParsedTeam to TeamConfig. */
+function toTeamConfig(parsed: ParsedTeam): TeamConfig {
   return {
-    projectContext: '',
-    members: agents.map(
+    projectContext: parsed.projectContext,
+    members: parsed.agents.map(
       (a): TeamMember => ({
         name: a.name,
         role: a.role,

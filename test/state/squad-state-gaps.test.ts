@@ -309,10 +309,10 @@ describe('IO Round-Trip', () => {
       ];
       const serialized = serializeRouting(rules);
       const parsed = parseRouting(serialized);
-      expect(parsed.length).toBe(2);
-      expect(parsed[0]!.workType).toBe('feature-dev');
-      expect(parsed[0]!.agents).toEqual(['EECOM', 'NEWBIE']);
-      expect(parsed[1]!.workType).toBe('docs');
+      expect(parsed.rules.length).toBe(2);
+      expect(parsed.rules[0]!.workType).toBe('feature-dev');
+      expect(parsed.rules[0]!.agents).toEqual(['EECOM', 'NEWBIE']);
+      expect(parsed.rules[1]!.workType).toBe('docs');
     });
 
     it('handles rules without examples', () => {
@@ -326,7 +326,7 @@ describe('IO Round-Trip', () => {
       const serialized = serializeRouting(rules);
       const parsed = parseRouting(serialized);
       // Parser returns undefined for empty examples column
-      expect(parsed[0]!.examples).toBeUndefined();
+      expect(parsed.rules[0]!.examples).toBeUndefined();
     });
 
     it('handles empty rules array', () => {
@@ -345,7 +345,7 @@ describe('IO Round-Trip', () => {
       ];
       const serialized = serializeRouting(rules);
       const parsed = parseRouting(serialized);
-      expect(parsed[0]!.agents[0]).toBe('多言語チーム');
+      expect(parsed.rules[0]!.agents[0]).toBe('多言語チーム');
     });
   });
 
@@ -357,10 +357,10 @@ describe('IO Round-Trip', () => {
       ];
       const serialized = serializeTeam(agents);
       const parsed = parseTeam(serialized);
-      expect(parsed.length).toBe(2);
-      expect(parsed[0]!.name).toBe('eecom');
-      expect(parsed[0]!.role).toBe('Core Dev');
-      expect(parsed[1]!.name).toBe('retro');
+      expect(parsed.agents.length).toBe(2);
+      expect(parsed.agents[0]!.name).toBe('eecom');
+      expect(parsed.agents[0]!.role).toBe('Core Dev');
+      expect(parsed.agents[1]!.name).toBe('retro');
     });
 
     it('handles team metadata', () => {
@@ -392,8 +392,8 @@ describe('IO Round-Trip', () => {
       ];
       const serialized = serializeTeam(agents);
       const parsed = parseTeam(serialized);
-      expect(parsed[0]!.name).toBe('αλέξανδρος'); // parseTeam lowercases
-      expect(parsed[0]!.role).toContain('建筑师');
+      expect(parsed.agents[0]!.name).toBe('αλέξανδρος'); // parseTeam lowercases
+      expect(parsed.agents[0]!.role).toContain('建筑师');
     });
   });
 });

@@ -166,7 +166,7 @@ export function createAgentHandle(
 
       let agents;
       try {
-        agents = parseTeam(teamContent);
+        agents = parseTeam(teamContent).agents;
       } catch (err) {
         throw new ParseError('team', err instanceof Error ? err.message : String(err), { cause: err });
       }

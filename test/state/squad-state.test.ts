@@ -71,6 +71,21 @@ const TEAM_MD = `# Project Squad
 | RETRO | Docs Lead | \`.squad/agents/RETRO/charter.md\` | ✅ Active |
 `;
 
+const TEAM_MD_WITH_CONTEXT = `# Apollo 13 Mission Control
+
+> High-stakes systems under pressure
+
+## Project Context
+Squad SDK — TypeScript monorepo for AI team orchestration.
+
+## Members
+
+| Name | Role | Charter | Status |
+|------|------|---------|--------|
+| EECOM | Core Dev | \`.squad/agents/EECOM/charter.md\` | ✅ Active |
+| RETRO | Docs Lead | \`.squad/agents/RETRO/charter.md\` | ✅ Active |
+`;
+
 const DECISIONS_MD = `# Decisions
 
 ### 2026-07-20: Use StorageProvider abstraction
@@ -90,6 +105,23 @@ const ROUTING_MD = `# Routing Rules
 |-----------|-------|----------|
 | feature-dev | EECOM | New features, refactors |
 | docs | RETRO | Documentation updates |
+`;
+
+const ROUTING_MD_WITH_OWNERSHIP = `# Routing Rules
+
+## Routing Table
+
+| Work Type | Agent | Examples |
+|-----------|-------|----------|
+| feature-dev | EECOM | New features, refactors |
+| docs | RETRO | Documentation updates |
+
+## Module Ownership
+
+| Module | Owner |
+|--------|-------|
+| src/storage/ | EECOM |
+| src/state/ | CONTROL |
 `;
 
 const SKILL_TYPESCRIPT_TESTING = `---
@@ -374,6 +406,20 @@ describe('SquadState', () => {
         expect(config.rules[1]!.workType).toBe('docs');
       });
 
+      it('returns empty moduleOwnership when section missing', async () => {
+        const config = await state.routing.get();
+        expect(config.moduleOwnership.size).toBe(0);
+      });
+
+      it('populates moduleOwnership from Module Ownership section', async () => {
+        await storage.write(`${ROOT}/.squad/routing.md`, ROUTING_MD_WITH_OWNERSHIP);
+        const fresh = await SquadState.create(storage, ROOT);
+        const config = await fresh.routing.get();
+        expect(config.moduleOwnership.size).toBe(2);
+        expect(config.moduleOwnership.get('src/storage/')).toBe('EECOM');
+        expect(config.moduleOwnership.get('src/state/')).toBe('CONTROL');
+      });
+
       it('throws NotFoundError when file missing', async () => {
         await storage.delete(`${ROOT}/.squad/routing.md`);
         await expect(state.routing.get()).rejects.toThrow(NotFoundError);
@@ -410,6 +456,19 @@ describe('SquadState', () => {
         expect(config.members[0]!.name).toBe('eecom');
         expect(config.members[0]!.role).toBe('Core Dev');
         expect(config.members[1]!.name).toBe('retro');
+      });
+
+      it('returns empty projectContext when section missing', async () => {
+        const config = await state.team.get();
+        expect(config.projectContext).toBe('');
+      });
+
+      it('populates projectContext from content above Members', async () => {
+        await storage.write(`${ROOT}/.squad/team.md`, TEAM_MD_WITH_CONTEXT);
+        const fresh = await SquadState.create(storage, ROOT);
+        const config = await fresh.team.get();
+        expect(config.projectContext).toContain('High-stakes systems under pressure');
+        expect(config.projectContext).toContain('Squad SDK');
       });
 
       it('throws NotFoundError when file missing', async () => {

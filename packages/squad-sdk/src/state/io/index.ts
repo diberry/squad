@@ -21,8 +21,8 @@ export type { ParsedDecision } from './decisions-io.js';
 
 // Routing I/O
 export { parseRouting, serializeRouting } from './routing-io.js';
-export type { ParsedRoutingRule } from './routing-io.js';
+export type { ParsedRoutingRule, ParsedRouting } from './routing-io.js';
 
 // Team I/O
 export { parseTeam, serializeTeam } from './team-io.js';
-export type { ParsedAgent, TeamMetadata } from './team-io.js';
+export type { ParsedAgent, TeamMetadata, ParsedTeam } from './team-io.js';
