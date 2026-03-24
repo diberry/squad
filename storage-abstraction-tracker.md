@@ -1,17 +1,17 @@
 # StorageProvider Phase 2 — Migration Tracker
 
-> 31 files with raw `fs` imports need migration to `StorageProvider`.
-> Config module already migrated by Brady's team. Each file = 1 commit.
+> 35 files with raw `fs` imports migrated to `StorageProvider`.
+> Each file = 1 commit (or grouped when trivial).
 
 ## Migration Status
 
-### ✅ Already Migrated (by upstream)
-| File | fs Imports | Status |
-|------|-----------|--------|
-| `src/config/init.ts` | 0 (uses StorageProvider) | ✅ Done upstream |
-| `src/config/legacy-fallback.ts` | 0 (uses StorageProvider) | ✅ Done upstream |
-| `src/config/agent-source.ts` | 0 | ✅ No fs imports |
-| `src/config/models.ts` | 0 | ✅ No fs imports |
+### ✅ Migrated — config/ (4 files)
+| File | Raw fs Calls | Complexity | Commit |
+|------|-------------|------------|--------|
+| `src/config/models.ts` | 3 sync (readFileSync, writeFileSync, existsSync) | Low | `e187b58` ✅ |
+| `src/config/legacy-fallback.ts` | 2 sync (existsSync, readFileSync) | Low | `e187b58` ✅ |
+| `src/config/agent-source.ts` | 5 async (fs/promises) | Medium | `aa3d285` ✅ |
+| `src/config/init.ts` | 14+ (sync + async) | High — partial | `669902c` ✅ (residual: cpSync, statSync, mkdirSync) |
 
 ### 🔧 Needs Migration — agents/ (5 files)
 | File | Raw fs Calls | Complexity | Commit |
@@ -91,22 +91,23 @@
 
 ## Stats
 - **Total files:** 35 (excluding fs-storage-provider.ts)
-- **Already done:** 4 (config module — done by upstream)
-- **Migrated by us:** 31 (27 + 4 runtime files)
-- **Remaining:** 0
-- **Commits so far:** 33 (31 migrations + 2 regression fixes)
+- **Fully migrated:** 21 (zero residual raw fs)
+- **Partially migrated:** 14 (SP calls + justified residual raw fs with TODOs)
+- **Remaining unmigrated:** 0
+- **Commits:** 38 (35 migrations + 2 regression fixes + 1 Phase 3 prep)
 
 ## Fix Commits
 | Commit | Description |
 |--------|-------------|
 | `88f734c` | Fix: revert sync functions incorrectly made async (skill-loader, export, comms-file-log) |
 | `81e799e` | Fix: restore error behavior for observer and compiler after migration |
+| `99bf0e4` | Replace readdirSync with storage.listSync() in export.ts and resolver.ts |
 
-## Residual `node:fs` (no StorageProvider equivalent)
-- `readdirSync` (withFileTypes/Dirent) — no `listSync` on StorageProvider
-- `statSync` — no equivalent
-- `mkdirSync` (empty dirs) — StorageProvider auto-creates on write
-- `cpSync` — no copy method
-- `realpathSync` — no equivalent
-- `fs.watch` / `FSWatcher` — file watching
-- `execFileSync` — child process, not storage
+## Residual `node:fs` (no StorageProvider equivalent — all have TODOs)
+- `readdirSync` with `withFileTypes` (needs Dirent) — skill-loader, consult, bundle, marketplace, init
+- `statSync` / `stat` (needs isDirectory/size) — bundle, release, multi-squad, resolution, init
+- `mkdirSync` (empty dirs, not before write) — comms-file-log, multi-squad, resolution, init
+- `cpSync` / `copyFile` — consult, init
+- `realpathSync` — skill-script-loader
+- `fs.watch` / `FSWatcher` — squad-observer
+- `rmSync` — multi-squad
