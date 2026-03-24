@@ -2,6 +2,10 @@
 
 > ⚠️ **Experimental** — Squad is alpha software. APIs, commands, and behavior may change between releases.
 
+> 🔀 **This page has been superseded.** The auto-generated [TypeDoc API reference](api/index.md) covers all 395+ public exports with complete type signatures. The curated [SDK Guide](sdk.md) provides an overview with examples.
+
+> 💡 **Looking for the full auto-generated reference?** See the [TypeDoc API reference](api/index.md) — generated directly from the SDK TypeScript source with complete type signatures for all 395+ public exports.
+
 Complete reference for all public exports from `@bradygaster/squad-sdk`. Each section includes types, functions, and usage examples.
 
 ## Overview
