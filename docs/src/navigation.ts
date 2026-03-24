@@ -81,8 +81,8 @@ export const NAV_SECTIONS: NavSection[] = [
     dir: 'reference',
     items: [
       { title: 'CLI', slug: 'reference/cli' },
-      { title: 'SDK', slug: 'reference/sdk' },
-      { title: 'SDK API Reference', slug: 'reference/api-reference' },
+      { title: 'SDK Guide', slug: 'reference/sdk' },
+      { title: 'API Reference (TypeDoc)', slug: 'reference/api/index' },
       { title: 'SDK Integration', slug: 'reference/integration' },
       { title: 'Tools & Hooks', slug: 'reference/tools-and-hooks' },
       { title: 'Config', slug: 'reference/config' },
