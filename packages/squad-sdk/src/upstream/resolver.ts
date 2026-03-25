@@ -9,13 +9,15 @@
  * @module upstream/resolver
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
+import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 import type {
   UpstreamConfig,
   UpstreamResolution,
   ResolvedUpstream,
 } from './types.js';
+
+const storage = new FSStorageProvider();
 
 /**
  * Read and parse upstream.json from a squad directory.
@@ -23,10 +25,10 @@ import type {
  */
 export function readUpstreamConfig(squadDir: string): UpstreamConfig | null {
   const configPath = path.join(squadDir, 'upstream.json');
-  if (!fs.existsSync(configPath)) return null;
+  if (!storage.existsSync(configPath)) return null;
 
   try {
-    const raw = fs.readFileSync(configPath, 'utf8');
+    const raw = storage.readSync(configPath) ?? '';
     const parsed = JSON.parse(raw) as UpstreamConfig;
     if (!parsed.upstreams || !Array.isArray(parsed.upstreams)) return null;
     return parsed;
@@ -41,10 +43,10 @@ export function readUpstreamConfig(squadDir: string): UpstreamConfig | null {
  */
 function findSquadDir(sourcePath: string): string | null {
   const squadDir = path.join(sourcePath, '.squad');
-  if (fs.existsSync(squadDir)) return squadDir;
+  if (storage.existsSync(squadDir)) return squadDir;
 
   const aiTeamDir = path.join(sourcePath, '.ai-team');
-  if (fs.existsSync(aiTeamDir)) return aiTeamDir;
+  if (storage.existsSync(aiTeamDir)) return aiTeamDir;
 
   return null;
 }
@@ -59,18 +61,18 @@ function readSkills(squadDir: string): Array<{ name: string; content: string }> 
     { dir: path.join(squadDir, 'skills'), layout: 'nested' as const },
     { dir: path.join(projectDir, '.ai-team', 'skills'), layout: 'flat' as const },
   ];
-  const source = candidateDirs.find(({ dir }) => fs.existsSync(dir));
+  const source = candidateDirs.find(({ dir }) => storage.existsSync(dir));
   if (!source) return [];
 
   const skills: Array<{ name: string; content: string }> = [];
   try {
-    for (const entry of fs.readdirSync(source.dir)) {
+    for (const entry of storage.listSync(source.dir)) {
       const skillFile = source.layout === 'nested'
         ? path.join(source.dir, entry, 'SKILL.md')
         : path.join(source.dir, entry);
-      if (fs.existsSync(skillFile)) {
+      if (storage.existsSync(skillFile)) {
         const name = source.layout === 'nested' ? entry : path.basename(entry, '.md');
-        skills.push({ name, content: fs.readFileSync(skillFile, 'utf8') });
+        skills.push({ name, content: storage.readSync(skillFile) ?? '' });
       }
     }
   } catch {
@@ -83,9 +85,9 @@ function readSkills(squadDir: string): Array<{ name: string; content: string }> 
  * Read a text file if it exists, otherwise return null.
  */
 function readOptionalFile(filePath: string): string | null {
-  if (!fs.existsSync(filePath)) return null;
+  if (!storage.existsSync(filePath)) return null;
   try {
-    return fs.readFileSync(filePath, 'utf8');
+    return storage.readSync(filePath) ?? null;
   } catch {
     return null;
   }
@@ -134,7 +136,7 @@ function resolveFromExport(name: string, exportPath: string): ResolvedUpstream {
   };
 
   try {
-    const raw = fs.readFileSync(exportPath, 'utf8');
+    const raw = storage.readSync(exportPath) ?? '';
     const manifest = JSON.parse(raw) as {
       version?: string;
       skills?: string[];

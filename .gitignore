@@ -23,5 +23,8 @@ docs/tests/screenshots/
 .squad-workstream
 .squad/.first-run
 
+# Build artifacts
+*.tgz
+
 # Images folder (root only — don't ignore docs/public/images/)
 /images/
