@@ -272,7 +272,10 @@ async function main(): Promise<void> {
     }
 
     const sdkMod = hasGlobal ? await lazySquadSdk() : null;
-    const dest = hasGlobal ? sdkMod!.resolveGlobalSquadPath() : process.cwd();
+    // When isGlobal, pass the global root — init.ts handles personal-squad/ subdirectory
+    const dest = hasGlobal
+      ? sdkMod!.resolveGlobalSquadPath()
+      : process.cwd();
     const noWorkflows = args.includes('--no-workflows');
     const sdk = args.includes('--sdk');
     const roles = args.includes('--roles');
