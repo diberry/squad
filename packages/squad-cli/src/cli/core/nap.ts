@@ -332,25 +332,68 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
     }
   }
 
-  // Split: keep entries from last 30 days
+  // Split: old (dated >30 days), undated (no date), recent (dated ≤30 days)
   const recent: typeof entries = [];
+  const undated: typeof entries = [];
   const old: typeof entries = [];
   for (const e of entries) {
     if (e.daysAgo !== null && e.daysAgo > DECISION_MAX_AGE_DAYS) {
       old.push(e);
+    } else if (e.daysAgo === null) {
+      undated.push(e);
     } else {
       recent.push(e);
     }
   }
 
-  if (old.length === 0) return null;
+  // Phase 1: Archive dated-old entries; also archive undated entries when
+  // the file is over threshold (Bug 1 fix — undated entries have no date
+  // provenance and are treated as archivable before recent dated entries).
+  const toArchive: typeof entries = [...old, ...undated];
+  let toKeep: typeof entries = [...recent];
+
+  // Phase 2: Count-based fallback — if nothing was archived via age/undated
+  // check but the file is still over threshold, keep the most-recent entries
+  // that fit under the threshold and archive the rest (Bug 2 fix).
+  if (toArchive.length === 0) {
+    // Sort by daysAgo descending so oldest entries come first
+    const sorted = [...recent].sort((a, b) => {
+      const da = a.daysAgo ?? Infinity;
+      const db = b.daysAgo ?? Infinity;
+      return db - da;
+    });
+
+    const headerEnd = entries.length > 0 ? entries[0]!.start : lines.length;
+    const headerBytes = Buffer.byteLength(lines.slice(0, headerEnd).join('\n'), 'utf8');
+
+    let accumulated = headerBytes;
+    const keptStarts = new Set<number>();
+    // Iterate from most-recent (end of sorted) toward oldest, fill to threshold
+    for (let j = sorted.length - 1; j >= 0; j--) {
+      const e = sorted[j]!;
+      const entryBytes = Buffer.byteLength(
+        lines.slice(e.start, e.end).join('\n') + '\n',
+        'utf8',
+      );
+      if (accumulated + entryBytes <= DECISION_THRESHOLD) {
+        keptStarts.add(e.start);
+        accumulated += entryBytes;
+      }
+    }
+
+    // Preserve original file order
+    toKeep = recent.filter(e => keptStarts.has(e.start));
+    toArchive.push(...recent.filter(e => !keptStarts.has(e.start)));
+  }
+
+  if (toArchive.length === 0) return null;
 
   // Header: lines before first ### heading
   const headerEnd = entries.length > 0 ? entries[0]!.start : lines.length;
   const header = lines.slice(0, headerEnd).join('\n');
 
-  const recentContent = header + '\n' + recent.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
-  const archiveContent = old.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
+  const recentContent = header + '\n' + toKeep.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
+  const archiveContent = toArchive.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
 
   const saved = size - Buffer.byteLength(recentContent, 'utf8');
 
@@ -365,7 +408,7 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
   return {
     type: 'archive',
     target: decisionsFile,
-    description: `Archived ${old.length} old decision entries, kept ${recent.length} recent`,
+    description: `Archived ${toArchive.length} old decision entries, kept ${toKeep.length} recent`,
     bytesSaved: Math.max(0, saved),
   };
 }

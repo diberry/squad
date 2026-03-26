@@ -390,6 +390,162 @@ describe('Nap — Decision archival', () => {
     const afterSize = statSync(join(squadDir, 'decisions.md')).size;
     expect(afterSize).toBeLessThan(Buffer.byteLength(bigDecisions));
   });
+
+  /**
+   * Generate decisions.md content with N ### entries.
+   * maxDaysAgo: oldest entry age in days; entries are spread from 0..maxDaysAgo.
+   * If maxDaysAgo is null, entries have no date (undated).
+   */
+  function generateDecisions(
+    count: number,
+    entrySize = 700,
+    maxDaysAgo: number | null = 60,
+  ): string {
+    let content = '# Decisions\n\n';
+    for (let i = 0; i < count; i++) {
+      if (maxDaysAgo === null) {
+        content += `### Decision entry ${i + 1}\n`;
+      } else {
+        // Spread entries: entry 0 is today, last entry is maxDaysAgo days ago
+        const offset = count <= 1
+          ? maxDaysAgo
+          : Math.floor((maxDaysAgo * i) / (count - 1));
+        const d = new Date(Date.now() - offset * 24 * 60 * 60 * 1000);
+        const iso = d.toISOString().slice(0, 10);
+        content += `### ${iso}: Decision ${i + 1}\n`;
+      }
+      content += 'z'.repeat(entrySize) + '\n\n';
+    }
+    return content;
+  }
+
+  it('archives undated entries when file exceeds threshold', async () => {
+    // All entries have NO dates — previously immune to archival (bug 1)
+    const bigUndated = generateDecisions(30, 700, null);
+    expect(Buffer.byteLength(bigUndated)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigUndated });
+
+    const result = await runNap({ squadDir });
+
+    const archiveActions = result.actions.filter(
+      (a) => a.type === 'archive' && a.target.includes('decisions'),
+    );
+    expect(archiveActions.length).toBeGreaterThan(0);
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    expect(existsSync(archivePath)).toBe(true);
+
+    const afterSize = statSync(join(squadDir, 'decisions.md')).size;
+    expect(afterSize).toBeLessThan(Buffer.byteLength(bigUndated));
+  });
+
+  it('archives mixed dated+undated entries — keeps recent dated, archives undated', async () => {
+    // Half entries: recent dated (<30 days). Half: undated. Total >20KB.
+    let content = '# Decisions\n\n';
+    // 15 recent dated entries
+    for (let i = 0; i < 15; i++) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const iso = d.toISOString().slice(0, 10);
+      content += `### ${iso}: Recent decision ${i + 1}\n`;
+      content += 'r'.repeat(700) + '\n\n';
+    }
+    // 15 undated entries
+    for (let i = 0; i < 15; i++) {
+      content += `### Undated decision ${i + 1}\n`;
+      content += 'u'.repeat(700) + '\n\n';
+    }
+    expect(Buffer.byteLength(content)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': content });
+    await runNap({ squadDir });
+
+    const afterContent = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    // Recent dated entries should be kept
+    expect(afterContent).toContain('Recent decision 1');
+    // Undated entries should have been archived
+    expect(afterContent).not.toContain('Undated decision 1');
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    expect(existsSync(archivePath)).toBe(true);
+    const archiveContent = readFileSync(archivePath, 'utf8');
+    expect(archiveContent).toContain('Undated decision');
+  });
+
+  it('archives entries when all are recent but file exceeds threshold (count-based fallback)', async () => {
+    // All entries dated within last 14 days — previously returned null (bug 2)
+    const allRecent = generateDecisions(30, 700, 14);
+    expect(Buffer.byteLength(allRecent)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': allRecent });
+
+    const result = await runNap({ squadDir });
+
+    const archiveActions = result.actions.filter(
+      (a) => a.type === 'archive' && a.target.includes('decisions'),
+    );
+    expect(archiveActions.length).toBeGreaterThan(0);
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    expect(existsSync(archivePath)).toBe(true);
+
+    const afterSize = statSync(join(squadDir, 'decisions.md')).size;
+    expect(afterSize).toBeLessThan(Buffer.byteLength(allRecent));
+  });
+
+  it('preserves all entries — no data loss during archival', async () => {
+    // Mix of old, recent, and undated entries, >20KB
+    let content = '# Decisions\n\n';
+    for (let i = 0; i < 10; i++) {
+      const d = new Date(Date.now() - (60 + i) * 24 * 60 * 60 * 1000);
+      content += `### ${d.toISOString().slice(0, 10)}: Old ${i + 1}\n` + 'o'.repeat(900) + '\n\n';
+    }
+    for (let i = 0; i < 10; i++) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      content += `### ${d.toISOString().slice(0, 10)}: Recent ${i + 1}\n` + 'r'.repeat(900) + '\n\n';
+    }
+    for (let i = 0; i < 5; i++) {
+      content += `### Undated ${i + 1}\n` + 'u'.repeat(900) + '\n\n';
+    }
+    expect(Buffer.byteLength(content)).toBeGreaterThan(20 * 1024);
+
+    const beforeCount = (content.match(/^###\s/gm) ?? []).length;
+
+    const squadDir = createTestSquadDir({ 'decisions.md': content });
+    await runNap({ squadDir });
+
+    const afterDecisions = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    const keptCount = (afterDecisions.match(/^###\s/gm) ?? []).length;
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    const archiveContent = existsSync(archivePath)
+      ? readFileSync(archivePath, 'utf8')
+      : '';
+    const archivedCount = (archiveContent.match(/^###\s/gm) ?? []).length;
+
+    expect(keptCount + archivedCount).toBe(beforeCount);
+  });
+
+  it('secondary pass keeps most recent entries by date, archives oldest', async () => {
+    // All entries are recent (<7 days), count-based fallback must keep newest
+    let content = '# Decisions\n\n';
+    // entries from day 6 down to day 0 (newest = day 0)
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const iso = d.toISOString().slice(0, 10);
+      content += `### ${iso}: Entry day-${i}\n` + 'x'.repeat(3500) + '\n\n';
+    }
+    expect(Buffer.byteLength(content)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': content });
+    await runNap({ squadDir });
+
+    const afterContent = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    // The most recent entry (day-0) must be kept
+    expect(afterContent).toContain('Entry day-0');
+    // The oldest entry (day-6) should have been archived
+    expect(afterContent).not.toContain('Entry day-6');
+  });
 });
 
 // ============================================================================
