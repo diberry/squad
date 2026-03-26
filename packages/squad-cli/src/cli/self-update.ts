@@ -65,7 +65,7 @@ function writeCache(data: CacheData): void {
 }
 
 /** Fetch latest version from npm registry with timeout. */
-async function fetchLatestVersion(): Promise<string | null> {
+export async function fetchLatestVersion(): Promise<string | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -83,6 +83,45 @@ async function fetchLatestVersion(): Promise<string | null> {
   }
 }
 
+export interface CLIUpdateCheck {
+  available: boolean;
+  latest: string;
+  current: string;
+}
+
+/**
+ * Check if a newer CLI version exists on npm.
+ * Returns null if check fails or is disabled. Never throws.
+ */
+export async function checkForNewerCLI(
+  currentVersion: string,
+  options?: { bypassCache?: boolean }
+): Promise<CLIUpdateCheck | null> {
+  try {
+    if (process.env.SQUAD_NO_UPDATE_CHECK === '1') return null;
+
+    const cached = options?.bypassCache ? null : readCache();
+    let latest: string;
+
+    if (cached) {
+      latest = cached.latestVersion;
+    } else {
+      const fetched = await fetchLatestVersion();
+      if (!fetched) return null;
+      latest = fetched;
+      writeCache({ latestVersion: latest, checkedAt: Date.now() });
+    }
+
+    return {
+      available: compareVersions(latest, currentVersion) > 0,
+      latest,
+      current: currentVersion,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Check for updates and print a banner if a newer version is available.
  *
@@ -91,32 +130,19 @@ async function fetchLatestVersion(): Promise<string | null> {
  *
  * @param currentVersion - The currently running CLI version
  */
-export async function notifyIfUpdateAvailable(currentVersion: string): Promise<void> {
+export async function notifyIfUpdateAvailable(
+  currentVersion: string,
+  options?: { bypassCache?: boolean }
+): Promise<void> {
   try {
-    // Respect opt-out
-    if (process.env.SQUAD_NO_UPDATE_CHECK === '1') return;
-
-    // Check cache first
-    const cached = readCache();
-    let latest: string;
-
-    if (cached) {
-      latest = cached.latestVersion;
-    } else {
-      const fetched = await fetchLatestVersion();
-      if (!fetched) return;
-      latest = fetched;
-      writeCache({ latestVersion: latest, checkedAt: Date.now() });
-    }
-
-    // Only notify if strictly newer
-    if (compareVersions(latest, currentVersion) > 0) {
+    const result = await checkForNewerCLI(currentVersion, options);
+    if (result?.available) {
       console.log(
-        `\n${YELLOW}⚡${RESET} ${BOLD}Squad v${latest}${RESET} available ${DIM}(you have v${currentVersion})${RESET}` +
+        `\n${YELLOW}⚡${RESET} ${BOLD}Squad v${result.latest}${RESET} available ${DIM}(you have v${result.current})${RESET}` +
         `\n   Run: ${BOLD}npm install -g @bradygaster/squad-cli@latest${RESET}\n`,
       );
     }
   } catch {
-    // Absolute safety net — never crash the CLI for an update check
+    // Absolute safety net
   }
 }
