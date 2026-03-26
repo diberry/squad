@@ -458,7 +458,7 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   const projectType = detectProjectType(dest);
   
   if (isAlreadyCurrent) {
-    info(`Already up to date (v${cliVersion})`);
+    info(`Project files up to date (v${cliVersion})`);
     
     // Still run missing migrations
     const migrationsApplied = await runMigrations(squadDirInfo.path, oldVersion, cliVersion);
