@@ -68,6 +68,7 @@ const EXPECTED_FEATURES = [
   'memory',
   'model-selection',
   'notifications',
+  'notification-routing',
   'parallel-execution',
   'plugins',
   'prd-mode',
