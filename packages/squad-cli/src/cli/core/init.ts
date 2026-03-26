@@ -118,6 +118,22 @@ export async function runInit(dest: string, options: RunInitOptions = {}): Promi
   await typewrite(`${DIM}Let's build your team.${RESET}`, 8);
   console.log();
 
+  // ── Global init: bootstrap personal-squad/ only (skip repo scaffold) ──
+  if (options.isGlobal) {
+    const personalDir = ensurePersonalSquadDir();
+    // Create additional directories for a complete personal squad structure
+    for (const sub of ['casting', 'skills']) {
+      const dir = path.join(personalDir, sub);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+    console.log(`${GREEN}${BOLD}✓${RESET} Personal squad initialized at ${DIM}${personalDir}${RESET}`);
+    console.log(`${DIM}  Add agents with: squad personal add <name> --role <role>${RESET}`);
+    console.log();
+    return;
+  }
+
   // Detect project type
   const projectType = detectProjectType(dest);
 
@@ -299,19 +315,11 @@ export async function runInit(dest: string, options: RunInitOptions = {}): Promi
   console.log();
 
   // ── Personal squad bridge ───────────────────────────────────────────
-  if (options.isGlobal) {
-    // Global init: ensure personal-squad/ directory exists alongside .squad/
-    const personalDir = ensurePersonalSquadDir();
-    console.log(`${GREEN}${BOLD}✓${RESET} Personal squad initialized at ${DIM}${personalDir}${RESET}`);
-    console.log(`${DIM}  Add agents with: squad personal add <name> --role <role>${RESET}`);
+  // Note: isGlobal returns early above, so this is always the repo-init path
+  const personalDir = resolvePersonalSquadDir();
+  if (personalDir) {
+    console.log(`${GREEN}${BOLD}✓${RESET} Personal squad detected — your personal agents will be available here.`);
     console.log();
-  } else {
-    // Repo init: inform user if personal squad is available
-    const personalDir = resolvePersonalSquadDir();
-    if (personalDir) {
-      console.log(`${GREEN}${BOLD}✓${RESET} Personal squad detected — your personal agents will be available here.`);
-      console.log();
-    }
   }
 
   if (squadInfo.isLegacy) {

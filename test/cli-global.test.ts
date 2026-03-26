@@ -95,13 +95,13 @@ describe('squad status routing logic', () => {
 // ============================================================================
 
 describe('--global flag routing', () => {
-  it('init --global resolves to global path, not cwd', () => {
-    // Replicate the routing logic from src/index.ts:
-    //   const dest = hasGlobal ? resolveGlobalSquadPath() : process.cwd();
+  it('init --global resolves to personal-squad path, not global root or cwd', () => {
+    // Replicate the routing logic from src/cli-entry.ts:
+    //   const dest = hasGlobal ? path.join(resolveGlobalSquadPath(), 'personal-squad') : process.cwd();
     const hasGlobal = true;
-    const dest = hasGlobal ? resolveGlobalSquadPath() : process.cwd();
+    const dest = hasGlobal ? join(resolveGlobalSquadPath(), 'personal-squad') : process.cwd();
 
-    expect(dest).toBe(resolveGlobalSquadPath());
+    expect(dest).toBe(join(resolveGlobalSquadPath(), 'personal-squad'));
     expect(dest).not.toBe(process.cwd());
   });
 
