@@ -317,14 +317,14 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
   const content = fs.readFileSync(decisionsFile, 'utf8');
   const lines = content.split('\n');
 
-  // Find entry boundaries (### headings)
+  // Find entry boundaries (## and ### headings)
   const entries: { start: number; end: number; daysAgo: number | null }[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i]!.match(/^###\s/)) {
+    if (lines[i]!.match(/^#{2,3}\s/)) {
       const entryStart = i;
       let entryEnd = lines.length;
       for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j]!.match(/^###\s/)) { entryEnd = j; break; }
+        if (lines[j]!.match(/^#{2,3}\s/)) { entryEnd = j; break; }
       }
       const age = daysAgoFromLine(lines[i]!);
       entries.push({ start: entryStart, end: entryEnd, daysAgo: age });
@@ -383,7 +383,7 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
     recent.sort((a, b) => a.start - b.start);
   }
 
-  // Header: lines before first ### heading
+  // Header: lines before first ## or ### heading
   const headerEnd = entries.length > 0 ? entries[0]!.start : lines.length;
   const header = lines.slice(0, headerEnd).join('\n');
 

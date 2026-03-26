@@ -510,6 +510,73 @@ describe('Nap — Decision archival', () => {
     expect(archiveActions).toHaveLength(0);
     expect(existsSync(join(squadDir, 'decisions-archive.md'))).toBe(false);
   });
+
+
+  it('recognizes ## headings as entry boundaries', async () => {
+    // Create decisions.md >20KB with ## section headings and ### entries, all old enough to archive
+    let bigDecisions = '# Decisions\n\n';
+    bigDecisions += '## Section One\n\n';
+    for (let i = 0; i < 25; i++) {
+      bigDecisions += `### 2024-01-${String(i + 1).padStart(2, '0')}: Entry ${i + 1}\n`;
+      bigDecisions += 'x'.repeat(900) + '\n\n';
+    }
+    expect(Buffer.byteLength(bigDecisions)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigDecisions });
+    const result = await runNap({ squadDir });
+
+    const archiveActions = result.actions.filter(
+      (a) => a.type === 'archive' && a.target.includes('decisions'),
+    );
+    expect(archiveActions.length).toBeGreaterThan(0);
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    expect(existsSync(archivePath)).toBe(true);
+    // Old dated ### entries should be archived
+    const archiveContent = readFileSync(archivePath, 'utf8');
+    expect(archiveContent).toContain('### 2024-01-01: Entry 1');
+    // Undated ## Section One is preserved (treated like a foundational directive)
+    const remaining = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    expect(remaining).toContain('## Section One');
+  });
+
+  it('archives ## entries that are old', async () => {
+    // decisions.md with only ## headings (no ###), all with old dates, over 20KB
+    let bigDecisions = '# Decisions\n\n';
+    for (let i = 0; i < 25; i++) {
+      bigDecisions += `## 2024-01-${String(i + 1).padStart(2, '0')}: Section ${i + 1}\n`;
+      bigDecisions += 'y'.repeat(900) + '\n\n';
+    }
+    expect(Buffer.byteLength(bigDecisions)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigDecisions });
+    const result = await runNap({ squadDir });
+
+    const archiveActions = result.actions.filter(
+      (a) => a.type === 'archive' && a.target.includes('decisions'),
+    );
+    expect(archiveActions.length).toBeGreaterThan(0);
+
+    const archivePath = join(squadDir, 'decisions-archive.md');
+    expect(existsSync(archivePath)).toBe(true);
+  });
+
+  it('preserves header before first ## heading', async () => {
+    // decisions.md with a # header line, then ## section, then ### entry
+    let bigDecisions = '# Decisions\n\n';
+    bigDecisions += '## Foundational Directives\n\n';
+    for (let i = 0; i < 25; i++) {
+      bigDecisions += `### 2024-01-${String(i + 1).padStart(2, '0')}: Entry ${i + 1}\n`;
+      bigDecisions += 'z'.repeat(900) + '\n\n';
+    }
+    expect(Buffer.byteLength(bigDecisions)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigDecisions });
+    await runNap({ squadDir });
+
+    const remaining = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    expect(remaining).toContain('# Decisions');
+  });
 });
 
 // ============================================================================
