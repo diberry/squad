@@ -42,6 +42,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Team Setup', slug: 'features/team-setup' },
       { title: 'Work Routing', slug: 'features/routing' },
       { title: 'Model Selection', slug: 'features/model-selection' },
+      { title: 'Model Pinning', slug: 'features/model-pinning' },
       { title: 'Response Modes', slug: 'features/response-modes' },
       { title: 'Parallel Execution', slug: 'features/parallel-execution' },
       { title: 'Memory', slug: 'features/memory' },

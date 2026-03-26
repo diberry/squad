@@ -66,6 +66,7 @@ const EXPECTED_FEATURES = [
   'marketplace',
   'mcp',
   'memory',
+  'model-pinning',
   'model-selection',
   'notifications',
   'parallel-execution',
