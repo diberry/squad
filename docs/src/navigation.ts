@@ -46,6 +46,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Response Modes', slug: 'features/response-modes' },
       { title: 'Parallel Execution', slug: 'features/parallel-execution' },
       { title: 'Memory', slug: 'features/memory' },
+      { title: 'Context Hygiene', slug: 'features/context-hygiene' },
+
       { title: 'Skills', slug: 'features/skills' },
       { title: 'Directives', slug: 'features/directives' },
       { title: 'Ceremonies', slug: 'features/ceremonies' },
@@ -129,6 +131,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Architecture', slug: 'concepts/architecture' },
       { title: 'Your Team', slug: 'concepts/your-team' },
       { title: 'Memory & Knowledge', slug: 'concepts/memory-and-knowledge' },
+      { title: 'Nap vs /compact', slug: 'concepts/nap-vs-compact' },
       { title: 'Parallel Work', slug: 'concepts/parallel-work' },
       { title: 'GitHub Workflow', slug: 'concepts/github-workflow' },
       { title: 'Portability', slug: 'concepts/portability' },
