@@ -231,7 +231,7 @@ html.dark .astro-code span {
   background-color: var(--shiki-dark-bg) !important;
 }
 
-/* Pagefind search result highlights */
+/* Pagefind in-page highlights (after navigating to a result) */
 mark[data-pagefind-highlight] {
   @apply bg-squad-200 dark:bg-squad-800 text-surface-900 dark:text-white rounded-sm px-0.5;
 }
