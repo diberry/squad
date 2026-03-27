@@ -53,6 +53,7 @@ const EXPECTED_FEATURES = [
   'ceremonies',
   'capability-routing',
   'consult-mode',
+  'context-hygiene',
   'copilot-coding-agent',
   'directives',
   'enterprise-platforms',
@@ -87,7 +88,7 @@ const EXPECTED_FEATURES = [
   'worktrees',
 ];
 
-const EXPECTED_CONCEPTS = ['architecture', 'your-team', 'memory-and-knowledge', 'parallel-work', 'github-workflow', 'portability'];
+const EXPECTED_CONCEPTS = ['architecture', 'your-team', 'memory-and-knowledge', 'nap-vs-compact', 'parallel-work', 'github-workflow', 'portability'];
 
 // Blog posts are discovered dynamically to avoid breaking tests when posts change
 const EXPECTED_BLOG = existsSync(BLOG_CONTENT_DIR)
