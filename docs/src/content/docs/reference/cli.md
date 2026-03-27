@@ -22,7 +22,7 @@ squad init
 
 ---
 
-## CLI Commands (16 commands)
+## CLI Commands
 
 | Command | Description | Requires `.squad/` |
 |---------|-------------|:------------------:|
@@ -42,6 +42,11 @@ squad init
 | `squad copilot --off` | Remove @copilot from the team | Yes |
 | `squad copilot --auto-assign` | Enable auto-assignment for @copilot | Yes |
 | `squad plugin marketplace add\|remove\|list\|browse` | Manage plugin marketplaces | Yes |
+| `squad config model` | Show, set, or clear [model preferences](/reference/config-model/) | Yes |
+| `squad config model <name>` | Set the default model for all agents | Yes |
+| `squad config model <name> --agent <a>` | Pin a model to a specific agent | Yes |
+| `squad config model --clear` | Clear the default model override | Yes |
+| `squad config model --clear --agent <a>` | Clear a specific agent's model override | Yes |
 | `squad export` | Export squad to a portable JSON snapshot | Yes |
 | `squad export --out <path>` | Export to a custom path | Yes |
 | `squad import <file>` | Import a squad from an export file | No |
