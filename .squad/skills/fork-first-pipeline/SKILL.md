@@ -128,6 +128,87 @@ Before opening the upstream PR, verify:
 - [ ] **No \/docs/\ prefix**: If docs changes, they go elsewhere
 - [ ] **No double blank lines**: Markdown/description formatting clean
 
+## Team Review Protocol
+
+The fork PR review phase enforces team-wide quality standards. These patterns are mandatory.
+
+### Dual Reviewer Gate
+Every fork PR must be reviewed by **BOTH Flight (architecture)** and **FIDO (quality)** before approval. The rule:
+- **Both APPROVE**: Ready to proceed
+- **One APPROVE + One REJECT**: Not ready — re-review cycle required
+- **No single-reviewer approvals**: A partial approval does not unblock
+
+Both reviewers must sign off in the same review round or in sequential re-review rounds (see Review→Fix→Re-review Loop below).
+
+### Convention Issues Are Blockers
+The following are **NOT nits** — they are blockers per team directive. Flight and FIDO must flag these as `NEEDS FIXES`, never as "non-blocking notes":
+
+- **`/docs/` prefix in internal links**: Links like `/docs/features/memory` should be bare: `/features/memory`. The /docs/ prefix is stripped at build time; links must not include it.
+- **Double blank lines**: Single blank line is house style. Two or more consecutive blank lines must be reduced to one.
+- **Table ordering discontinuities**: If tables reference order (e.g., step 1, 2, 3), they must be sequential without gaps.
+- **Whitespace violations**: Trailing spaces, tabs instead of spaces, or inconsistent indentation.
+
+When a reviewer finds any of these, the review verdict is **NEEDS FIXES** with findings documented. The author must correct all flagged conventions.
+
+### Review→Fix→Re-review Loop
+After reviewers identify blockers:
+
+1. **Fix**: Author addresses all blocker comments on the feature branch (use `git commit --amend --no-edit` for fast-forward fixes, or new commits if refactoring is complex).
+2. **Re-run reviews**: **Both Flight AND FIDO must re-review**, even if only one reviewer found issues. This ensures convention fixes don't introduce new problems.
+3. **Loop until both APPROVE**: Repeat until both reviewers vote APPROVE.
+4. **Bleed check**: After both APPROVE, proceed to Step 5 (bleed check).
+
+Do not skip to bleed check after a single reviewer fix.
+
+### Reviewer Lockout
+If Flight rejects a fork PR, the original author is locked out from self-revising. A **different agent** must make the fix and commit it. This is enforced mechanically:
+
+- **Original author**: Locked from further commits on the feature branch after rejection.
+- **Different agent** (e.g., Booster stepping in for PAO): Makes the fixes, commits, and force-pushes with `--force-with-lease`.
+- **Re-review**: Both Flight and FIDO re-review the updated PR.
+
+This rule prevents single-agent fixation loops and ensures peer review diversity.
+
+### Known PAO Quirks (Watch for These)
+If PAO is the author, Flight and FIDO should watch for:
+
+- **`.squad/` file creep**: PAO often includes `.squad/agents/pao/history.md` or other `.squad/` files in commits. These must be explicitly excluded via bleed check or pre-commit rules.
+- **`/docs/` prefix overuse**: PAO tends to add `/docs/` prefix to all internal links. Every reviewer must instruct "use bare paths — no /docs/ prefix."
+- **Force-push caution**: Before PAO pushes, verify `git diff --cached --stat` matches intent and `git diff --cached --diff-filter=D` shows zero unintended deletions.
+
+This is not a critique — it is a known pattern. Treat it as a checklist, not a personal issue.
+
+### Review Comments Posted on PR
+Formal reviews are posted to the fork PR as:
+```
+gh pr comment {pr-number} --body "REVIEW: {verdict}
+
+## Findings
+{findings}
+
+## Summary
+{summary}"
+```
+
+Verdict options: `APPROVE`, `NEEDS FIXES`, `REQUEST CHANGES`.
+
+Findings should reference specific files, line numbers, and convention violations. Summary should restate the path forward (re-review required, bleed check next, etc.).
+
+### Tamir Reviewer Rule
+Only assign Tamir as a reviewer on **upstream PRs** where his original code PR is the source material for the content being documented. Do not add him to every upstream PR by default. On fork PRs, Flight and FIDO are the standard reviewers.
+
+### Commit Hygiene
+To ensure clean histories:
+
+- **One commit per fork PR**: Squash all review iterations into a single logical commit before opening upstream PR.
+- **Amend, don't create new commits**: Use `git commit --amend --no-edit` to fix blockers without adding commit count.
+- **Force-push safely**: Use `--force-with-lease` to prevent accidental overwrites if teammates push simultaneously (rare in single-agent fork setup, but good practice).
+- **Always verify before push**:
+  ```
+  git diff --cached --stat       # File count must match intent
+  git diff --cached --diff-filter=D  # Should show zero unintended deletions
+  ```
+
 ## Workflow Summary
 
 This pipeline separates concerns:
