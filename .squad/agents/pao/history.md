@@ -285,3 +285,14 @@ Completed full PRD based on research findings. **Document:** `docs/research/jsdo
 - Four-phase approach breaks large effort into digestible increments (Phase 0 validation before JSDoc audit helps mitigate risk of TypeDoc setup failing)
 
 **Decision:** PRD approved for handoff to implementation team. Ready for execution on next sprint.
+
+### HARD GATE archival docs (issue #69)
+**Context:** Documented the HARD GATE archival mechanism in the Scribe workflow — two-tier thresholds (20KB/30 days, 50KB/7 days), heading-aware archival, count-based fallback, and the `archiveDecisions()` contract.
+
+**Learnings:**
+- HARD GATE archival is an internal mechanism (Scribe workflow), not user-facing — placed in features/ alongside Memory, not in concepts/
+- The `archiveDecisions()` function lives in `packages/squad-cli/src/cli/core/nap.ts`, not in squad-sdk
+- Two-tier approach: Tier 1 (age-based, 30 days) fires first at 20KB; Tier 2 (aggressive, 7 days) only if still over 50KB after Tier 1
+- Count-based fallback handles edge case where all entries are recent but file is still too large
+- Undated entries (foundational directives without `YYYY-MM-DD` in heading) are always preserved — never archived
+- The Scribe workflow order is PRE-CHECK → ARCHIVE [HARD GATE] → INBOX MERGE — archival runs before merge to prevent unbounded growth
