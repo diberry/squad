@@ -1,0 +1,56 @@
+name: PR Target Guard
+
+on:
+  pull_request_target:
+    branches: [dev, main, preview, insider]
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  target-repo-check:
+    name: "🔒 PR target repo check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR targets this fork (not upstream)
+        env:
+          EXPECTED_REPO: diberry/squad
+          PR_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_BASE: ${{ github.event.pull_request.base.repo.full_name }}
+        run: |
+          echo "PR #$PR_NUMBER"
+          echo "  Head: $PR_HEAD"
+          echo "  Base: $PR_BASE"
+          echo "  Expected base repo: $EXPECTED_REPO"
+
+          if [ "$PR_BASE" != "$EXPECTED_REPO" ]; then
+            echo "::error::PR targets '$PR_BASE' instead of '$EXPECTED_REPO'."
+            echo "::error::This is a fork — PRs should target diberry/squad, not upstream."
+            echo ""
+            echo "To fix: close this PR and re-create with:"
+            echo "  gh pr create --base dev --repo diberry/squad"
+            exit 1
+          fi
+
+          echo "✅ PR correctly targets $EXPECTED_REPO"
+
+  review-requirement-check:
+    name: "🔒 Review requirement check"
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
+    steps:
+      - name: Remind about review requirement
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "⚠️  REVIEW POLICY: All PRs to dev/main require at least 1 approving review."
+          echo ""
+          echo "This check is informational — branch protection rules enforce the requirement."
+          echo "If branch protection is not yet configured, see:"
+          echo "  docs/branch-protection-setup.md in this repo"
+          echo ""
+          echo "✅ Review reminder posted for PR #$PR_NUMBER"
