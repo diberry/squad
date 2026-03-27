@@ -323,4 +323,4 @@ We're building in the open. If something feels off, [open an issue](https://gith
 
 - [**Your First Session**](../get-started/first-session.md) — The full walkthrough from zero to fan-out
 - [**Solo Dev Scenario**](../scenarios/solo-dev.md) — Squad for one-person teams
-- [**Tips & Tricks**](tips-and-tricks.md) — Patterns that work
+- [**Tips & Tricks**](./tips-and-tricks.md) — Patterns that work
