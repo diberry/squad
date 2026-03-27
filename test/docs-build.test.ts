@@ -19,7 +19,7 @@ const EXPECTED_GET_STARTED = ['installation', 'first-session', 'five-minute-star
 
 const EXPECTED_GUIDES = ['build-autonomous-agent', 'building-extensions', 'building-resilient-agents', 'contributing', 'contributors', 'extensibility', 'faq', 'github-auth-setup', 'personal-squad', 'sample-prompts', 'shell', 'tips-and-tricks'];
 
-const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'api-reference', 'integration', 'tools-and-hooks', 'glossary'];
+const EXPECTED_REFERENCE = ['cli', 'sdk', 'config', 'config-model', 'api-reference', 'integration', 'tools-and-hooks', 'glossary'];
 
 const EXPECTED_SCENARIOS = [
   'aspire-dashboard',
