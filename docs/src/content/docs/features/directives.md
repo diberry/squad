@@ -26,8 +26,6 @@ Directives are team rules that persist across sessions. When you say "always" or
 
 A directive is a preference, rule, or constraint the team remembers across sessions. When you say "always do X" or "never do Y", Squad captures it as a directive, writes it to the decisions inbox, and the Scribe merges it into `.squad/decisions.md` — the team's permanent memory.
 
-## How Directives Work
-
 1. **Signal Word Detection** — The coordinator listens for: "always", "never", "from now on", "remember to", "don't", "make sure to".
 2. **Capture** — Directive is written to `.squad/decisions/inbox/{timestamp}-{brief-slug}.md`.
 3. **Scribe Merge** — Scribe consolidates inbox files into `decisions.md` during the next coordination cycle.

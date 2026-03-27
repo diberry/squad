@@ -19,12 +19,6 @@ Your squad sends you instant messages when they need input, hit an error, or com
 
 ## How It Works
 
-Your squad can send you instant messages when they need your input. Leave your terminal, get pinged on your phone.
-
----
-
-## How It Works
-
 Squad ships zero notification infrastructure. Instead, it uses **skills** — reusable knowledge files — to teach agents when and how to ping you. You bring your own notification delivery by configuring an MCP notification server in your Copilot environment.
 
 The flow:

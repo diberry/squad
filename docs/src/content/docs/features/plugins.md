@@ -19,12 +19,6 @@ Plugins are community-curated bundles of agent templates, skills, and best pract
 
 ## What Are Plugins?
 
-Your Squad can discover and install **plugins** — curated collections of agent templates, skills, and instructions from community repositories. Plugins solve recurring problems: Azure cloud development, React patterns, security hardening, testing strategies, and more.
-
----
-
-## What Are Plugins?
-
 Plugins are **community-curated bundles** of reusable knowledge. Each plugin contains:
 
 - **Agent templates** — specialized role charters for common needs (e.g., "AWS DevOps", "Python Data Science")

@@ -162,7 +162,7 @@ For the full command reference, see the [official GitLab CLI documentation](http
 - You don't need to assign issues to specific agents — Squad routes based on domain expertise.
 - If `glab` isn't authenticated, Squad will tell you. Run `glab auth login` first.
 - MR descriptions include `Closes #N` so merging automatically closes the linked issue, just like on GitHub.
-- See [GitLab Issues Walkthrough](../tour-gitlab-issues.md) for a step-by-step tour.
+- See the [GitLab Issues feature page](./gitlab-issues.md) for the full reference.
 
 ## Sample Prompts
 
