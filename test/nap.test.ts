@@ -510,6 +510,80 @@ describe('Nap — Decision archival', () => {
     expect(archiveActions).toHaveLength(0);
     expect(existsSync(join(squadDir, 'decisions-archive.md'))).toBe(false);
   });
+
+  it('preserves ## section headings when any child ### entry is kept', async () => {
+    // Two ## sections: one with only old entries, one with a mix
+    let bigDecisions = '# Decisions\n\n---\n\n';
+    // Section 1: all old
+    bigDecisions += '## Legacy Section\n\n';
+    for (let i = 0; i < 15; i++) {
+      bigDecisions += `### 2024-01-${String(i + 1).padStart(2, '0')}: Legacy ${i + 1}\n`;
+      bigDecisions += 'y'.repeat(1000) + '\n\n';
+    }
+    // Section 2: mix of old and undated (kept)
+    bigDecisions += '## Foundational Directives\n\n';
+    for (let i = 0; i < 5; i++) {
+      bigDecisions += `### Directive ${i + 1}: Always do X\n`;
+      bigDecisions += 'Foundational rule.\n\n';
+    }
+    for (let i = 0; i < 10; i++) {
+      bigDecisions += `### 2024-01-${String(i + 1).padStart(2, '0')}: Old Foundational ${i + 1}\n`;
+      bigDecisions += 'y'.repeat(1000) + '\n\n';
+    }
+    expect(Buffer.byteLength(bigDecisions)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigDecisions });
+    const result = await runNap({ squadDir });
+
+    const archiveActions = result.actions.filter(
+      (a) => a.type === 'archive' && a.target.includes('decisions')
+    );
+    expect(archiveActions.length).toBeGreaterThan(0);
+
+    const remaining = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    // Undated directives are kept → their parent ## heading must survive
+    expect(remaining).toContain('## Foundational Directives');
+    for (let i = 0; i < 5; i++) {
+      expect(remaining).toContain(`Directive ${i + 1}: Always do X`);
+    }
+
+    // The archived content should include ## section headings for context
+    const archived = readFileSync(join(squadDir, 'decisions-archive.md'), 'utf8');
+    expect(archived).toContain('## Legacy Section');
+  });
+
+  it('does not orphan ## headings when their ### children are archived', async () => {
+    // A ## section whose entries are ALL old — both heading and entries should archive together
+    let bigDecisions = '# Decisions\n\n';
+    bigDecisions += '## Old Section\n\n';
+    for (let i = 0; i < 20; i++) {
+      bigDecisions += `### 2024-01-${String(i + 1).padStart(2, '0')}: Old ${i + 1}\n`;
+      bigDecisions += 'y'.repeat(1000) + '\n\n';
+    }
+    bigDecisions += '## Fresh Section\n\n';
+    const today = new Date().toISOString().slice(0, 10);
+    for (let i = 0; i < 5; i++) {
+      bigDecisions += `### ${today}: Fresh ${i + 1}\n`;
+      bigDecisions += 'z'.repeat(200) + '\n\n';
+    }
+    expect(Buffer.byteLength(bigDecisions)).toBeGreaterThan(20 * 1024);
+
+    const squadDir = createTestSquadDir({ 'decisions.md': bigDecisions });
+    await runNap({ squadDir });
+
+    const remaining = readFileSync(join(squadDir, 'decisions.md'), 'utf8');
+    // Fresh section and its entries should remain
+    expect(remaining).toContain('## Fresh Section');
+    expect(remaining).toContain('Fresh 1');
+
+    // Old section heading should NOT be in remaining (no children left)
+    expect(remaining).not.toContain('## Old Section');
+
+    // Archive should have the old section heading
+    const archived = readFileSync(join(squadDir, 'decisions-archive.md'), 'utf8');
+    expect(archived).toContain('## Old Section');
+    expect(archived).toContain('Old 1');
+  });
 });
 
 // ============================================================================
