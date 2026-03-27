@@ -38,7 +38,7 @@ Each failed probe attempt resets the backoff. This gives flaky services time to 
 
 ## Configuration
 
-Squad includes sensible defaults — most agents won't need to change these. Configure the circuit breaker in your agent's `squad.json` or initialization code only if you want to customize:
+Squad includes sensible defaults — most agents won't need to change these. Configure the circuit breaker in your agent's `squad.config.ts` or initialization code only if you want to customize:
 
 ```json
 {
@@ -57,7 +57,7 @@ Squad includes sensible defaults — most agents won't need to change these. Con
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
 | `failureThreshold` | 5 | Open circuit after this many failures |
-| `successThreshold` | 2 | Close circuit after this many successes in half-open |
+| `successThreshold` | 2 | Number of consecutive successes during half-open state before closing circuit |
 | `timeWindow` | 60s | Count failures within this window |
 | `initialBackoff` | 2m | Start backoff at this duration |
 | `maxBackoff` | 30m | Cap backoff at this duration |
@@ -72,30 +72,37 @@ The circuit breaker persists its state to disk. If an agent restarts while the c
 
 ## How to apply to custom agents
 
-When building a custom agent, wrap your external calls with circuit breaker protection:
+When building a custom agent, wrap your external calls with circuit breaker protection. This example shows the conceptual pattern (note: a `@squad/resilience` module is planned but not yet available):
 
 ```typescript
-import { CircuitBreaker } from '@squad/resilience';
+// Pseudocode: Circuit breaker pattern for external calls
+async function callDownstreamAPI(breaker) {
+  try {
+    // Check circuit state before making the call
+    if (breaker.state === 'OPEN') {
+      throw new Error('Circuit is open; retrying later');
+    }
 
-const breaker = new CircuitBreaker({
-  failureThreshold: 5,
-  timeWindow: 60000,
-});
-
-async function callDownstreamAPI() {
-  return breaker.execute(async () => {
     const response = await fetch('https://api.example.com/data');
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      breaker.recordFailure();
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    breaker.recordSuccess();
     return response.json();
-  });
+  } catch (err) {
+    breaker.recordFailure();
+    throw err;
+  }
 }
 
 // Circuit breaker automatically handles state transitions
-// and exponential backoff — just call it.
+// and exponential backoff.
 try {
-  const data = await callDownstreamAPI();
+  const data = await callDownstreamAPI(circuitBreaker);
 } catch (err) {
-  if (err.code === 'CIRCUIT_OPEN') {
+  if (err.message.includes('Circuit is open')) {
     console.log('Circuit is open; retrying later');
   } else {
     console.error('Request failed:', err);
@@ -103,7 +110,7 @@ try {
 }
 ```
 
-When the circuit opens, `execute()` throws a `CIRCUIT_OPEN` error. Your agent can catch this and backoff gracefully, or fail-fast to upstream callers.
+The circuit breaker automatically transitions between states and applies exponential backoff. Failures increment a counter within the time window; successes during half-open close the circuit.
 
 ---
 
