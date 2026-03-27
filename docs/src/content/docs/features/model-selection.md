@@ -60,9 +60,9 @@ Model selection uses a layered system. First match wins:
 
 5. **Default** — If nothing matched, `claude-haiku-4.5`. Cost wins when in doubt.
 
-## Persistent Model Preferences
+## Persistent Model Preferences (Model Pinning)
 
-Squad stores your model preferences in `.squad/config.json`:
+Model pinning lets you lock a specific model for all agents or per-agent. Squad stores your model preferences in `.squad/config.json`:
 
 ```json
 {

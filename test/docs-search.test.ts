@@ -36,12 +36,20 @@ function loadSearchIndex(): SearchChunk[] {
 
 /**
  * Simple TF-IDF scoring for search relevance testing.
- * Includes title/heading boost to match the production scoring in SemanticSearch.astro.
+ * Matches the production scoring in SemanticSearch.astro: title/heading boost
+ * plus exact phrase boost. Uses BM25-style length normalization to prevent
+ * very short chunks from dominating via inflated term frequency.
  * Returns chunks sorted by descending relevance to the query.
  */
 function tfidfSearch(chunks: SearchChunk[], query: string): SearchChunk[] {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const lowerQuery = query.toLowerCase();
   const N = chunks.length;
+
+  // Average document length for BM25-style normalization
+  const avgDl = chunks.reduce((sum, c) => {
+    return sum + `${c.title} ${c.heading || ''} ${c.text}`.split(/\s+/).length;
+  }, 0) / (N || 1);
 
   // Document frequency: how many chunks contain each term
   const df = new Map<string, number>();
@@ -58,15 +66,27 @@ function tfidfSearch(chunks: SearchChunk[], query: string): SearchChunk[] {
   const scored = chunks.map(chunk => {
     const text = `${chunk.title} ${chunk.heading || ''} ${chunk.text}`.toLowerCase();
     const words = text.split(/\s+/);
+    const dl = words.length;
     let score = 0;
 
+    // BM25-style normalization factor (k1=1.2, b=0.75)
+    const k1 = 1.2;
+    const b = 0.75;
+    const lengthNorm = 1 - b + b * (dl / avgDl);
+
     for (const term of terms) {
-      // Term frequency
-      const tf = words.filter(w => w.includes(term)).length / (words.length || 1);
+      const rawTf = words.filter(w => w.includes(term)).length;
+      // Normalized TF (BM25): prevents short docs from dominating
+      const tf = (rawTf * (k1 + 1)) / (rawTf + k1 * lengthNorm);
       // Inverse document frequency
       const idf = Math.log(N / (1 + (df.get(term) ?? 0)));
       score += tf * idf;
     }
+
+    // Exact phrase boost (matches production SemanticSearch.astro)
+    if (chunk.text.toLowerCase().includes(lowerQuery)) score += 0.3;
+    if (chunk.title.toLowerCase().includes(lowerQuery)) score += 0.2;
+    if ((chunk.heading || '').toLowerCase().includes(lowerQuery)) score += 0.15;
 
     // Title/heading boost: individual query terms appearing in title/heading
     const titleLower = chunk.title.toLowerCase();

@@ -106,6 +106,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build search index for tests
+        run: |
+          node docs/scripts/build-search-index.mjs
+          mkdir -p docs/dist
+          cp docs/public/search-index.json docs/dist/search-index.json
+
       - name: Run tests
         run: npm test
 
