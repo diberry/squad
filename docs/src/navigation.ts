@@ -37,6 +37,18 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: 'Concepts',
+    dir: 'concepts',
+    items: [
+      { title: 'Architecture', slug: 'concepts/architecture' },
+      { title: 'Your Team', slug: 'concepts/your-team' },
+      { title: 'Memory & Knowledge', slug: 'concepts/memory-and-knowledge' },
+      { title: 'Parallel Work', slug: 'concepts/parallel-work' },
+      { title: 'GitHub Workflow', slug: 'concepts/github-workflow' },
+      { title: 'Portability', slug: 'concepts/portability' },
+    ],
+  },
+  {
     title: 'Features',
     dir: 'features',
     items: [
@@ -120,18 +132,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Disaster Recovery', slug: 'scenarios/disaster-recovery' },
       { title: 'Troubleshooting', slug: 'scenarios/troubleshooting' },
       { title: 'Aspire Dashboard', slug: 'scenarios/aspire-dashboard' },
-    ],
-  },
-  {
-    title: 'Concepts',
-    dir: 'concepts',
-    items: [
-      { title: 'Architecture', slug: 'concepts/architecture' },
-      { title: 'Your Team', slug: 'concepts/your-team' },
-      { title: 'Memory & Knowledge', slug: 'concepts/memory-and-knowledge' },
-      { title: 'Parallel Work', slug: 'concepts/parallel-work' },
-      { title: 'GitHub Workflow', slug: 'concepts/github-workflow' },
-      { title: 'Portability', slug: 'concepts/portability' },
     ],
   },
   {
