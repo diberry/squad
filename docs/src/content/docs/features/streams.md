@@ -1,4 +1,4 @@
-# Squad SubSquads
+# Streams
 
 > Scale Squad across multiple Codespaces by partitioning work into labeled SubSquads.
 
