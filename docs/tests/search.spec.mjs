@@ -1,6 +1,6 @@
 /**
  * Playwright e2e tests for Phase 1 search improvements.
- * Tests run against the live preview at http://localhost:4321/squad/
+ * The Playwright config starts a build+preview server on port 4322 automatically.
  * Run with: npx playwright test
  */
 import { test, expect } from '@playwright/test';
