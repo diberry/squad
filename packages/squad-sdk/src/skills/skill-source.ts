@@ -38,73 +38,83 @@ export class LocalSkillSource implements SkillSource {
     this.priority = priority;
   }
 
-  private get skillsDir(): string {
+  /** Returns all existing skill directories, .copilot/skills/ first (highest priority). */
+  private get skillsDirs(): string[] {
+    const dirs: string[] = [];
     const copilotDir = path.join(this.basePath, '.copilot', 'skills');
-    if (fs.existsSync(copilotDir)) return copilotDir;
-    // Backward compat: fall back to legacy location
-    return path.join(this.basePath, '.squad', 'skills');
+    const squadDir = path.join(this.basePath, '.squad', 'skills');
+    if (fs.existsSync(copilotDir)) dirs.push(copilotDir);
+    if (fs.existsSync(squadDir)) dirs.push(squadDir);
+    return dirs;
   }
 
   async listSkills(): Promise<SkillManifest[]> {
-    if (!fs.existsSync(this.skillsDir)) return [];
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(this.skillsDir, { withFileTypes: true });
-    } catch {
-      return [];
-    }
-
-    const manifests: SkillManifest[] = [];
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const skillFile = path.join(this.skillsDir, entry.name, 'SKILL.md');
-      if (!fs.existsSync(skillFile)) continue;
+    const seen = new Map<string, SkillManifest>();
+    for (const dir of this.skillsDirs) {
+      let entries: fs.Dirent[];
       try {
-        const raw = fs.readFileSync(skillFile, 'utf-8');
-        const { meta } = parseFrontmatter(raw);
-        manifests.push({
-          id: entry.name,
-          name: typeof meta.name === 'string' ? meta.name : entry.name,
-          domain: typeof meta.domain === 'string' ? meta.domain : 'general',
-          source: 'local',
-        });
+        entries = fs.readdirSync(dir, { withFileTypes: true });
       } catch {
-        // skip malformed
+        continue;
+      }
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (seen.has(entry.name)) continue; // first dir wins on conflicts
+        const skillFile = path.join(dir, entry.name, 'SKILL.md');
+        if (!fs.existsSync(skillFile)) continue;
+        try {
+          const raw = fs.readFileSync(skillFile, 'utf-8');
+          const { meta } = parseFrontmatter(raw);
+          seen.set(entry.name, {
+            id: entry.name,
+            name: typeof meta.name === 'string' ? meta.name : entry.name,
+            domain: typeof meta.domain === 'string' ? meta.domain : 'general',
+            source: 'local',
+          });
+        } catch {
+          // skip malformed
+        }
       }
     }
-    return manifests;
+    return Array.from(seen.values());
   }
 
   async getSkill(id: string): Promise<SkillDefinition | null> {
-    const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!fs.existsSync(skillFile)) return null;
-    try {
-      const raw = fs.readFileSync(skillFile, 'utf-8');
-      const { meta, body } = parseFrontmatter(raw);
-      if (!body) return null;
-      return {
-        id,
-        name: typeof meta.name === 'string' ? meta.name : id,
-        domain: typeof meta.domain === 'string' ? meta.domain : 'general',
-        content: body,
-        triggers: Array.isArray(meta.triggers) ? meta.triggers : [],
-        agentRoles: Array.isArray(meta.roles) ? meta.roles : [],
-      };
-    } catch {
-      return null;
+    for (const dir of this.skillsDirs) {
+      const skillFile = path.join(dir, id, 'SKILL.md');
+      if (!fs.existsSync(skillFile)) continue;
+      try {
+        const raw = fs.readFileSync(skillFile, 'utf-8');
+        const { meta, body } = parseFrontmatter(raw);
+        if (!body) continue;
+        return {
+          id,
+          name: typeof meta.name === 'string' ? meta.name : id,
+          domain: typeof meta.domain === 'string' ? meta.domain : 'general',
+          content: body,
+          triggers: Array.isArray(meta.triggers) ? meta.triggers : [],
+          agentRoles: Array.isArray(meta.roles) ? meta.roles : [],
+        };
+      } catch {
+        continue;
+      }
     }
+    return null;
   }
 
   async getContent(id: string): Promise<string | null> {
-    const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!fs.existsSync(skillFile)) return null;
-    try {
-      const raw = fs.readFileSync(skillFile, 'utf-8');
-      const { body } = parseFrontmatter(raw);
-      return body || null;
-    } catch {
-      return null;
+    for (const dir of this.skillsDirs) {
+      const skillFile = path.join(dir, id, 'SKILL.md');
+      if (!fs.existsSync(skillFile)) continue;
+      try {
+        const raw = fs.readFileSync(skillFile, 'utf-8');
+        const { body } = parseFrontmatter(raw);
+        if (body) return body;
+      } catch {
+        continue;
+      }
     }
+    return null;
   }
 }
 

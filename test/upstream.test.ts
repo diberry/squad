@@ -188,3 +188,102 @@ describe('upstream resolver', () => {
     expect(buildSessionDisplay(null)).toBe('');
   });
 });
+
+describe('upstream resolver — readSkills merges both directories', () => {
+  let sourceDir: string;
+  let childDir: string;
+
+  function setup() {
+    sourceDir = makeTempDir('squad-upstream-dual-');
+    childDir = makeTempDir('squad-upstream-child-');
+  }
+
+  function teardown() {
+    cleanDir(sourceDir);
+    cleanDir(childDir);
+  }
+
+  it('merges skills from .copilot/skills/ and .squad/skills/', () => {
+    setup();
+    try {
+      const squadDir = path.join(sourceDir, '.squad');
+      fs.mkdirSync(squadDir, { recursive: true });
+
+      // Skill A in .copilot/skills/
+      fs.mkdirSync(path.join(sourceDir, '.copilot', 'skills', 'copilot-skill'), { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, '.copilot', 'skills', 'copilot-skill', 'SKILL.md'),
+        '---\nname: copilot-skill\n---\n\nCopilot content.\n');
+
+      // Skill B in .squad/skills/
+      fs.mkdirSync(path.join(squadDir, 'skills', 'squad-skill'), { recursive: true });
+      fs.writeFileSync(path.join(squadDir, 'skills', 'squad-skill', 'SKILL.md'),
+        '---\nname: squad-skill\n---\n\nSquad content.\n');
+
+      // Set up child repo pointing to source
+      const childSquad = path.join(childDir, '.squad');
+      fs.mkdirSync(childSquad, { recursive: true });
+      fs.writeFileSync(path.join(childSquad, 'upstream.json'), JSON.stringify({
+        upstreams: [{ name: 'dual', type: 'local', source: sourceDir, added_at: new Date().toISOString(), last_synced: null }],
+      }));
+
+      const result = resolveUpstreams(childSquad)!;
+      const dual = result.upstreams.find(u => u.name === 'dual')!;
+      expect(dual.skills.length).toBe(2);
+      const names = dual.skills.map(s => s.name).sort();
+      expect(names).toEqual(['copilot-skill', 'squad-skill']);
+    } finally {
+      teardown();
+    }
+  });
+
+  it('deduplicates by name with .copilot/ winning', () => {
+    setup();
+    try {
+      const squadDir = path.join(sourceDir, '.squad');
+      fs.mkdirSync(squadDir, { recursive: true });
+
+      // Same skill in both dirs
+      fs.mkdirSync(path.join(sourceDir, '.copilot', 'skills', 'shared'), { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, '.copilot', 'skills', 'shared', 'SKILL.md'),
+        '---\nname: shared\n---\n\nCopilot version wins.\n');
+
+      fs.mkdirSync(path.join(squadDir, 'skills', 'shared'), { recursive: true });
+      fs.writeFileSync(path.join(squadDir, 'skills', 'shared', 'SKILL.md'),
+        '---\nname: shared\n---\n\nSquad version loses.\n');
+
+      const childSquad = path.join(childDir, '.squad');
+      fs.mkdirSync(childSquad, { recursive: true });
+      fs.writeFileSync(path.join(childSquad, 'upstream.json'), JSON.stringify({
+        upstreams: [{ name: 'dedup', type: 'local', source: sourceDir, added_at: new Date().toISOString(), last_synced: null }],
+      }));
+
+      const result = resolveUpstreams(childSquad)!;
+      const dedup = result.upstreams.find(u => u.name === 'dedup')!;
+      expect(dedup.skills).toHaveLength(1);
+      expect(dedup.skills[0].content).toContain('Copilot version wins');
+    } finally {
+      teardown();
+    }
+  });
+
+  it('handles missing directories gracefully', () => {
+    setup();
+    try {
+      const squadDir = path.join(sourceDir, '.squad');
+      fs.mkdirSync(squadDir, { recursive: true });
+      // No skills directories exist at all
+
+      const childSquad = path.join(childDir, '.squad');
+      fs.mkdirSync(childSquad, { recursive: true });
+      fs.writeFileSync(path.join(childSquad, 'upstream.json'), JSON.stringify({
+        upstreams: [{ name: 'empty', type: 'local', source: sourceDir, added_at: new Date().toISOString(), last_synced: null }],
+      }));
+
+      const result = resolveUpstreams(childSquad)!;
+      const empty = result.upstreams.find(u => u.name === 'empty')!;
+      expect(empty.skills).toHaveLength(0);
+    } finally {
+      teardown();
+    }
+  });
+});
