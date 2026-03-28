@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { join, basename } from 'node:path';
+import { join, basename, relative } from 'node:path';
+import { NAV_SECTIONS, STANDALONE_PAGES } from '../docs/src/navigation';
 
 const DOCS_DIR = join(process.cwd(), 'docs');
 const CONTENT_DIR = join(DOCS_DIR, 'src', 'content');
@@ -362,5 +363,141 @@ describe('Docs Build Script (Astro)', () => {
     const html = readDocHtml('tips-and-tricks', 'guide');
     expect(html).toContain('id="search-btn"');
     expect(html).toContain('id="search-modal"');
+  });
+});
+
+// --- P0 Docs Quality Checks (TDD red phase — these SHOULD fail on current code) ---
+
+/** Recursively collect all .md files under a directory */
+function getAllContentDocsRecursive(dir: string): string[] {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...getAllContentDocsRecursive(fullPath));
+    } else if (entry.name.endsWith('.md')) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+/** Extract a page title from YAML frontmatter `title:` or the first `# ` heading */
+function getPageTitle(filepath: string): string | null {
+  const content = readFileSync(filepath, 'utf-8');
+  const fmMatch = content.match(/^---\s*\n[\s\S]*?^title:\s*["']?([^"'\n]+?)["']?\s*$/m);
+  if (fmMatch) return fmMatch[1].trim();
+  const h1Match = content.match(/^#\s+(.+)/m);
+  return h1Match ? h1Match[1].trim() : null;
+}
+
+describe('P0 docs quality checks', () => {
+
+  it('no markdown file has duplicate H2 headings', () => {
+    const allFiles = getAllContentDocsRecursive(DOCS_CONTENT_DIR);
+    const failures: string[] = [];
+
+    for (const file of allFiles) {
+      const content = readFileSync(file, 'utf-8');
+      const h2Lines = content.split('\n')
+        .filter(line => /^## /.test(line))
+        .map(line => line.trim());
+
+      const seen = new Set<string>();
+      const dupes = new Set<string>();
+      for (const h2 of h2Lines) {
+        if (seen.has(h2)) dupes.add(h2);
+        seen.add(h2);
+      }
+
+      if (dupes.size > 0) {
+        const rel = relative(DOCS_CONTENT_DIR, file).replace(/\\/g, '/');
+        failures.push(`${rel}: ${[...dupes].join(', ')}`);
+      }
+    }
+
+    expect(failures, `Duplicate H2 headings found:\n${failures.join('\n')}`).toHaveLength(0);
+  });
+
+  it('all content pages are wired into navigation.ts', () => {
+    // Pages that exist but aren't wired into navigation.ts yet (intentional)
+    const KNOWN_ORPHANS: string[] = [
+      'features/built-in-roles',
+      'features/context-hygiene',
+      'features/cost-tracking',
+      'features/issue-templates',
+      'get-started/choose-your-interface',
+      'guide/build-autonomous-agent',
+      'guide/faq',
+      'guide/github-auth-setup',
+      'reference/api-reference',
+      'reference/vscode-troubleshooting',
+    ];
+
+    const navSlugs = new Set<string>();
+    for (const section of NAV_SECTIONS) {
+      for (const item of section.items) {
+        navSlugs.add(item.slug);
+      }
+    }
+    for (const page of STANDALONE_PAGES) {
+      navSlugs.add(page.slug);
+    }
+
+    const allFiles = getAllContentDocsRecursive(DOCS_CONTENT_DIR);
+    const orphans: string[] = [];
+
+    for (const file of allFiles) {
+      const rel = relative(DOCS_CONTENT_DIR, file).replace(/\\/g, '/').replace(/\.md$/, '');
+      if (rel.endsWith('/index') || rel === 'index') continue;
+      if (KNOWN_ORPHANS.includes(rel)) continue;
+
+      if (!navSlugs.has(rel)) {
+        orphans.push(rel);
+      }
+    }
+
+    expect(orphans, `Orphan pages not in navigation.ts:\n${orphans.join('\n')}`).toHaveLength(0);
+  });
+
+  it('navigation titles roughly match their page titles', () => {
+    // Stylistic choices where short nav titles differ from descriptive page titles
+    const KNOWN_MISMATCHES: string[] = [
+      'features/labels',
+      'features/plugins',
+      'features/notifications',
+      'reference/config',
+      'scenarios/monorepo',
+      'scenarios/cross-org-auth',
+      'scenarios/team-state-storage',
+    ];
+
+    const allNavItems = [
+      ...NAV_SECTIONS.flatMap(s => s.items),
+      ...STANDALONE_PAGES,
+    ];
+    const mismatches: string[] = [];
+
+    const significantWords = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 3);
+
+    for (const item of allNavItems) {
+      if (KNOWN_MISMATCHES.includes(item.slug)) continue;
+      const filePath = join(DOCS_CONTENT_DIR, `${item.slug}.md`);
+      if (!existsSync(filePath)) continue;
+      const pageTitle = getPageTitle(filePath);
+      if (!pageTitle) continue;
+
+      const navWords = significantWords(item.title);
+      const pageWords = significantWords(pageTitle);
+      const overlap = navWords.filter(w => pageWords.includes(w));
+
+      if (overlap.length === 0 && navWords.length > 0) {
+        mismatches.push(`Nav "${item.title}" → Page "${pageTitle}" (${item.slug})`);
+      }
+    }
+
+    expect(mismatches, `Nav/page title mismatches:\n${mismatches.join('\n')}`).toHaveLength(0);
   });
 });

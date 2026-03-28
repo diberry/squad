@@ -16,12 +16,6 @@ Squad runs entirely in your Copilot session. Nothing leaves your machine except 
 
 ## 1. Where Squad Runs
 
-Squad runs entirely in your Copilot session. Nothing leaves your machine except what Copilot already does.
-
----
-
-## 1. Where Squad Runs
-
 Squad is a **local agent** that runs in your GitHub Copilot CLI session. It doesn't phone home. It doesn't send data to a Squad server. It doesn't use external APIs.
 
 When you run:

@@ -26,8 +26,6 @@ Squad launches independent work in parallel by default — multiple agents work 
 
 Squad runs agents in parallel whenever possible. The fan-out pattern launches all independent agents simultaneously, waits for results, then proceeds — no sequential bottlenecks unless data dependencies or reviewer gates require them.
 
-## How Parallel Execution Works
-
 When the coordinator receives work:
 
 1. **Dependency Analysis** — Check if tasks have data dependencies (A needs output from B).

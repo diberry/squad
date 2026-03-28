@@ -26,8 +26,6 @@ The coordinator routes work to the right agent using named routing (explicit), d
 
 The coordinator decides who handles each piece of work using a three-layer routing system: named routing (explicit assignments), domain routing (pattern matching), and skill-aware routing (capability checking). The goal: get work to the right agent without manual triage overhead.
 
-## Routing Strategies
-
 ### 1. Named Routing
 
 You explicitly name who should do the work:
@@ -76,7 +74,7 @@ Work tagged with authentication routes to Backend or Lead based on task type (im
 
 Default assignments for common patterns.
 
-## Routing Table
+## Routes
 
 | Pattern | Owner | Reason |
 |---------|-------|--------|

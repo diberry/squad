@@ -30,8 +30,6 @@ When you first run Squad in a repository, it doesn't impose a team — it propos
 
 By default, Squad uses the **CastingEngine** to assign agent names from fictional universes (The Usual Suspects, Ocean's Eleven, etc.). The LLM proposes roles and team composition; the engine allocates curated character names, personalities, and backstories from the selected universe. Use `squad init --roles` to opt into the base role catalog (Lead, Backend, Frontend, Tester) instead of universe casting.
 
-## How Init Works
-
 1. **Discovery** — Squad scans your repository: language distribution, file structure, test frameworks, dependencies, existing workflows.
 2. **Proposal** — Based on what it finds, Squad proposes a team roster with 3-7 members and their roles.
 3. **Confirmation** — You review the proposal and can accept as-is, add members, remove members, or change roles.

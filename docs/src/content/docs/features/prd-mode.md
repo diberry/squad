@@ -19,12 +19,6 @@ Give Squad a product requirements document and the Lead breaks it into prioritiz
 
 ## How to Use
 
-Give Squad a product requirements document. The Lead agent breaks it into work items, assigns them to the team, and tracks progress.
-
----
-
-## How to Use
-
 Paste a PRD directly into the chat:
 
 ```

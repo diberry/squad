@@ -19,8 +19,6 @@ Squad supports git worktrees with two strategies: **worktree-local** (each workt
 
 ## What Are Worktrees?
 
-## What Are Worktrees?
-
 Git worktrees let you check out multiple branches simultaneously:
 
 ```bash
