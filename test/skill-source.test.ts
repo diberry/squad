@@ -157,6 +157,126 @@ describe('LocalSkillSource', () => {
     expect(skills[0].id).toBe('legacy-skill');
   });
 
+  it('should merge skills from both .copilot/skills/ and .squad/skills/', async () => {
+    // Skill A only in .copilot/skills/
+    const copilotSkill = path.join(tempDir, '.copilot', 'skills', 'copilot-only');
+    fs.mkdirSync(copilotSkill, { recursive: true });
+    fs.writeFileSync(path.join(copilotSkill, 'SKILL.md'), SKILL_MD);
+
+    // Skill B only in .squad/skills/
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'squad-only');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), SKILL_MD_MINIMAL);
+
+    const source = new LocalSkillSource(tempDir);
+    const skills = await source.listSkills();
+
+    expect(skills).toHaveLength(2);
+    const ids = skills.map(s => s.id).sort();
+    expect(ids).toEqual(['copilot-only', 'squad-only']);
+  });
+
+  it('should deduplicate by id with .copilot/skills/ winning on conflicts', async () => {
+    const COPILOT_VERSION = `---\nname: Copilot Version\ndomain: copilot\n---\nCopilot wins.\n`;
+    const SQUAD_VERSION = `---\nname: Squad Version\ndomain: squad\n---\nSquad loses.\n`;
+
+    // Same skill name in both dirs
+    const copilotSkill = path.join(tempDir, '.copilot', 'skills', 'conflict-skill');
+    fs.mkdirSync(copilotSkill, { recursive: true });
+    fs.writeFileSync(path.join(copilotSkill, 'SKILL.md'), COPILOT_VERSION);
+
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'conflict-skill');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), SQUAD_VERSION);
+
+    const source = new LocalSkillSource(tempDir);
+    const skills = await source.listSkills();
+
+    expect(skills).toHaveLength(1);
+    expect(skills[0].name).toBe('Copilot Version');
+    expect(skills[0].domain).toBe('copilot');
+  });
+
+  it('should handle empty .copilot/skills/ dir without shadowing .squad/skills/', async () => {
+    // Create empty .copilot/skills/ directory
+    fs.mkdirSync(path.join(tempDir, '.copilot', 'skills'), { recursive: true });
+
+    // Skill only in .squad/skills/
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'legacy-skill');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), SKILL_MD_MINIMAL);
+
+    const source = new LocalSkillSource(tempDir);
+    const skills = await source.listSkills();
+
+    expect(skills).toHaveLength(1);
+    expect(skills[0].id).toBe('legacy-skill');
+  });
+
+  it('should work when only .copilot/skills/ exists', async () => {
+    const copilotSkill = path.join(tempDir, '.copilot', 'skills', 'copilot-skill');
+    fs.mkdirSync(copilotSkill, { recursive: true });
+    fs.writeFileSync(path.join(copilotSkill, 'SKILL.md'), SKILL_MD);
+
+    const source = new LocalSkillSource(tempDir);
+    const skills = await source.listSkills();
+
+    expect(skills).toHaveLength(1);
+    expect(skills[0].id).toBe('copilot-skill');
+  });
+
+  it('getSkill should check .copilot/skills/ first then .squad/skills/', async () => {
+    const COPILOT_CONTENT = `---\nname: Copilot Skill\ndomain: copilot\ntriggers: [copilot]\nroles: [dev]\n---\nCopilot content.\n`;
+    const SQUAD_CONTENT = `---\nname: Squad Skill\ndomain: squad\ntriggers: [squad]\nroles: [ops]\n---\nSquad content.\n`;
+
+    // Same ID in both dirs
+    const copilotSkill = path.join(tempDir, '.copilot', 'skills', 'shared');
+    fs.mkdirSync(copilotSkill, { recursive: true });
+    fs.writeFileSync(path.join(copilotSkill, 'SKILL.md'), COPILOT_CONTENT);
+
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'shared');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), SQUAD_CONTENT);
+
+    const source = new LocalSkillSource(tempDir);
+    const skill = await source.getSkill('shared');
+
+    expect(skill).not.toBeNull();
+    expect(skill!.name).toBe('Copilot Skill');
+    expect(skill!.content).toContain('Copilot content');
+  });
+
+  it('getSkill should find skill in .squad/skills/ when not in .copilot/skills/', async () => {
+    // .copilot/skills/ exists but doesn't have this skill
+    fs.mkdirSync(path.join(tempDir, '.copilot', 'skills'), { recursive: true });
+
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'squad-only');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), SKILL_MD_MINIMAL);
+
+    const source = new LocalSkillSource(tempDir);
+    const skill = await source.getSkill('squad-only');
+
+    expect(skill).not.toBeNull();
+    expect(skill!.name).toBe('Docker');
+  });
+
+  it('getContent should check both directories with priority', async () => {
+    const copilotSkill = path.join(tempDir, '.copilot', 'skills', 'content-test');
+    fs.mkdirSync(copilotSkill, { recursive: true });
+    fs.writeFileSync(path.join(copilotSkill, 'SKILL.md'), `---\nname: test\n---\nCopilot body.\n`);
+
+    const squadSkill = path.join(tempDir, '.squad', 'skills', 'content-test');
+    fs.mkdirSync(squadSkill, { recursive: true });
+    fs.writeFileSync(path.join(squadSkill, 'SKILL.md'), `---\nname: test\n---\nSquad body.\n`);
+
+    const source = new LocalSkillSource(tempDir);
+    const content = await source.getContent('content-test');
+
+    expect(content).toContain('Copilot body');
+    expect(content).not.toContain('Squad body');
+  });
+
   it('should support custom priority', () => {
     const source = new LocalSkillSource(tempDir, 10);
     expect(source.priority).toBe(10);

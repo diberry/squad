@@ -59,22 +59,27 @@ function readSkills(squadDir: string): Array<{ name: string; content: string }> 
     { dir: path.join(squadDir, 'skills'), layout: 'nested' as const },
     { dir: path.join(projectDir, '.ai-team', 'skills'), layout: 'flat' as const },
   ];
-  const source = candidateDirs.find(({ dir }) => fs.existsSync(dir));
-  if (!source) return [];
 
+  const seen = new Set<string>();
   const skills: Array<{ name: string; content: string }> = [];
-  try {
-    for (const entry of fs.readdirSync(source.dir)) {
-      const skillFile = source.layout === 'nested'
-        ? path.join(source.dir, entry, 'SKILL.md')
-        : path.join(source.dir, entry);
-      if (fs.existsSync(skillFile)) {
+
+  for (const source of candidateDirs) {
+    if (!fs.existsSync(source.dir)) continue;
+    try {
+      for (const entry of fs.readdirSync(source.dir)) {
+        const skillFile = source.layout === 'nested'
+          ? path.join(source.dir, entry, 'SKILL.md')
+          : path.join(source.dir, entry);
         const name = source.layout === 'nested' ? entry : path.basename(entry, '.md');
-        skills.push({ name, content: fs.readFileSync(skillFile, 'utf8') });
+        if (seen.has(name)) continue; // first dir wins on conflicts
+        if (fs.existsSync(skillFile)) {
+          skills.push({ name, content: fs.readFileSync(skillFile, 'utf8') });
+          seen.add(name);
+        }
       }
+    } catch {
+      // Graceful degradation — continue to next candidate dir
     }
-  } catch {
-    // Graceful degradation — return what we found
   }
   return skills;
 }
