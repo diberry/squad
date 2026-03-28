@@ -118,7 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Client Compatibility', slug: 'scenarios/client-compatibility' },
       { title: 'Remote Q&A', slug: 'scenarios/remote-qa' },
       { title: 'Disaster Recovery', slug: 'scenarios/disaster-recovery' },
-      { title: 'Troubleshooting', slug: 'scenarios/troubleshooting' },
+      { title: 'Troubleshooting Guide', slug: 'scenarios/squad-troubleshooting' },
       { title: 'Aspire Dashboard', slug: 'scenarios/aspire-dashboard' },
     ],
   },
