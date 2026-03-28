@@ -4,8 +4,10 @@
  * Pluggable skill discovery from local filesystem or GitHub repos.
  */
 
-import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { FSStorageProvider } from '../storage/fs-storage-provider.js';
+
+const storage = new FSStorageProvider();
 import { parseFrontmatter, type SkillDefinition } from './skill-loader.js';
 import type { GitHubFetcher } from '../config/agent-source.js';
 
@@ -40,31 +42,31 @@ export class LocalSkillSource implements SkillSource {
 
   private get skillsDir(): string {
     const copilotDir = path.join(this.basePath, '.copilot', 'skills');
-    if (fs.existsSync(copilotDir)) return copilotDir;
+    if (storage.existsSync(copilotDir)) return copilotDir;
     // Backward compat: fall back to legacy location
     return path.join(this.basePath, '.squad', 'skills');
   }
 
   async listSkills(): Promise<SkillManifest[]> {
-    if (!fs.existsSync(this.skillsDir)) return [];
-    let entries: fs.Dirent[];
+    if (!storage.existsSync(this.skillsDir)) return [];
+    let entries: string[];
     try {
-      entries = fs.readdirSync(this.skillsDir, { withFileTypes: true });
+      entries = storage.listSync(this.skillsDir);
     } catch {
       return [];
     }
 
     const manifests: SkillManifest[] = [];
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const skillFile = path.join(this.skillsDir, entry.name, 'SKILL.md');
-      if (!fs.existsSync(skillFile)) continue;
+    for (const entryName of entries) {
+      if (!storage.isDirectorySync(path.join(this.skillsDir, entryName))) continue;
+      const skillFile = path.join(this.skillsDir, entryName, 'SKILL.md');
+      if (!storage.existsSync(skillFile)) continue;
       try {
-        const raw = fs.readFileSync(skillFile, 'utf-8');
+        const raw = storage.readSync(skillFile) ?? '';
         const { meta } = parseFrontmatter(raw);
         manifests.push({
-          id: entry.name,
-          name: typeof meta.name === 'string' ? meta.name : entry.name,
+          id: entryName,
+          name: typeof meta.name === 'string' ? meta.name : entryName,
           domain: typeof meta.domain === 'string' ? meta.domain : 'general',
           source: 'local',
         });
@@ -77,9 +79,9 @@ export class LocalSkillSource implements SkillSource {
 
   async getSkill(id: string): Promise<SkillDefinition | null> {
     const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!fs.existsSync(skillFile)) return null;
+    if (!storage.existsSync(skillFile)) return null;
     try {
-      const raw = fs.readFileSync(skillFile, 'utf-8');
+      const raw = storage.readSync(skillFile) ?? '';
       const { meta, body } = parseFrontmatter(raw);
       if (!body) return null;
       return {
@@ -97,9 +99,9 @@ export class LocalSkillSource implements SkillSource {
 
   async getContent(id: string): Promise<string | null> {
     const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!fs.existsSync(skillFile)) return null;
+    if (!storage.existsSync(skillFile)) return null;
     try {
-      const raw = fs.readFileSync(skillFile, 'utf-8');
+      const raw = storage.readSync(skillFile) ?? '';
       const { body } = parseFrontmatter(raw);
       return body || null;
     } catch {
