@@ -119,6 +119,11 @@ jobs:
 
       - name: Check feature flag
         id: flag
+        # Default: gate is ENABLED. When vars.SQUAD_CHANGELOG_CHECK is
+        # undefined (not set in repo/org variables), the bash comparison
+        # [ "" = "false" ] evaluates to false, so skip stays "false" and
+        # the gate runs. Set vars.SQUAD_CHANGELOG_CHECK to "false" to
+        # explicitly disable.
         run: |
           if [ "${{ vars.SQUAD_CHANGELOG_CHECK }}" = "false" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -146,6 +151,10 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
+          # Three-dot diff (base...head) finds the merge-base automatically,
+          # so it works correctly even when the PR branch contains merge
+          # commits from syncing with the base branch. It compares against
+          # the common ancestor, not the literal base SHA.
           CHANGED=$(git diff --name-only "$BASE"..."$HEAD")
 
           SDK_CLI_CHANGED=$(echo "$CHANGED" | grep -E '^packages/squad-(sdk|cli)/src/' || true)
@@ -182,6 +191,11 @@ jobs:
 
       - name: Check feature flag
         id: flag
+        # Default: gate is ENABLED. When vars.SQUAD_EXPORTS_CHECK is
+        # undefined (not set in repo/org variables), the bash comparison
+        # [ "" = "false" ] evaluates to false, so skip stays "false" and
+        # the gate runs. Set vars.SQUAD_EXPORTS_CHECK to "false" to
+        # explicitly disable.
         run: |
           if [ "${{ vars.SQUAD_EXPORTS_CHECK }}" = "false" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -210,6 +224,9 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
+          # Three-dot diff (base...head) finds the merge-base automatically,
+          # so it works correctly even when the PR branch contains merge
+          # commits from syncing with the base branch.
           SDK_CHANGED=$(git diff --name-only "$BASE"..."$HEAD" | grep -E '^packages/squad-sdk/src/' || true)
           if [ -z "$SDK_CHANGED" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"

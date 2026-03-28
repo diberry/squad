@@ -34,11 +34,12 @@ if (missing.length === 0) {
   console.log(`Exports map check passed: all ${barrelDirs.length} barrel directories have export entries.`);
   process.exit(0);
 } else {
-  console.error(`Exports map check FAILED: ${missing.length} barrel(s) missing from package.json exports.\n`);
+  console.error(`Exports map check FAILED: ${missing.length} barrel(s) missing from package.json exports.`);
+  console.error(`This is by design -- new barrel directories must have matching export entries.\n`);
   for (const { dir, expectedKey } of missing) {
     console.error(`  MISSING: "${expectedKey}" (has src/${dir}/index.ts but no export entry)`);
   }
   console.error(`\nTo fix: add export entries to packages/squad-sdk/package.json "exports" for each missing barrel.`);
-  console.error('If this is intentional, add the skip-exports-check label to your PR.');
+  console.error('To skip: add the "skip-exports-check" label to your PR to bypass this gate.');
   process.exit(1);
 }
