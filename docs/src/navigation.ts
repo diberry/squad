@@ -68,6 +68,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: 'Plugins', slug: 'features/plugins' },
       { title: 'MCP', slug: 'features/mcp' },
       { title: 'Notifications', slug: 'features/notifications' },
+      { title: 'Notification Routing', slug: 'features/notification-routing' },
       { title: 'Enterprise Platforms', slug: 'features/enterprise-platforms' },
       { title: 'Squad RC', slug: 'features/squad-rc' },
       { title: 'Streams', slug: 'features/streams' },
