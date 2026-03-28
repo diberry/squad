@@ -27,4 +27,4 @@
 <!-- Any backward-incompatible changes. "None" if clean. -->
 
 ### Waivers
-<!-- If skipping any REQUIRED item, document here: "Waived: {item}, reason: {why}, approved by: {reviewer}" -->
+<!-- If skipping any REQUIRED item: 1) Request waiver in this section, 2) Named reviewer must approve in PR comments BEFORE merge. Format: "Waived: {item}, reason: {why}, approved by: {Flight|FIDO}" -->

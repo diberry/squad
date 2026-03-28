@@ -18,6 +18,18 @@ Internal refactors, infrastructure changes, and dependency updates are **NOT** u
 
 Why this matters: The requirement categories below apply conditionally to user-facing changes. Knowing what counts as user-facing prevents disputes about "does this need a CHANGELOG entry?"
 
+### Examples of "new module"
+
+- Adding a new directory under packages/squad-sdk/src/ (e.g., src/storage/, src/casting/)
+- Adding a new subpath export to package.json (e.g., ./storage, ./casting)
+- Adding a new CLI command file under packages/squad-cli/src/cli/commands/
+
+### NOT a new module
+
+- Adding a new function to an existing module
+- Refactoring internals without changing the public API surface
+- Adding test files
+
 ---
 
 ## PR Requirements by Category
@@ -184,6 +196,8 @@ For migration PRs (> 20 files): include test output summary in the PR descriptio
 ### 1. Enforceability Gap
 
 9 of 18 requirements are manual-only with no CI gate (README updates, docs page relevance, sample completeness, migration guide quality). Enforcement depends on consistent reviewer judgment.
+
+**Automation dependency**: 9 of 18 requirements are manual-only. Issue #104 (PR completeness gates) is the critical path to automated enforcement. Until #104 ships, this spec depends on reviewer discipline.
 
 **Mitigation**: Phase 4 (Flight/FIDO checklist) codifies consistent judgment. Regular enforcement audits catch drift.
 
