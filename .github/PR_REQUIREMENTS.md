@@ -8,13 +8,28 @@
 
 ## Definition of "User-Facing Change"
 
-A PR contains a **user-facing change** if it introduces:
+A PR contains a **user-facing change** if it introduces a CRUD operation to the CLI or SDK layer that is exposed in TypeScript or true executable functionality.
 
-- A new public API export (added to subpath exports in `package.json`)
-- A new CLI command or subcommand
-- A change to an existing public API surface (breaking or new parameters)
+"User-facing" is anchored to two concrete package boundaries:
+- **SDK layer**: `packages/squad-sdk/src/` exports exposed in `package.json` subpath exports
+- **CLI layer**: `packages/squad-cli/src/cli/` commands and subcommands
 
-Internal refactors, infrastructure changes, and dependency updates are **NOT** user-facing.
+### CRUD Operations — What Counts as User-Facing
+
+| Operation | SDK Layer | CLI Layer |
+|-----------|-----------|-----------|
+| **Create** | New export added to `packages/squad-sdk/src/`; new subpath export added to `package.json` | New CLI command or subcommand added to `packages/squad-cli/src/cli/commands/` |
+| **Read** | N/A — reading doesn't change the surface | N/A — reading doesn't change the surface |
+| **Update** | Change to existing public API signature (parameters, return types, behavior) | Change to CLI command flags, behavior, or subcommand structure |
+| **Delete** | Remove a previously public export from `package.json` | Remove a CLI command or subcommand |
+
+### What Is NOT User-Facing
+
+- `.squad/` state files (decisions, history, skills, templates)
+- Internal refactors that don't change the public API surface
+- Infrastructure (CI, GitHub Actions, workflows)
+- Documentation-only changes
+- Dependency updates that don't change API surface
 
 Why this matters: The requirement categories below apply conditionally to user-facing changes. Knowing what counts as user-facing prevents disputes about "does this need a CHANGELOG entry?"
 
