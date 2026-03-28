@@ -9,10 +9,10 @@ PR workflow, cross-fork collaboration
 ## Problem Statement
 PRs opened directly on the upstream repository get messy iteration in public. Code review feedback creates visible churn. Force-push history is exposed. This workflow keeps development clean by staging changes on the fork first, then opening a single clean upstream PR after review is complete.
 
-## 8-Step Pipeline
+## 9-Step Pipeline
 
 \\\
-BRANCH → FORK PR → REVIEW → FIX → BLEED CHECK → CLEAN → UPSTREAM → DONE
+BRANCH → FORK PR → PREFLIGHT → REVIEW → FIX → BLEED CHECK → CLEAN → UPSTREAM → DONE
 \\\
 
 ### Step 1: BRANCH
@@ -28,11 +28,53 @@ git push origin {branch-name}
 gh pr create --base dev --draft  # Opens on fork/dev, not upstream
 \\\
 
+### Step 2.5: PREFLIGHT TEST GATE
+
+Before requesting review, the author **MUST** run the full build and test suite locally:
+
+```bash
+npm run build && npm test
+```
+
+This is not optional for any PR. If tests fail, fix them before requesting review.
+
+**PR description attestation**: Add a "Preflight" section to the PR description confirming tests pass:
+
+```markdown
+## Preflight
+- [x] `npm run build` — passes
+- [x] `npm test` — passes (N suites, N tests, Ns runtime)
+```
+
+**Migration PRs (>20 files changed)**: Include the full test output summary (suite count, pass/fail counts, total runtime) in the PR description. This prevents the "approved but broken" pattern where reviewers check ecosystem completeness without verifying functional correctness.
+
+The 89-second test run is cheaper than one CI round-trip. Always run it locally.
+
 ### Step 3: REVIEW
 Iterate on the fork PR with teammates. Collect feedback via review comments. This happens in your fork, not upstream.
 
+#### Correctness Before Completeness
+
+Reviews **MUST** follow this order:
+
+1. **Functional correctness first** — Do tests pass? Does `npm run build && npm test` succeed? If not, stop here. Do not review ecosystem items on broken code.
+2. **Mechanical correctness** — Are all callsites updated? Are string literals consistent? Are async/await signatures correct throughout?
+3. **Ecosystem completeness last** — Docs, changelog, exports, navigation entries.
+
+If tests fail at step 1, the review verdict is **NEEDS FIXES** with a single finding: "Tests must pass before review can proceed." Do not spend reviewer time evaluating docs or changelog on code that doesn't build.
+
 ### Step 4: FIX
-Address review comments. Commit changes directly to the feature branch (don't squash yet).
+Address review comments. Use **additive commits** so reviewers can see what changed between iterations. Do not squash-amend-force-push during active review — this hides fix iteration history and makes re-review impossible.
+
+```bash
+# Good: additive commit during review
+git commit -m "fix: await async storage calls per review feedback"
+
+# Bad: squash during active review
+git commit --amend --no-edit && git push --force-with-lease  # ← hides iteration
+```
+
+Squash happens later, at Step 6 (CLEAN), after CI is green and review is complete.
 
 ### Step 5: BLEED CHECK
 Run a bleed audit to verify no stowaway files are committed. Check for:
@@ -121,19 +163,26 @@ Upstream PR is merged. Close or keep fork PR for reference.
 | Forgetting to stash skill file updates | `.squad/skills/` files are gitignored, so they don't commit to the fork | Use `git add -f` when committing skill files |
 | Leaving stale TDD comments in code | "RED PHASE", "TODO: implement" markers confuse reviewers after merge | Clean up all TDD markers before approval |
 | Leave upstream PR in draft | Signals incomplete work when pipeline is done | Undraft upstream PR after opening — it's presentation-ready |
+| Approving without running tests | Reviewers check ecosystem completeness (docs, changelog, exports) but miss functional breakage | Require test attestation before review; verify correctness before completeness |
+| Squash-amend-force-push during review | Hides fix iteration history, reviewers can't see what changed between rounds | Use additive commits during review, squash only at merge time |
+| Reviewing a 90-file migration like a 5-file PR | Mechanical errors (missed callsites, unwired async) survive review because reviewer skims | Use Migration PR Protocol: sample files, verify mechanical patterns, require test attestation |
+| Skipping preflight test run | A sub-2-minute local test run would catch failures before CI round-trips | Always run `npm run build && npm test` before requesting review |
 
 ## Pre-Upstream Gate Checklist
 
 Before opening the upstream PR, verify:
 
+- [ ] **Preflight tests pass**: `npm run build && npm test` run locally with passing results
+- [ ] **Test attestation in PR description**: Preflight section with suite count, pass/fail, runtime
 - [ ] **Flight approval**: Fork PR merged into fork/dev
 - [ ] **FIDO approval**: Code quality, tests pass, no security issues
 - [ ] **Bleed check pass**: Zero stowaway files, no \.squad/\ commits
-- [ ] **Squash commits**: 1-3 logical commits, not N from iteration
+- [ ] **Squash commits**: 1-3 logical commits, not N from iteration (squash at merge time, not during review)
 - [ ] **Clean description**: No double blank lines, clear problem/solution
 - [ ] **No \.squad/\ files**: Excluded from commit entirely
 - [ ] **No \/docs/\ prefix**: If docs changes, they go elsewhere
 - [ ] **No double blank lines**: Markdown/description formatting clean
+- [ ] **Migration PR extras (if >20 files)**: Full test output summary, structured change description, additive commit history preserved until squash
 
 ## Team Review Protocol
 
@@ -160,7 +209,7 @@ When a reviewer finds any of these, the review verdict is **NEEDS FIXES** with f
 ### Review→Fix→Re-review Loop
 After reviewers identify blockers:
 
-1. **Fix**: Author addresses all blocker comments on the feature branch (use `git commit --amend --no-edit` for fast-forward fixes, or new commits if refactoring is complex).
+1. **Fix**: Author addresses all blocker comments on the feature branch. Use additive commits with descriptive messages (e.g., `fix: await async storage calls per review feedback`). Do not squash-amend during active review — reviewers need to see what changed.
 2. **Re-run reviews**: **Both Flight AND FIDO must re-review**, even if only one reviewer found issues. This ensures convention fixes don't introduce new problems.
 3. **Loop until both APPROVE**: Repeat until both reviewers vote APPROVE.
 4. **Bleed check**: After both APPROVE, proceed to Step 5 (bleed check).
@@ -185,6 +234,23 @@ If PAO is the author, Flight and FIDO should watch for:
 
 This is not a critique — it is a known pattern. Treat it as a checklist, not a personal issue.
 
+### Migration PR Protocol (>20 Files)
+
+PRs touching more than 20 files (bulk renames, API migrations, provider abstractions) follow a stricter protocol. These cannot be reviewed like a 5-file feature PR.
+
+#### Author obligations
+1. **Mandatory local test attestation** — Run `npm run build && npm test` and include the full test output summary in the PR description (suite count, pass/fail, runtime).
+2. **Structured change description** — Break the PR description into: (a) what changed mechanically, (b) what changed semantically, (c) what callsites were updated.
+3. **Additive commits during review** — Never squash during active review on a migration PR. Reviewers need to see exactly which files changed between iterations.
+
+#### Reviewer obligations
+1. **Mechanical correctness focus** — Are all callsites updated? Are string literals consistent across the migration? Are sync-to-async signature changes properly awaited everywhere?
+2. **Sampling strategy** — Don't read all 80 files line-by-line. Sample 5-10 representative files, then verify the mechanical pattern holds across the rest.
+3. **Test verification** — Before approving, confirm the author's test attestation. If the attestation is missing, request it before reviewing anything else.
+
+#### Squash timing
+Squash to a single commit **only at merge time** (Step 6: CLEAN), after CI is green and both reviewers approve. During review, the full commit history must be preserved.
+
 ### Review Comments Posted on PR
 Formal reviews are posted to the fork PR as:
 ```
@@ -207,14 +273,34 @@ Only assign Tamir as a reviewer on **upstream PRs** where his original code PR i
 ### Commit Hygiene
 To ensure clean histories:
 
-- **One commit per fork PR**: Squash all review iterations into a single logical commit before opening upstream PR.
-- **Amend, don't create new commits**: Use `git commit --amend --no-edit` to fix blockers without adding commit count.
-- **Force-push safely**: Use `--force-with-lease` to prevent accidental overwrites if teammates push simultaneously (rare in single-agent fork setup, but good practice).
+- **Additive commits during review**: Use descriptive commit messages for each fix iteration so reviewers can track what changed. Do NOT squash-amend-force-push during active review — this hides the fix history and makes re-review harder.
+- **Squash at merge time only**: After CI is green and both reviewers approve, squash all review iterations into a single logical commit before opening the upstream PR (Step 6: CLEAN).
+- **One commit per upstream PR**: The upstream PR should contain 1-3 logical commits, not N from iteration.
+- **Force-push safely**: Use `--force-with-lease` to prevent accidental overwrites if teammates push simultaneously (rare in single-agent fork setup, but good practice). Only force-push after review is complete and you're preparing for upstream.
 - **Always verify before push**:
   ```
   git diff --cached --stat       # File count must match intent
   git diff --cached --diff-filter=D  # Should show zero unintended deletions
   ```
+
+## Lessons Learned — PR #640 Retrospective
+
+These anti-patterns were observed during the StorageProvider abstraction PR (#640) and directly informed the Preflight Test Gate, Correctness Before Completeness, and Migration PR Protocol additions to this skill.
+
+### "Approved but broken"
+Flight and FIDO both approved the PR — twice — while CI was failing. Reviews checked ecosystem completeness (docs present? changelog updated? exports wired?) but nobody ran `npm test` locally or verified CI status before approving. **Root cause**: the review checklist evaluated packaging, not correctness.
+
+### Template filename drift during bulk migration
+An 89-file migration renamed storage provider references across the codebase. Some template filenames were updated inconsistently — the provider class was renamed but string literals referencing template paths were not. This is a mechanical correctness issue that sampling-based review should catch.
+
+### Sync-to-async signature changes breaking tests
+The migration changed synchronous method signatures to async, but not all test callsites added `await`. Tests that called async methods without awaiting them passed silently (the promise was truthy) until the test runner caught unhandled rejections. **Lesson**: when a migration changes function signatures, reviewers must verify all callsites match the new signature.
+
+### The 89-second test run
+The full test suite runs in ~89 seconds. Running it once locally before requesting review would have caught all three CI failures and prevented 3 consecutive CI round-trips (each taking 5-10 minutes). The preflight test gate exists because this single check has the highest ROI of any quality step in the pipeline.
+
+### Squash-amend-force-push hiding iteration
+During review, the author used `git commit --amend --no-edit && git push --force-with-lease` to address feedback. This replaced the previous commit entirely, making it impossible for reviewers to see what changed between review rounds. The fix: use additive commits during review, squash only at merge time.
 
 ## Workflow Summary
 

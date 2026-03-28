@@ -52,26 +52,6 @@
 **What:** Squad becomes its own interactive CLI shell. `squad` with no args enters a REPL.
 **Why:** Squad needs to own the full interactive experience.
 
-### 2026-02-21: User directive — no temp/memory files in repo root
-**By:** Brady (via Copilot)
-**What:** NEVER write temp files, issue files, or memory files to the repo root. All squad state/scratch files belong in .squad/ and ONLY .squad/. Root tree of a user's repo is sacred.
-**Why:** User request — hard rule. Captured for all agents.
-
-### 2026-02-21: npm workspace protocol for monorepo
-**By:** Edie (TypeScript Engineer)
-**What:** Use npm-native workspace resolution (version-string references) instead of `workspace:*` protocol for cross-package dependencies.
-**Why:** The `workspace:*` protocol is pnpm/Yarn-specific. npm workspaces resolve workspace packages automatically.
-**Impact:** All inter-package dependencies in `packages/*/package.json` should use the actual version string, not `workspace:*`.
-
-### 2026-02-21: Distribution is npm-only (GitHub-native removed)
-**By:** Rabin (Distribution) + Fenster (Core Dev)
-**What:** Squad packages (`@bradygaster/squad-sdk` and `@bradygaster/squad-cli`) are distributed exclusively via npmjs.com. The GitHub-native `npx github:bradygaster/squad` path has been removed.
-**Why:** npm is the standard distribution channel. One distribution path reduces confusion and maintenance burden. Root `cli.js` prints deprecation warning if anyone still hits the old path.
-
-### 2026-02-21: Coordinator prompt structure — three routing modes
-**By:** Verbal (Prompt Engineer)
-**What:** Coordinator uses structured response format: `DIRECT:` (answer inline), `ROUTE:` + `TASK:` + `CONTEXT:` (single agent), `MULTI:` (fan-out). Unrecognized formats fall back to `DIRECT`.
-**Why:** Keyword prefixes are cheap to parse and reliable. Fallback-to-direct prevents silent failures.
 ### `.squad/` Directory Scope — Owner Directive
 **By:** Brady (project owner, PR #326 review)  
 **Date:** 2026-03-10  
@@ -98,96 +78,10 @@
 **By:** Flight (implementing Brady's directives above)  
 **Date:** 2026-03-09  
 
-### 2026-02-21: CLI entry point split — src/index.ts is a pure barrel
-**By:** Edie (TypeScript Engineer)
-**What:** `src/index.ts` is a pure re-export barrel with ZERO side effects. `src/cli-entry.ts` contains `main()` and all CLI routing.
-**Why:** Library consumers importing `@bradygaster/squad` were triggering CLI argument parsing and `process.exit()` on import.
-
-### 2026-02-21: Process.exit() refactor — library-safe CLI functions
-**By:** Kujan (SDK Expert)
-**What:** `fatal()` throws `SquadError` instead of `process.exit(1)`. Only `cli-entry.ts` may call `process.exit()`.
-**Pattern:** Library functions throw `SquadError`. CLI entry catches and exits. Library consumers catch for structured error handling.
-
-### 2026-02-21: User directive — docs as you go
-**By:** bradygaster (via Copilot)
-**What:** Doc and blog as you go during SquadUI integration work. Doesn't have to be perfect — keep docs updated incrementally.
-
-### 2026-02-22: Runtime EventBus as canonical bus
-**By:** Fortier
-**What:** `runtime/event-bus.ts` (colon-notation: `session:created`, `subscribe()` API) is the canonical EventBus for all orchestration classes. The `client/event-bus.ts` (dot-notation) remains for backward-compat but should not be used in new code.
-**Why:** Runtime EventBus has proper error isolation — one handler failure doesn't crash others.
-
-### 2026-02-22: Subpath exports in @bradygaster/squad-sdk
-**By:** Edie (TypeScript Engineer)
-**What:** SDK declares subpath exports (`.`, `./parsers`, `./types`, and module paths). Each uses types-first condition ordering.
-**Constraints:** Every subpath needs a source barrel. `"types"` before `"import"`. ESM-only: no `"require"` condition.
-
-### 2026-02-22: User directive — Aspire testing requirements
-**By:** Brady (via Copilot)
-**What:** Integration tests must launch the Aspire dashboard and validate OTel telemetry shows up. Use Playwright. Use latest Aspire bits. Reference aspire.dev (NOT learn.microsoft.com). It's "Aspire" not ".NET Aspire".
-
-### 2026-02-23: User directive — code fences
-**By:** Brady (via Copilot)
-**What:** Never use / or \ as code fences in GitHub issues, PRs, or comments. Only use backticks to format code.
-
-### 2026-02-23: User Directive — Docs Overhaul & Publication Pause
-**By:** Brady (via Copilot)
-**What:** Pause docs publication until Brady explicitly gives go-ahead. Tone: lighthearted, welcoming, fun (NOT stuffy). First doc should be "first experience" with squad CLI. All docs: brief, prompt-first, action-oriented, fun. Human tone throughout.
-
-### 2026-02-23: Use sendAndWait for streaming dispatch
-**By:** Kovash (REPL Expert)
-**What:** `dispatchToAgent()` and `dispatchToCoordinator()` use `sendAndWait()` instead of `sendMessage()`. Fallback listens for `turn_end`/`idle` if unavailable.
-**Why:** `sendMessage()` is fire-and-forget — resolves before streaming deltas arrive.
-**Impact:** Never parse `accumulated` after a bare `sendMessage()`. Always use `awaitStreamedResponse`.
-
-### 2026-02-23: extractDelta field priority — deltaContent first
-**By:** Kovash (REPL Expert)
-**What:** `extractDelta` priority: `deltaContent` > `delta` > `content`. Matches SDK actual format.
-**Impact:** Use `deltaContent` as the canonical field name for streamed text chunks.
-
-### 2026-02-24: Per-command --help/-h: intercept-before-dispatch pattern
-**By:** Fenster (Core Dev)
-**What:** All CLI subcommands support `--help` and `-h`. Help intercepted before command routing prevents destructive commands from executing.
-**Convention:** New CLI commands MUST have a `getCommandHelp()` entry with usage, description, options, and 2+ examples.
-
-### 2026-02-25: REPL cancellation and configurable timeout
-**By:** Kovash (REPL Expert)
-**What:** Ctrl+C immediately resets `processing` state. Timeout: `SQUAD_REPL_TIMEOUT` (seconds) > `SQUAD_SESSION_TIMEOUT_MS` (ms) > 600000ms default. CLI `--timeout` flag sets env var.
-
-### 2026-02-24: Shell Observability Metrics
-**By:** Saul (Aspire & Observability)
-**What:** Four metrics under `squad.shell.*` namespace, gated behind `SQUAD_TELEMETRY=1`.
-**Convention:** Shell metrics require explicit consent via `SQUAD_TELEMETRY=1`, separate from OTLP endpoint activation.
-
-### 2026-02-23: Telemetry in both CLI and agent modes
-**By:** Brady (via Copilot)
-**What:** Squad should pump telemetry during BOTH modes: (1) standalone Squad CLI, and (2) running as an agent inside GitHub Copilot CLI.
-
 ### 2026-02-27: ASCII-only separators and NO_COLOR
 **By:** Cheritto (TUI Engineer)
 **What:** All separators use ASCII hyphens. Text-over-emoji principle: text status is primary, emoji is supplementary.
 **Convention:** Use ASCII hyphens for separators. Keep emoji out of status/system messages.
-
-### 2026-02-24: Version format — bare semver canonical
-**By:** Fenster
-**What:** Bare semver (e.g., `0.8.5.1`) for version commands. Display contexts use `squad v{VERSION}`.
-
-### 2026-02-25: Help text — progressive disclosure
-**By:** Fenster
-**What:** Default `/help` shows 4 essential lines. `/help full` shows complete reference.
-
-### 2026-02-24: Unified status vocabulary
-**By:** Marquez (CLI UX Designer)
-**What:** Use `[WORK]` / `[STREAM]` / `[ERR]` / `[IDLE]` across ALL status surfaces.
-**Why:** Most granular, NO_COLOR compatible, text-over-emoji, consistent across contexts.
-
-### 2026-02-24: Pick one tagline
-**By:** Marquez (CLI UX Designer)
-**What:** Use "Team of AI agents at your fingertips" everywhere.
-
-### 2026-02-24: User directive — experimental messaging
-**By:** Brady (via Copilot)
-**What:** CLI docs should note the project is experimental and ask users to file issues.
 
 ### 2026-02-28: User directive — DO NOT merge PR #547
 **By:** Brady (via Copilot)
@@ -8086,4 +7980,99 @@ Triaged 14 untriaged issues (3 docs, 6 community features, 3 bugs, 2 questions).
 
 - #357, #336, #335, #334, #333, #332, #316 (A2A) — stays shelved per existing decision
 - #581 (ADO PRD) — P2, blocked until #341 (SDK-first parity) ships
+
+
+### 2026-03-26: CI deletion guard and source tree canary
+**By:** Booster (CI/CD)
+**What:** Added two safety checks to squad-ci.yml: (1) source tree canary verifying critical files exist, (2) large deletion guard failing PRs that delete >50 files without 'large-deletion-approved' label. Branch protection on dev requested (may need manual setup).
+**Why:** Incident #631 — @copilot deleted 361 files on dev with no CI gate catching it.
+
+### 2026-03-28T12:58: User directive — retarget PRs, don't create new ones
+**By:** Dina Berry (via Copilot)
+**What:** When promoting a PR from diberry/squad to bradygaster/squad, RETARGET the existing PR (change base repo/branch) instead of opening a new PR. This keeps the commit history, review comments, and CI status intact.
+**Why:** Creating a new PR loses context, duplicates work, and clutters Brady's PR queue. Retargeting is cleaner.
+
+## How to retarget
+```bash
+# Change the base of an existing PR from diberry/squad to bradygaster/squad
+gh pr edit {PR_NUMBER} --repo diberry/squad --base bradygaster:dev
+```
+
+If `gh pr edit` doesn't support cross-repo base changes, the alternative is:
+```bash
+# Close the fork PR, open upstream PR from the same branch
+gh pr close {FORK_PR_NUMBER} --repo diberry/squad --comment "Retargeting to upstream"
+gh pr create --repo bradygaster/squad --base dev --head diberry:{branch} --title "{title}" --body "{body}"
+```
+
+But prefer retarget over new PR whenever GitHub supports it.
+
+### 2026-03-28T14:09: User directive
+**By:** Dina Berry (via Copilot)
+**What:** PR management workflow must include Copilot review gates:
+1. On diberry/squad: request Copilot review, iterate until all feedback resolved
+2. On retarget to bradygaster/squad: if Copilot raises new comments, iterate until clean
+3. Keep upstream PR in draft until: Copilot clean, 1 squashed commit, rebased from latest dev, CI passes
+4. Only then mark ready for review and @mention Brady
+**Why:** User request -- ensures PRs are polished before Brady sees them
+
+### 2026-03-28T14:24: User directive
+**By:** Dina Berry (via Copilot)
+**What:** When addressing Copilot review comments, ALWAYS reply to each comment on the PR with "Fixed in {commit}" (accept) or explanation (dismiss), then resolve the thread. Never silently fix code without responding to the comment.
+**Why:** User request -- ensures PR comment threads are clean and resolved, not orphaned
+
+# Decision: Skills Discovery Reads Both Directories
+
+**Date:** 2025-07-24
+**Author:** EECOM
+**Issue:** #77
+**PR:** #78
+
+## Decision
+
+Skill discovery now reads BOTH `.copilot/skills/` and `.squad/skills/`, merging results. On name conflicts, `.copilot/skills/` wins (first-dir-wins priority).
+
+## Rationale
+
+- `.copilot/skills/` is the canonical write location (tools/index.ts, fresh init)
+- `.squad/skills/` has historical content and upstream compatibility
+- Silently dropping either directory loses team knowledge
+- The merge is additive — no breaking change for existing users
+
+## Impact
+
+- All skill writes should target `.copilot/skills/` (squad.agent.md updated)
+- `.squad/skills/` is effectively read-only legacy
+- Over time, skills naturally consolidate into `.copilot/skills/`
+- No migration needed — the runtime merge handles both dirs transparently
+
+# Decision: Skill Discovery Must Merge Both Directories
+
+**By:** Flight (Lead)  
+**Date:** 2025-07-24  
+**Issue:** #77  
+**Status:** Proposed
+
+## Context
+
+`LocalSkillSource.skillsDir` uses either/or logic — if `.copilot/skills/` exists, `.squad/skills/` is never read. The coordinator instructions correctly tell agents to "check BOTH skill directories," but the runtime only checks one. The spawn template (line 825) tells agents to write SKILL EXTRACTION output to `.squad/skills/`, but the skill tool writes to `.copilot/skills/`. This means agent-discovered skills are silently lost whenever `.copilot/skills/` exists (which is always, since `squad init` creates it).
+
+## Decision
+
+1. **Merge at read time.** `skill-source.ts` and `upstream/resolver.ts` will scan BOTH `.copilot/skills/` and `.squad/skills/`, deduplicating by skill ID. `.copilot/skills/` wins on name conflicts.
+2. **Canonical write location is `.copilot/skills/`.** All write paths (tools/index.ts skill tool, squad.agent.md SKILL EXTRACTION, plugin install) must target `.copilot/skills/`.
+3. **`.squad/skills/` becomes read-only legacy.** We do NOT delete it — existing skills there remain discoverable. Over time, all new skills accumulate in `.copilot/skills/`.
+4. **No manual migration required.** The runtime fix is additive. Existing customers get both directories merged automatically on upgrade.
+
+## Impact
+
+- `skill-source.ts`: Replace `skillsDir` getter with multi-dir scan + dedup
+- `resolver.ts`: Replace `.find()` with loop over all candidate dirs + dedup
+- `squad.agent.md`: Fix SKILL EXTRACTION path (line 825), plugin install path (lines 913, 936)
+- Docs: Document "where skills live" in features/skills.md and troubleshooting.md
+
+### 2026-03-26: Copilot git safety rules
+**By:** RETRO (Security)
+**What:** Added mandatory Git Safety section to copilot-instructions.md: prohibits `git add .`, requires feature branches and PRs, adds pre-push checklist, defines red-flag stop conditions.
+**Why:** Incident #631 — @copilot used destructive staging on an incomplete working tree, deleting 361 files.
 

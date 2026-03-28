@@ -4288,3 +4288,109 @@ Migration is **non-destructive and registration-only**. When esolveSquadPath() 
 - All future squad path resolution should go through esolveSquadPath() from multi-squad.ts
 - Existing esolveSquad() and esolveSquadPaths() in esolution.ts remain unchanged (project-local .squad/ walk-up)
 - Phase 2 CLI commands will consume these SDK functions directly
+### 2026-02-21: User directive — no temp/memory files in repo root
+**By:** Brady (via Copilot)
+**What:** NEVER write temp files, issue files, or memory files to the repo root. All squad state/scratch files belong in .squad/ and ONLY .squad/. Root tree of a user's repo is sacred.
+**Why:** User request — hard rule. Captured for all agents.
+
+### 2026-02-21: npm workspace protocol for monorepo
+**By:** Edie (TypeScript Engineer)
+**What:** Use npm-native workspace resolution (version-string references) instead of `workspace:*` protocol for cross-package dependencies.
+**Why:** The `workspace:*` protocol is pnpm/Yarn-specific. npm workspaces resolve workspace packages automatically.
+**Impact:** All inter-package dependencies in `packages/*/package.json` should use the actual version string, not `workspace:*`.
+
+### 2026-02-21: Distribution is npm-only (GitHub-native removed)
+**By:** Rabin (Distribution) + Fenster (Core Dev)
+**What:** Squad packages (`@bradygaster/squad-sdk` and `@bradygaster/squad-cli`) are distributed exclusively via npmjs.com. The GitHub-native `npx github:bradygaster/squad` path has been removed.
+**Why:** npm is the standard distribution channel. One distribution path reduces confusion and maintenance burden. Root `cli.js` prints deprecation warning if anyone still hits the old path.
+
+### 2026-02-21: Coordinator prompt structure — three routing modes
+**By:** Verbal (Prompt Engineer)
+**What:** Coordinator uses structured response format: `DIRECT:` (answer inline), `ROUTE:` + `TASK:` + `CONTEXT:` (single agent), `MULTI:` (fan-out). Unrecognized formats fall back to `DIRECT`.
+**Why:** Keyword prefixes are cheap to parse and reliable. Fallback-to-direct prevents silent failures.
+### 2026-02-21: CLI entry point split — src/index.ts is a pure barrel
+**By:** Edie (TypeScript Engineer)
+**What:** `src/index.ts` is a pure re-export barrel with ZERO side effects. `src/cli-entry.ts` contains `main()` and all CLI routing.
+**Why:** Library consumers importing `@bradygaster/squad` were triggering CLI argument parsing and `process.exit()` on import.
+
+### 2026-02-21: Process.exit() refactor — library-safe CLI functions
+**By:** Kujan (SDK Expert)
+**What:** `fatal()` throws `SquadError` instead of `process.exit(1)`. Only `cli-entry.ts` may call `process.exit()`.
+**Pattern:** Library functions throw `SquadError`. CLI entry catches and exits. Library consumers catch for structured error handling.
+
+### 2026-02-21: User directive — docs as you go
+**By:** bradygaster (via Copilot)
+**What:** Doc and blog as you go during SquadUI integration work. Doesn't have to be perfect — keep docs updated incrementally.
+
+### 2026-02-22: Runtime EventBus as canonical bus
+**By:** Fortier
+**What:** `runtime/event-bus.ts` (colon-notation: `session:created`, `subscribe()` API) is the canonical EventBus for all orchestration classes. The `client/event-bus.ts` (dot-notation) remains for backward-compat but should not be used in new code.
+**Why:** Runtime EventBus has proper error isolation — one handler failure doesn't crash others.
+
+### 2026-02-22: Subpath exports in @bradygaster/squad-sdk
+**By:** Edie (TypeScript Engineer)
+**What:** SDK declares subpath exports (`.`, `./parsers`, `./types`, and module paths). Each uses types-first condition ordering.
+**Constraints:** Every subpath needs a source barrel. `"types"` before `"import"`. ESM-only: no `"require"` condition.
+
+### 2026-02-22: User directive — Aspire testing requirements
+**By:** Brady (via Copilot)
+**What:** Integration tests must launch the Aspire dashboard and validate OTel telemetry shows up. Use Playwright. Use latest Aspire bits. Reference aspire.dev (NOT learn.microsoft.com). It's "Aspire" not ".NET Aspire".
+
+### 2026-02-23: User directive — code fences
+**By:** Brady (via Copilot)
+**What:** Never use / or \ as code fences in GitHub issues, PRs, or comments. Only use backticks to format code.
+
+### 2026-02-23: User Directive — Docs Overhaul & Publication Pause
+**By:** Brady (via Copilot)
+**What:** Pause docs publication until Brady explicitly gives go-ahead. Tone: lighthearted, welcoming, fun (NOT stuffy). First doc should be "first experience" with squad CLI. All docs: brief, prompt-first, action-oriented, fun. Human tone throughout.
+
+### 2026-02-23: Use sendAndWait for streaming dispatch
+**By:** Kovash (REPL Expert)
+**What:** `dispatchToAgent()` and `dispatchToCoordinator()` use `sendAndWait()` instead of `sendMessage()`. Fallback listens for `turn_end`/`idle` if unavailable.
+**Why:** `sendMessage()` is fire-and-forget — resolves before streaming deltas arrive.
+**Impact:** Never parse `accumulated` after a bare `sendMessage()`. Always use `awaitStreamedResponse`.
+
+### 2026-02-23: extractDelta field priority — deltaContent first
+**By:** Kovash (REPL Expert)
+**What:** `extractDelta` priority: `deltaContent` > `delta` > `content`. Matches SDK actual format.
+**Impact:** Use `deltaContent` as the canonical field name for streamed text chunks.
+
+### 2026-02-24: Per-command --help/-h: intercept-before-dispatch pattern
+**By:** Fenster (Core Dev)
+**What:** All CLI subcommands support `--help` and `-h`. Help intercepted before command routing prevents destructive commands from executing.
+**Convention:** New CLI commands MUST have a `getCommandHelp()` entry with usage, description, options, and 2+ examples.
+
+### 2026-02-25: REPL cancellation and configurable timeout
+**By:** Kovash (REPL Expert)
+**What:** Ctrl+C immediately resets `processing` state. Timeout: `SQUAD_REPL_TIMEOUT` (seconds) > `SQUAD_SESSION_TIMEOUT_MS` (ms) > 600000ms default. CLI `--timeout` flag sets env var.
+
+### 2026-02-24: Shell Observability Metrics
+**By:** Saul (Aspire & Observability)
+**What:** Four metrics under `squad.shell.*` namespace, gated behind `SQUAD_TELEMETRY=1`.
+**Convention:** Shell metrics require explicit consent via `SQUAD_TELEMETRY=1`, separate from OTLP endpoint activation.
+
+### 2026-02-23: Telemetry in both CLI and agent modes
+**By:** Brady (via Copilot)
+**What:** Squad should pump telemetry during BOTH modes: (1) standalone Squad CLI, and (2) running as an agent inside GitHub Copilot CLI.
+
+### 2026-02-24: Version format — bare semver canonical
+**By:** Fenster
+**What:** Bare semver (e.g., `0.8.5.1`) for version commands. Display contexts use `squad v{VERSION}`.
+
+### 2026-02-25: Help text — progressive disclosure
+**By:** Fenster
+**What:** Default `/help` shows 4 essential lines. `/help full` shows complete reference.
+
+### 2026-02-24: Unified status vocabulary
+**By:** Marquez (CLI UX Designer)
+**What:** Use `[WORK]` / `[STREAM]` / `[ERR]` / `[IDLE]` across ALL status surfaces.
+**Why:** Most granular, NO_COLOR compatible, text-over-emoji, consistent across contexts.
+
+### 2026-02-24: Pick one tagline
+**By:** Marquez (CLI UX Designer)
+**What:** Use "Team of AI agents at your fingertips" everywhere.
+
+### 2026-02-24: User directive — experimental messaging
+**By:** Brady (via Copilot)
+**What:** CLI docs should note the project is experimental and ask users to file issues.
+
