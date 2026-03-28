@@ -344,22 +344,47 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
   const content = fs.readFileSync(decisionsFile, 'utf8');
   const lines = content.split('\n');
 
-  // Find entry boundaries (### headings)
-  const entries: { start: number; end: number; daysAgo: number | null }[] = [];
+  // Heading matchers: ## (not ###) and ###
+  const isH2 = (line: string) => /^## /.test(line) && !/^###/.test(line);
+  const isH3 = (line: string) => /^### /.test(line);
+  const isHeading = (line: string) => isH2(line) || isH3(line);
+
+  // ── Parse ## section boundaries ─────────────────────────────────
+  // Each section spans from its ## heading to the next heading (## or ###).
+  // The preamble (heading + descriptive text) is preserved as an atomic
+  // unit whenever any ### child in the section is kept.
+  const sectionBounds: { headingLine: number; preambleEnd: number }[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i]!.match(/^###\s/)) {
+    if (isH2(lines[i]!)) {
+      let preambleEnd = lines.length;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (isHeading(lines[j]!)) { preambleEnd = j; break; }
+      }
+      sectionBounds.push({ headingLine: i, preambleEnd });
+    }
+  }
+
+  // ── Find ### entry boundaries (stop at ## OR ### headings) ──────
+  const entries: { start: number; end: number; daysAgo: number | null; sectionIdx: number }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (isH3(lines[i]!)) {
       const entryStart = i;
       let entryEnd = lines.length;
       for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j]!.match(/^###\s/)) { entryEnd = j; break; }
+        if (isHeading(lines[j]!)) { entryEnd = j; break; }
+      }
+      // Parent section: nearest ## heading that precedes this entry
+      let sectionIdx = -1;
+      for (let s = sectionBounds.length - 1; s >= 0; s--) {
+        if (sectionBounds[s]!.headingLine < entryStart) { sectionIdx = s; break; }
       }
       const age = daysAgoFromLine(lines[i]!);
-      entries.push({ start: entryStart, end: entryEnd, daysAgo: age });
+      entries.push({ start: entryStart, end: entryEnd, daysAgo: age, sectionIdx });
       i = entryEnd - 1;
     }
   }
 
-  // Split: keep entries from last 30 days
+  // ── Split: keep entries from last 30 days ─────────────────────
   const recent: typeof entries = [];
   const old: typeof entries = [];
   for (const e of entries) {
@@ -369,6 +394,14 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
       recent.push(e);
     }
   }
+
+  // Header: lines before the first ## or ### heading
+  const computeHeaderEnd = () => {
+    let end = lines.length;
+    if (entries.length > 0) end = Math.min(end, entries[0]!.start);
+    if (sectionBounds.length > 0) end = Math.min(end, sectionBounds[0]!.headingLine);
+    return end;
+  };
 
   // Count-based fallback: if nothing is old enough but file exceeds threshold,
   // archive the oldest dated recent entries to get under the size limit.
@@ -383,19 +416,34 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
     dated.sort((a, b) => a.daysAgo! - b.daysAgo!);
 
     // Keep the most recent dated entries that fit under the threshold
-    // along with all undated entries and the header
-    const headerEnd = entries.length > 0 ? entries[0]!.start : lines.length;
+    // along with all undated entries, their section preambles, and the header
+    const headerEnd = computeHeaderEnd();
     const headerSize = Buffer.byteLength(lines.slice(0, headerEnd).join('\n'), 'utf8');
     const undatedSize = undated.reduce(
       (sum, e) => sum + Buffer.byteLength(lines.slice(e.start, e.end).join('\n'), 'utf8'), 0,
     );
-    let budget = DECISION_THRESHOLD - headerSize - undatedSize;
+    // Account for section preambles that undated entries require
+    const accountedSections = new Set(
+      undated.map(e => e.sectionIdx).filter(s => s >= 0),
+    );
+    let sectionOverhead = 0;
+    for (const sIdx of accountedSections) {
+      const sec = sectionBounds[sIdx]!;
+      sectionOverhead += Buffer.byteLength(lines.slice(sec.headingLine, sec.preambleEnd).join('\n'), 'utf8');
+    }
+    let budget = DECISION_THRESHOLD - headerSize - undatedSize - sectionOverhead;
 
     const keptDated: typeof entries = [];
     for (const e of dated) {
-      const entrySize = Buffer.byteLength(lines.slice(e.start, e.end).join('\n'), 'utf8');
+      let entrySize = Buffer.byteLength(lines.slice(e.start, e.end).join('\n'), 'utf8');
+      // Add section preamble cost if this section isn't already accounted for
+      if (e.sectionIdx >= 0 && !accountedSections.has(e.sectionIdx)) {
+        const sec = sectionBounds[e.sectionIdx]!;
+        entrySize += Buffer.byteLength(lines.slice(sec.headingLine, sec.preambleEnd).join('\n'), 'utf8');
+      }
       if (budget >= entrySize) {
         budget -= entrySize;
+        if (e.sectionIdx >= 0) accountedSections.add(e.sectionIdx);
         keptDated.push(e);
       } else {
         old.push(e);
@@ -410,12 +458,35 @@ function archiveDecisions(squadDir: string, dryRun: boolean): NapAction | null {
     recent.sort((a, b) => a.start - b.start);
   }
 
-  // Header: lines before first ### heading
-  const headerEnd = entries.length > 0 ? entries[0]!.start : lines.length;
+  // ── Reconstruct with section awareness ──────────────────────────
+  // buildContent: emits entries grouped under their ## section preambles.
+  // If an entry has no parent section (sectionIdx === -1), it is emitted
+  // directly (preserving original flat-### behaviour).
+  const buildContent = (entryList: typeof entries): string => {
+    if (entryList.length === 0) return '';
+    const activeSections = new Set(entryList.map(e => e.sectionIdx).filter(s => s >= 0));
+    const blocks: string[] = [];
+    // Orphan entries (no parent section) in document order
+    for (const e of entryList.filter(e => e.sectionIdx === -1)) {
+      blocks.push(lines.slice(e.start, e.end).join('\n'));
+    }
+    // Sections in document order
+    for (let sIdx = 0; sIdx < sectionBounds.length; sIdx++) {
+      if (!activeSections.has(sIdx)) continue;
+      const sec = sectionBounds[sIdx]!;
+      blocks.push(lines.slice(sec.headingLine, sec.preambleEnd).join('\n'));
+      for (const e of entryList.filter(e => e.sectionIdx === sIdx)) {
+        blocks.push(lines.slice(e.start, e.end).join('\n'));
+      }
+    }
+    return blocks.join('\n');
+  };
+
+  const headerEnd = computeHeaderEnd();
   const header = lines.slice(0, headerEnd).join('\n');
 
-  const recentContent = header + '\n' + recent.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
-  const archiveContent = old.map(e => lines.slice(e.start, e.end).join('\n')).join('\n') + '\n';
+  const recentContent = header + '\n' + buildContent(recent) + '\n';
+  const archiveContent = buildContent(old) + '\n';
 
   const saved = size - Buffer.byteLength(recentContent, 'utf8');
 
