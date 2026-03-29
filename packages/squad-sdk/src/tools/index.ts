@@ -71,6 +71,13 @@ export interface DecisionRecord {
   references?: string[];
 }
 
+/** Map tool-facing section names to valid HistorySection values. */
+const SECTION_MAP: Record<string, 'Learnings' | 'Decisions' | 'Context'> = {
+  learnings: 'Learnings',
+  updates: 'Decisions',
+  sessions: 'Context',
+};
+
 export interface MemoryEntry {
   /** Agent name */
   agent: string;
@@ -355,11 +362,11 @@ export class ToolRegistry {
                 error: 'History file does not exist',
               };
             }
-            const sectionName = args.section.charAt(0).toUpperCase() + args.section.slice(1);
-            const timestamp = new Date().toISOString();
+            const sectionName = SECTION_MAP[args.section] ?? 'Learnings';
+            const timestamp = new Date().toISOString().slice(0, 10);
             await handle.appendHistory(
-              sectionName as any,
-              { section: sectionName as any, content: args.content, timestamp },
+              sectionName,
+              { section: sectionName, content: args.content, timestamp },
             );
             return {
               textResultForLlm: `Appended to ${args.agent} history (${args.section})`,
@@ -379,8 +386,8 @@ export class ToolRegistry {
             };
           }
 
-          const sectionHeader = `## ${args.section.charAt(0).toUpperCase() + args.section.slice(1)}`;
-          const timestamp = new Date().toISOString();
+          const sectionHeader = `## ${SECTION_MAP[args.section] ?? 'Learnings'}`;
+          const timestamp = new Date().toISOString().slice(0, 10);
           const entry = `\n### ${timestamp}\n${args.content}\n`;
 
           let content = this.storage.readSync(historyFile);

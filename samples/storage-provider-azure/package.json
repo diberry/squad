@@ -13,8 +13,9 @@
     "azure:create": "bash scripts/create-storage.sh",
     "azure:delete": "bash scripts/delete-storage.sh"
   },
+  "private": true,
   "dependencies": {
-    "@bradygaster/squad-sdk": "latest",
+    "@bradygaster/squad-sdk": "file:../../packages/squad-sdk",
     "@azure/storage-blob": "^12.26.0",
     "@azure/identity": "^4.5.0"
   },

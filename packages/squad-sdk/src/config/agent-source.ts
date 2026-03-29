@@ -97,10 +97,7 @@ export class LocalAgentSource implements AgentSource {
   private async resolveAgentsDir(): Promise<string | null> {
     for (const dir of AGENT_DIRS) {
       const fullPath = path.join(this.basePath, dir);
-      // TODO: storage.exists() cannot distinguish files from directories;
-      // original used fs.stat().isDirectory(). Acceptable here because
-      // AGENT_DIRS entries are always directories in practice.
-      if (await this.storage.exists(fullPath)) return fullPath;
+      if (await this.storage.isDirectory(fullPath)) return fullPath;
     }
     return null;
   }

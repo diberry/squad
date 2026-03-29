@@ -6,6 +6,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 import type { CommitInfo } from './versioning.js';
 import { parseConventionalCommit } from './versioning.js';
@@ -107,7 +108,7 @@ export function computeSha256(data: Buffer | string): string {
 export function buildArtifact(name: string, filePath: string): ReleaseArtifact | null {
   if (!storage.existsSync(filePath)) return null;
 
-  const content = storage.readSync(filePath) ?? '';
+  const content = readFileSync(filePath); // Buffer-based read for correct binary hashing
   const size = storage.statSync(filePath)?.size ?? 0;
 
   return {
