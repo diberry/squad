@@ -429,6 +429,18 @@ function runEnsureChecks(dest: string, templatesDir: string, filesUpdated: strin
 }
 
 /**
+ * Stamp config version and log if a squad config file is present.
+ */
+function upgradeConfigVersion(dest: string, version: string, filesUpdated: string[]): void {
+  const configPath = discoverSquadConfig(dest);
+  if (configPath) {
+    stampConfigVersion(configPath, version);
+    success('upgraded config version in ' + path.basename(configPath));
+    filesUpdated.push(path.basename(configPath));
+  }
+}
+
+/**
  * Run the upgrade command
  */
 export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Promise<UpdateInfo> {
@@ -489,13 +501,7 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
       filesUpdated.push('squad.agent.md');
     }
     
-    // Stamp config version in squad.config.ts / squad.config.js if present
-    const configPath = discoverSquadConfig(dest);
-    if (configPath) {
-      stampConfigVersion(configPath, cliVersion);
-      success('upgraded config version in ' + path.basename(configPath));
-      filesUpdated.push(path.basename(configPath));
-    }
+    upgradeConfigVersion(dest, cliVersion, filesUpdated);
     
     // Run infrastructure ensure checks even when already current
     runEnsureChecks(dest, templatesDir, filesUpdated);
@@ -524,13 +530,7 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   success(`upgraded coordinator from ${fromLabel} to ${cliVersion}`);
   filesUpdated.push('squad.agent.md');
   
-  // Stamp config version in squad.config.ts / squad.config.js if present
-  const configPath = discoverSquadConfig(dest);
-  if (configPath) {
-    stampConfigVersion(configPath, cliVersion);
-    success('upgraded config version in ' + path.basename(configPath));
-    filesUpdated.push(path.basename(configPath));
-  }
+  upgradeConfigVersion(dest, cliVersion, filesUpdated);
   
   // Upgrade squad-owned files from template manifest
   // Exclude squad.agent.md — already copied and version-stamped above
