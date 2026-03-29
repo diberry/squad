@@ -3,7 +3,7 @@
  *
  * Validates that the exports map checker script:
  * 1. Executes without crashing (exits 0 or 1, not a runtime error)
- * 2. Produces structured output on stdout or stderr
+ * 2. Produces human-readable output on stdout or stderr describing the result
  *
  * This does NOT test that exports are complete — the script itself
  * catches real gaps (e.g., platform, remote, roles, streams, upstream).
