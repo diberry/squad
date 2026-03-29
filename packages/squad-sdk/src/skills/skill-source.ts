@@ -33,6 +33,7 @@ export class LocalSkillSource implements SkillSource {
   readonly name = 'local';
   readonly type = 'local' as const;
   readonly priority: number;
+  private _skillsDirsCache: string[] | undefined;
 
   constructor(private basePath: string, priority = 0) {
     this.priority = priority;
@@ -40,11 +41,13 @@ export class LocalSkillSource implements SkillSource {
 
   /** Returns all existing skill directories, .copilot/skills/ first (highest priority). */
   private get skillsDirs(): string[] {
+    if (this._skillsDirsCache !== undefined) return this._skillsDirsCache;
     const dirs: string[] = [];
     const copilotDir = path.join(this.basePath, '.copilot', 'skills');
     const squadDir = path.join(this.basePath, '.squad', 'skills');
     if (fs.existsSync(copilotDir)) dirs.push(copilotDir);
     if (fs.existsSync(squadDir)) dirs.push(squadDir);
+    this._skillsDirsCache = dirs;
     return dirs;
   }
 
