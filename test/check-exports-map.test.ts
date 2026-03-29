@@ -1,5 +1,5 @@
 /**
- * check-exports-map.mjs — Script execution test (#104)
+ * check-exports-map.mjs — Script execution test
  *
  * Validates that the exports map checker script:
  * 1. Executes without crashing (exits 0 or 1, not a runtime error)
