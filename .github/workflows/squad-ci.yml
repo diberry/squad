@@ -201,7 +201,7 @@ jobs:
             echo "========================================="
             echo "[$sample] Installing dependencies..."
             echo "========================================="
-            if ! (cd "$sample_dir" && npm install --ignore-scripts 2>&1); then
+            if ! (cd "$sample_dir" && if [ -f package-lock.json ]; then npm ci; else npm install; fi 2>&1); then
               echo "::error::[$sample] npm install failed"
               FAILED=$((FAILED + 1))
               continue
