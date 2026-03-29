@@ -19,7 +19,7 @@ import { ConfigurationError } from '../adapter/errors.js';
 //
 // Two layers of protection:
 //   1. In-process async mutex (handles concurrent agents in one Node.js process)
-//   2. Atomic writes via temp-file + rename (prevents partial reads)
+//   2. Write via StorageProvider (implementation determines durability guarantees)
 // ---------------------------------------------------------------------------
 
 /**
@@ -252,7 +252,7 @@ export async function appendToHistory(
         updatedContent = historyContent.trimEnd() + `\n\n${sectionHeader}${entry}`;
       }
       
-      // Atomic write: temp file + rename prevents partial reads
+      // Write via StorageProvider (serialized by in-process file lock)
       await atomicWriteFile(storage, shadowPath, updatedContent);
     });
     

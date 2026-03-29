@@ -30,7 +30,7 @@ echo "── Creating resource group ──────────────�
 az group create --name "$RG" --location "$LOCATION" --output none
 echo "  ✓ Resource group: $RG"
 
-# Create storage account (Standard_LRS, allow blob public access)
+# Create storage account (Standard_LRS, blob public access disabled for security)
 echo ""
 echo "── Creating storage account ─────────────────────"
 az storage account create \
@@ -39,7 +39,7 @@ az storage account create \
   --location "$LOCATION" \
   --sku Standard_LRS \
   --kind StorageV2 \
-  --allow-blob-public-access true \
+  --allow-blob-public-access false \
   --output none
 echo "  ✓ Storage account: $ACCOUNT"
 

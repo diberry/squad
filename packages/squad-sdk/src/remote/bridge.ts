@@ -8,7 +8,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'node:http';
 import { createWriteStream, mkdirSync as fsMkdirSync } from 'node:fs'; // createWriteStream/mkdirSync retained — streaming API + restrictive perms, not in StorageProvider scope
-import { FSStorageProvider } from '../storage/fs-storage-provider.js';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -23,8 +22,6 @@ import {
   type RCClientCommand,
 } from './protocol.js';
 import type { RemoteBridgeConfig, RemoteConnection, ConnectionState } from './types.js';
-
-const storage = new FSStorageProvider();
 
 export class RemoteBridge {
   private server: http.Server | null = null;
