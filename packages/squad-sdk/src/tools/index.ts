@@ -295,7 +295,7 @@ export class ToolRegistry {
             `### ${timestamp}: ${args.summary}`,
             '',
             `**By:** ${args.author}`,
-            `**What:** ${args.body}`,
+            `**What:** ${args.summary}`,
             args.references && args.references.length > 0
               ? `**References:** ${args.references.join(', ')}`
               : '',
