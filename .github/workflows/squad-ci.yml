@@ -190,10 +190,10 @@ jobs:
                 fs.writeFileSync('$pkg', JSON.stringify(p, null, 2) + '\n');
               "
               echo "Patched $pkg to use local SDK"
-              LOCKFILE=\"$(dirname \"$pkg\")/package-lock.json\"
-              if [ -f \"$LOCKFILE\" ]; then
-                rm \"$LOCKFILE\"
-                echo \"Removed lockfile $LOCKFILE to ensure local SDK is used\"
+              LOCKFILE="$(dirname "$pkg")/package-lock.json"
+              if [ -f "$LOCKFILE" ]; then
+                rm "$LOCKFILE"
+                echo "Removed lockfile $LOCKFILE to ensure local SDK is used"
               fi
             fi
           done
