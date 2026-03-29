@@ -254,6 +254,9 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            samples/**/package-lock.json
 
       - name: Check feature flag
         id: flag
@@ -298,10 +301,8 @@ jobs:
       - name: Install root dependencies and build SDK
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
         run: |
-          npm install --ignore-scripts
-          cd packages/squad-sdk
-          npm install --ignore-scripts
-          npm run build
+          npm ci --ignore-scripts
+          npm run build -w packages/squad-sdk
 
       - name: Build and test samples
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
