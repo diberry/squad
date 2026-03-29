@@ -244,6 +244,7 @@ jobs:
   samples-build:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -252,6 +253,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
       - name: Check feature flag
         id: flag
@@ -295,7 +297,7 @@ jobs:
 
       - name: Install root dependencies and build SDK
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
-        run: npm install && npm run build
+        run: npm install --ignore-scripts && npm run build
 
       - name: Build and test samples
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
