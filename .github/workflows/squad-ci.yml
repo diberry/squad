@@ -133,7 +133,7 @@ jobs:
           fi
 
       - name: Require CHANGELOG update for SDK/CLI source changes
-        if: steps.flag.outputs.skip == 'false' && !contains(join(github.event.pull_request.labels.*.name, ','), 'skip-changelog')
+        if: steps.flag.outputs.skip == 'false' && !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
