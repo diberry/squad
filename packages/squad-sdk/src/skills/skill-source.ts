@@ -6,8 +6,8 @@
 
 import * as path from 'node:path';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
 
-const storage = new FSStorageProvider();
 import { parseFrontmatter, type SkillDefinition } from './skill-loader.js';
 import type { GitHubFetcher } from '../config/agent-source.js';
 
@@ -35,34 +35,36 @@ export class LocalSkillSource implements SkillSource {
   readonly name = 'local';
   readonly type = 'local' as const;
   readonly priority: number;
+  private storage: StorageProvider;
 
-  constructor(private basePath: string, priority = 0) {
+  constructor(private basePath: string, priority = 0, storage: StorageProvider = new FSStorageProvider()) {
     this.priority = priority;
+    this.storage = storage;
   }
 
   private get skillsDir(): string {
     const copilotDir = path.join(this.basePath, '.copilot', 'skills');
-    if (storage.existsSync(copilotDir)) return copilotDir;
+    if (this.storage.existsSync(copilotDir)) return copilotDir;
     // Backward compat: fall back to legacy location
     return path.join(this.basePath, '.squad', 'skills');
   }
 
   async listSkills(): Promise<SkillManifest[]> {
-    if (!storage.existsSync(this.skillsDir)) return [];
+    if (!this.storage.existsSync(this.skillsDir)) return [];
     let entries: string[];
     try {
-      entries = storage.listSync(this.skillsDir);
+      entries = this.storage.listSync(this.skillsDir);
     } catch {
       return [];
     }
 
     const manifests: SkillManifest[] = [];
     for (const entryName of entries) {
-      if (!storage.isDirectorySync(path.join(this.skillsDir, entryName))) continue;
+      if (!this.storage.isDirectorySync(path.join(this.skillsDir, entryName))) continue;
       const skillFile = path.join(this.skillsDir, entryName, 'SKILL.md');
-      if (!storage.existsSync(skillFile)) continue;
+      if (!this.storage.existsSync(skillFile)) continue;
       try {
-        const raw = storage.readSync(skillFile) ?? '';
+        const raw = this.storage.readSync(skillFile) ?? '';
         const { meta } = parseFrontmatter(raw);
         manifests.push({
           id: entryName,
@@ -79,9 +81,9 @@ export class LocalSkillSource implements SkillSource {
 
   async getSkill(id: string): Promise<SkillDefinition | null> {
     const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!storage.existsSync(skillFile)) return null;
+    if (!this.storage.existsSync(skillFile)) return null;
     try {
-      const raw = storage.readSync(skillFile) ?? '';
+      const raw = this.storage.readSync(skillFile) ?? '';
       const { meta, body } = parseFrontmatter(raw);
       if (!body) return null;
       return {
@@ -99,9 +101,9 @@ export class LocalSkillSource implements SkillSource {
 
   async getContent(id: string): Promise<string | null> {
     const skillFile = path.join(this.skillsDir, id, 'SKILL.md');
-    if (!storage.existsSync(skillFile)) return null;
+    if (!this.storage.existsSync(skillFile)) return null;
     try {
-      const raw = storage.readSync(skillFile) ?? '';
+      const raw = this.storage.readSync(skillFile) ?? '';
       const { body } = parseFrontmatter(raw);
       return body || null;
     } catch {

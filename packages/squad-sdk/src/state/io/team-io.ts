@@ -30,8 +30,7 @@ export interface ParsedTeam {
 
 /**
  * Extract project context: everything between the `# Title` line and
- * the `## Members` (or first `##`) section, excluding the title and
- * any blockquote tagline on the line immediately after the title.
+ * the `## Members` heading.  The title line itself is excluded.
  */
 function extractProjectContext(markdown: string): string {
   const lines = normalizeEol(markdown).split('\n');

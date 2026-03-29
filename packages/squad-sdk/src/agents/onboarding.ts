@@ -386,14 +386,17 @@ export async function onboardAgent(
   const charterPath = join(agentDir, 'charter.md');
   const historyPath = join(agentDir, 'history.md');
 
+  // When state is provided, prefer its underlying provider for consistency
+  const effectiveStorage = state ? state.provider : storage;
+
   if (state) {
     // SquadState.agents.create() writes charter + generic history.
     // We write charter via state, then overwrite history with our richer template.
     await state.agents.create(normalizedName, charterContent);
-    await storage.write(historyPath, historyContent);
+    await effectiveStorage.write(historyPath, historyContent);
   } else {
-    await storage.write(charterPath, charterContent);
-    await storage.write(historyPath, historyContent);
+    await effectiveStorage.write(charterPath, charterContent);
+    await effectiveStorage.write(historyPath, historyContent);
   }
   createdFiles.push(charterPath, historyPath);
   

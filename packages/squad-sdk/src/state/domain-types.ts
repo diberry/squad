@@ -23,7 +23,7 @@ export interface Agent {
   readonly name: string;
   readonly role: string;
   readonly emoji?: string;
-  readonly status: AgentStatus;
+  readonly status: string;
   readonly charterPath: string;
   readonly modelPreference?: ModelTier;
   readonly modelFallback?: string;

@@ -11,19 +11,20 @@
 
 import path from 'node:path';
 import { FSStorageProvider } from '../storage/fs-storage-provider.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
 import type {
   UpstreamConfig,
   UpstreamResolution,
   ResolvedUpstream,
 } from './types.js';
 
-const storage = new FSStorageProvider();
+const defaultStorage: StorageProvider = new FSStorageProvider();
 
 /**
  * Read and parse upstream.json from a squad directory.
  * Returns null if the file doesn't exist or is invalid.
  */
-export function readUpstreamConfig(squadDir: string): UpstreamConfig | null {
+export function readUpstreamConfig(squadDir: string, storage: StorageProvider = defaultStorage): UpstreamConfig | null {
   const configPath = path.join(squadDir, 'upstream.json');
   if (!storage.existsSync(configPath)) return null;
 
@@ -41,7 +42,7 @@ export function readUpstreamConfig(squadDir: string): UpstreamConfig | null {
  * Find the .squad/ directory inside a source path.
  * Checks for .squad/ first, falls back to .ai-team/.
  */
-function findSquadDir(sourcePath: string): string | null {
+function findSquadDir(sourcePath: string, storage: StorageProvider = defaultStorage): string | null {
   const squadDir = path.join(sourcePath, '.squad');
   if (storage.existsSync(squadDir)) return squadDir;
 
@@ -54,7 +55,7 @@ function findSquadDir(sourcePath: string): string | null {
 /**
  * Read all skills from a squad directory's skills/ folder.
  */
-function readSkills(squadDir: string): Array<{ name: string; content: string }> {
+function readSkills(squadDir: string, storage: StorageProvider = defaultStorage): Array<{ name: string; content: string }> {
   const projectDir = path.dirname(squadDir);
   const candidateDirs = [
     { dir: path.join(projectDir, '.copilot', 'skills'), layout: 'nested' as const },
@@ -84,7 +85,7 @@ function readSkills(squadDir: string): Array<{ name: string; content: string }> 
 /**
  * Read a text file if it exists, otherwise return null.
  */
-function readOptionalFile(filePath: string): string | null {
+function readOptionalFile(filePath: string, storage: StorageProvider = defaultStorage): string | null {
   if (!storage.existsSync(filePath)) return null;
   try {
     return storage.readSync(filePath) ?? null;
@@ -96,8 +97,8 @@ function readOptionalFile(filePath: string): string | null {
 /**
  * Read and parse a JSON file if it exists, otherwise return null.
  */
-function readOptionalJson(filePath: string): Record<string, unknown> | null {
-  const raw = readOptionalFile(filePath);
+function readOptionalJson(filePath: string, storage: StorageProvider = defaultStorage): Record<string, unknown> | null {
+  const raw = readOptionalFile(filePath, storage);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as Record<string, unknown>;
@@ -109,22 +110,22 @@ function readOptionalJson(filePath: string): Record<string, unknown> | null {
 /**
  * Resolve content from a single upstream's .squad/ directory.
  */
-function resolveFromSquadDir(name: string, type: 'local' | 'git' | 'export', upstreamSquadDir: string): ResolvedUpstream {
+function resolveFromSquadDir(name: string, type: 'local' | 'git' | 'export', upstreamSquadDir: string, storage: StorageProvider = defaultStorage): ResolvedUpstream {
   return {
     name,
     type,
-    skills: readSkills(upstreamSquadDir),
-    decisions: readOptionalFile(path.join(upstreamSquadDir, 'decisions.md')),
-    wisdom: readOptionalFile(path.join(upstreamSquadDir, 'identity', 'wisdom.md')),
-    castingPolicy: readOptionalJson(path.join(upstreamSquadDir, 'casting', 'policy.json')),
-    routing: readOptionalFile(path.join(upstreamSquadDir, 'routing.md')),
+    skills: readSkills(upstreamSquadDir, storage),
+    decisions: readOptionalFile(path.join(upstreamSquadDir, 'decisions.md'), storage),
+    wisdom: readOptionalFile(path.join(upstreamSquadDir, 'identity', 'wisdom.md'), storage),
+    castingPolicy: readOptionalJson(path.join(upstreamSquadDir, 'casting', 'policy.json'), storage),
+    routing: readOptionalFile(path.join(upstreamSquadDir, 'routing.md'), storage),
   };
 }
 
 /**
  * Resolve content from an export JSON file.
  */
-function resolveFromExport(name: string, exportPath: string): ResolvedUpstream {
+function resolveFromExport(name: string, exportPath: string, storage: StorageProvider = defaultStorage): ResolvedUpstream {
   const resolved: ResolvedUpstream = {
     name,
     type: 'export',
@@ -171,17 +172,17 @@ function resolveFromExport(name: string, exportPath: string): ResolvedUpstream {
  * @param squadDir - The .squad/ directory of the current repo
  * @returns Resolved upstream content, or null if no upstream.json exists
  */
-export function resolveUpstreams(squadDir: string): UpstreamResolution | null {
-  const config = readUpstreamConfig(squadDir);
+export function resolveUpstreams(squadDir: string, storage: StorageProvider = defaultStorage): UpstreamResolution | null {
+  const config = readUpstreamConfig(squadDir, storage);
   if (!config) return null;
 
   const results: ResolvedUpstream[] = [];
 
   for (const upstream of config.upstreams) {
     if (upstream.type === 'local') {
-      const upstreamSquadDir = findSquadDir(upstream.source);
+      const upstreamSquadDir = findSquadDir(upstream.source, storage);
       if (upstreamSquadDir) {
-        results.push(resolveFromSquadDir(upstream.name, 'local', upstreamSquadDir));
+        results.push(resolveFromSquadDir(upstream.name, 'local', upstreamSquadDir, storage));
       } else {
         // Source not found — push empty result
         results.push({ name: upstream.name, type: 'local', skills: [], decisions: null, wisdom: null, castingPolicy: null, routing: null });
@@ -189,14 +190,14 @@ export function resolveUpstreams(squadDir: string): UpstreamResolution | null {
     } else if (upstream.type === 'git') {
       // Read from cached clone
       const cloneDir = path.join(squadDir, '_upstream_repos', upstream.name);
-      const cloneSquadDir = findSquadDir(cloneDir);
+      const cloneSquadDir = findSquadDir(cloneDir, storage);
       if (cloneSquadDir) {
-        results.push(resolveFromSquadDir(upstream.name, 'git', cloneSquadDir));
+        results.push(resolveFromSquadDir(upstream.name, 'git', cloneSquadDir, storage));
       } else {
         results.push({ name: upstream.name, type: 'git', skills: [], decisions: null, wisdom: null, castingPolicy: null, routing: null });
       }
     } else if (upstream.type === 'export') {
-      results.push(resolveFromExport(upstream.name, upstream.source));
+      results.push(resolveFromExport(upstream.name, upstream.source, storage));
     }
   }
 
