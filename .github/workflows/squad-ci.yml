@@ -257,6 +257,9 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             samples/**/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            samples/**/package-lock.json
 
       - name: Check feature flag
         id: flag
