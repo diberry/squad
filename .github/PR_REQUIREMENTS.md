@@ -88,7 +88,7 @@ Requirements are ordered by review flow. All marked **REQUIRED** must be satisfi
 - [ ] README.md section updated if adding a new feature or module to the SDK
 - [ ] Docs feature page added under `docs/src/content/docs/features/` if adding a user-facing capability
 - [ ] `docs/src/navigation.ts` updated if a new docs page is added
-- [ ] Docs build test updated if a new feature page is added (Playwright test in CI)
+- [ ] Docs build test updated if a new feature page is added (`test/docs-build.test.ts`, run via `npm test`)
 
 **Enforced by**: Manual PR review (FIDO, Flight) + future automated checks in #104
 
