@@ -297,7 +297,11 @@ jobs:
 
       - name: Install root dependencies and build SDK
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
-        run: npm install --ignore-scripts && npm run build
+        run: |
+          npm install --ignore-scripts
+          cd packages/squad-sdk
+          npm install --ignore-scripts
+          npm run build
 
       - name: Build and test samples
         if: steps.flag.outputs.skip == 'false' && steps.label.outputs.skip != 'true' && steps.changes.outputs.skip != 'true'
