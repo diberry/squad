@@ -27,7 +27,7 @@ export class StorageError extends Error {
    * @param cause     - The underlying Node.js filesystem error.
    */
   constructor(operation: string, filePath: string, cause: NodeJS.ErrnoException) {
-    super(`Storage ${operation} failed for "${basename(filePath)}": ${cause.code}`);
+    super(`Storage ${operation} failed for "${basename(filePath)}": ${cause.code ?? 'UNKNOWN'}`);
     this.name = 'StorageError';
     this.code = cause.code ?? 'UNKNOWN';
     this.operation = operation;
