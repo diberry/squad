@@ -58,3 +58,48 @@ export function readInstalledVersion(filePath: string): string | null {
     return '0.0.0';
   }
 }
+
+/** Config file names to check, in priority order */
+const CONFIG_CANDIDATES = ['squad.config.ts', 'squad.config.js'] as const;
+
+/**
+ * Discover the squad config file (squad.config.ts or squad.config.js) in a project directory.
+ * Returns the absolute path if found, or null.
+ */
+export function discoverSquadConfig(projectDir: string): string | null {
+  for (const name of CONFIG_CANDIDATES) {
+    const candidate = path.join(projectDir, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Stamp the version field inside a squad.config.ts or squad.config.js file.
+ * Replaces `version: 'X.Y.Z'` or `version: "X.Y.Z"` with the new version.
+ */
+export function stampConfigVersion(filePath: string, version: string): void {
+  let content = fs.readFileSync(filePath, 'utf8');
+  const replaced = content.replace(
+    /^(\s*version:\s*)(['"])([0-9]+\.[0-9]+\.[0-9]+(?:-[a-z]+(?:\.\d+)?)?)(['"])/m,
+    `$1$2${version}$4`,
+  );
+  if (replaced !== content) {
+    fs.writeFileSync(filePath, replaced);
+  }
+}
+
+/**
+ * Read the version from a squad.config.ts or squad.config.js file.
+ * Returns the version string, or null if not found.
+ */
+export function readConfigVersion(filePath: string): string | null {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, 'utf8');
+    const match = content.match(/^\s*version:\s*['"]([0-9]+\.[0-9]+\.[0-9]+(?:-[a-z]+(?:\.\d+)?)?)['"],?/m);
+    return match ? match[1]! : null;
+  } catch {
+    return null;
+  }
+}

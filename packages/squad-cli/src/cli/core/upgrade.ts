@@ -12,7 +12,7 @@ import { detectSquadDir } from './detect-squad-dir.js';
 import { TEMPLATE_MANIFEST, getTemplatesDir } from './templates.js';
 import { runMigrations } from './migrations.js';
 import { scrubEmails } from './email-scrub.js';
-import { getPackageVersion, stampVersion, readInstalledVersion } from './version.js';
+import { getPackageVersion, stampVersion, readInstalledVersion, discoverSquadConfig, stampConfigVersion } from './version.js';
 
 export interface UpgradeOptions {
   migrateDirectory?: boolean;
@@ -489,6 +489,14 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
       filesUpdated.push('squad.agent.md');
     }
     
+    // Stamp config version in squad.config.ts / squad.config.js if present
+    const configPath = discoverSquadConfig(dest);
+    if (configPath) {
+      stampConfigVersion(configPath, cliVersion);
+      success('upgraded config version in ' + path.basename(configPath));
+      filesUpdated.push(path.basename(configPath));
+    }
+    
     // Run infrastructure ensure checks even when already current
     runEnsureChecks(dest, templatesDir, filesUpdated);
     
@@ -515,6 +523,14 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   const fromLabel = oldVersion === '0.0.0' || !oldVersion ? 'unknown' : oldVersion;
   success(`upgraded coordinator from ${fromLabel} to ${cliVersion}`);
   filesUpdated.push('squad.agent.md');
+  
+  // Stamp config version in squad.config.ts / squad.config.js if present
+  const configPath = discoverSquadConfig(dest);
+  if (configPath) {
+    stampConfigVersion(configPath, cliVersion);
+    success('upgraded config version in ' + path.basename(configPath));
+    filesUpdated.push(path.basename(configPath));
+  }
   
   // Upgrade squad-owned files from template manifest
   // Exclude squad.agent.md — already copied and version-stamped above
