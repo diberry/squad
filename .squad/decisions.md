@@ -78,11 +78,6 @@
 **By:** Flight (implementing Brady's directives above)  
 **Date:** 2026-03-09  
 
-### 2026-02-27: ASCII-only separators and NO_COLOR
-**By:** Cheritto (TUI Engineer)
-**What:** All separators use ASCII hyphens. Text-over-emoji principle: text status is primary, emoji is supplementary.
-**Convention:** Use ASCII hyphens for separators. Keep emoji out of status/system messages.
-
 ### 2026-02-28: User directive — DO NOT merge PR #547
 **By:** Brady (via Copilot)
 **What:** DO NOT merge PR #547 (Squad Remote Control). Do not touch #547 at all.
@@ -8075,4 +8070,10 @@ Skill discovery now reads BOTH `.copilot/skills/` and `.squad/skills/`, merging 
 **By:** RETRO (Security)
 **What:** Added mandatory Git Safety section to copilot-instructions.md: prohibits `git add .`, requires feature branches and PRs, adds pre-push checklist, defines red-flag stop conditions.
 **Why:** Incident #631 — @copilot used destructive staging on an incomplete working tree, deleting 361 files.
+
+
+### 2026-03-29T20:26:20Z: User directive
+**By:** Dina (via Copilot)
+**What:** Always report full results from squad nap command — never hide, summarize, or abbreviate the output. Show the complete nap report including Overall, Breakdown, and Actions sections exactly as the CLI outputs them.
+**Why:** User request — captured for team memory
 

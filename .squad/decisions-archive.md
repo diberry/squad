@@ -4394,3 +4394,8 @@ Migration is **non-destructive and registration-only**. When esolveSquadPath() 
 **By:** Brady (via Copilot)
 **What:** CLI docs should note the project is experimental and ask users to file issues.
 
+### 2026-02-27: ASCII-only separators and NO_COLOR
+**By:** Cheritto (TUI Engineer)
+**What:** All separators use ASCII hyphens. Text-over-emoji principle: text status is primary, emoji is supplementary.
+**Convention:** Use ASCII hyphens for separators. Keep emoji out of status/system messages.
+
