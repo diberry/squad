@@ -68,10 +68,13 @@ When Ralph scans for work, check PRs in this order:
 ### 1. Find PRs needing lifecycle labels
 ```bash
 # Non-draft PRs with no squad:pr-* label = new to pipeline
-gh pr list --state open --json number,title,labels,isDraft \
-  --jq '[.[] | select(.isDraft == false) | select((.labels | map(.name) | any(startswith("squad:pr-"))) | not)]'
+# EXCLUDE branches prefixed with diberry/ — those are infrastructure branches, not feature PRs
+gh pr list --state open --json number,title,labels,isDraft,headRefName \
+  --jq '[.[] | select(.isDraft == false) | select(.headRefName | startswith("diberry/") | not) | select((.labels | map(.name) | any(startswith("squad:pr-"))) | not)]'
 ```
 For each: add `squad:pr-needs-preparation` label.
+
+**Pipeline exclusions:** Branches prefixed with `diberry/` are personal/infrastructure branches (e.g., `diberry/squad` for Dina's state). They must NEVER enter the PR pipeline or be targeted at bradygaster/squad.
 
 ### 2. Process PRs at each stage (ONE stage per PR per round)
 

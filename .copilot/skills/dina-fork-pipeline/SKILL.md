@@ -18,6 +18,19 @@ tools:
 - **Main worksurface (where all work happens):** `diberry/squad` — this is the fork. All development, reviews, branching, and iteration happen here.
 - **Upstream (read-only unless explicitly told):** `bradygaster/squad` — only touched during Step 7 (UPSTREAM) after the full pipeline is complete and Dina has approved. Never push to upstream without explicit instruction.
 
+## Protected Branches (never enter the PR pipeline)
+
+These branches are **infrastructure branches** on diberry/squad. They are NOT feature branches. They must NEVER:
+- Be opened as PRs (not to dev, not to bradygaster/squad)
+- Enter the `squad:pr-*` label pipeline
+- Be squashed, rebased against dev, or merged
+
+| Branch | Purpose |
+|--------|---------|
+| `diberry/squad` | Dina's personal state branch — skills, decisions, squad config. Merged only to itself. |
+
+Any branch prefixed with `diberry/` is a personal/infrastructure branch. The PR pipeline only applies to `squad/*` branches.
+
 ## Pipeline Overview
 
 ```
