@@ -89,6 +89,7 @@ For each: add `squad:pr-needs-preparation` label.
 - Squash all commits into a single commit with a conventional commit message: `type(scope): description (#{issue})` (e.g., `fix(cli): auto-update config version during upgrade (#84)`)
 - Force-push the cleaned branch: `git push --force-with-lease`
 - **Validation before advancing:**
+  - **Naming convention** (see `dina-pr-naming`): PR title must have a valid scope prefix (`feat(sdk):`, `devops(ci):`, etc.). If missing, add it. If the PR mixes product and devops files, flag for splitting.
   - PR description must reference a linked issue (`Closes #N`). If missing, add it.
   - A changeset file must exist (`.changeset/*.md`). If missing, create one appropriate to the change scope.
   - Branch name must follow convention: `squad/{issue-number}-{kebab-slug}`. If not, post a comment but don't block.
