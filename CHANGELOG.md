@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Roster sync** (#83) — sync squad.agent.md roster when agents are added to team.md
+
 ### Added — Full Work Monitor for squad watch (#708)
 - `--execute` flag spawns Copilot sessions to work on actionable issues autonomously
 - Multi-platform support — auto-detects GitHub vs Azure DevOps from git remote URL
