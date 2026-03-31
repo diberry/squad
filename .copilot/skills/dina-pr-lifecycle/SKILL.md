@@ -18,14 +18,18 @@ label-driven stages. Ralph processes ONE stage per PR per round. Labels are the
 state machine — the PR advances through the pipeline across multiple Ralph cycles
 without requiring a mega-prompt.
 
-## Repos
+## Repos & Worksurface
 
-Origin repo: bradygaster/squad
-Fork repo: diberry/squad-diberry
+- **Main worksurface (where all work happens):** `diberry/squad` — this is the fork
+- **Upstream (read-only unless explicitly told):** `bradygaster/squad`
+
+All development, reviews, and iteration happen on diberry/squad. The only time you touch
+bradygaster/squad is during the `squad:pr-dina-approved` and `squad:pr-upstream` stages
+of this pipeline — and only after Dina has approved.
 
 ## Workflow
 
-Work happens on fork until the PR is ready to be opened against the origin repository.
+Work happens on the fork (diberry/squad) until the PR is ready to be opened against upstream (bradygaster/squad).
 
 ## Label State Machine
 

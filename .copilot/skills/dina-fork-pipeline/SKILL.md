@@ -1,0 +1,177 @@
+---
+name: "dina-fork-pipeline"
+description: "Core fork-first PR pipeline: 9 steps from branch to upstream merge"
+domain: "PR workflow, fork-workflow, upstream-sync"
+confidence: "high"
+source: "consolidated from diberry-squad-fork-first-pipeline"
+tools:
+  - name: "gh"
+    description: "GitHub CLI for PR creation, status, and upstream operations"
+    when: "Fork PR creation, upstream PR creation, PR status checks"
+  - name: "git"
+    description: "Version control for branching, rebasing, squashing"
+    when: "Branch management, rebase, squash, push"
+---
+
+## Worksurface
+
+- **Main worksurface (where all work happens):** `diberry/squad` — this is the fork. All development, reviews, branching, and iteration happen here.
+- **Upstream (read-only unless explicitly told):** `bradygaster/squad` — only touched during Step 7 (UPSTREAM) after the full pipeline is complete and Dina has approved. Never push to upstream without explicit instruction.
+
+## Pipeline Overview
+
+```
+BRANCH → FORK PR → PREFLIGHT → REVIEW → FIX → BLEED CHECK → CLEAN → DEDUP CHECK → UPSTREAM → DONE
+```
+
+Each step has a dedicated purpose. For detailed guidance on review, bleed check, dedup, and sync, see the companion skills:
+- `dina-review-protocol` — Review gates, lockout rules, migration PR protocol
+- `dina-bleed-check` — Stowaway file audit, branch segregation
+- `dina-dedup-check` — Upstream dedup gate before opening upstream PR
+- `dina-fork-sync` — Layered sync model for keeping fork current with upstream
+- `dina-pr-lifecycle` — Label-driven state machine for PR progression
+
+## Step 1: BRANCH
+
+Create a feature branch locally on diberry/squad:
+```bash
+git checkout -b squad/{issue-number}-{slug}
+```
+
+## Step 2: FORK PR
+
+Push to fork and open PR **against your fork's dev branch**:
+```bash
+git push origin {branch-name}
+gh pr create --base dev --draft  # Opens on diberry/squad, not upstream
+```
+
+## Step 2.5: PREFLIGHT TEST GATE
+
+Before requesting review, run the full build and test suite locally:
+
+```bash
+npm run build && npm test
+```
+
+This is not optional. If tests fail, fix them before requesting review.
+
+**PR description attestation**: Add a "Preflight" section confirming tests pass:
+```markdown
+## Preflight
+- [x] `npm run build` — passes
+- [x] `npm test` — passes (N suites, N tests, Ns runtime)
+```
+
+**Migration PRs (>20 files changed)**: Include the full test output summary in the PR description.
+
+## Step 3: REVIEW
+
+Iterate on the fork PR with the team. See `dina-review-protocol` for the full review process including dual reviewer gate, correctness-before-completeness ordering, and migration PR protocol.
+
+## Step 4: FIX
+
+Address review comments. Use **additive commits** so reviewers can see what changed between iterations. Do not squash during active review.
+
+```bash
+# Good: additive commit during review
+git commit -m "fix: await async storage calls per review feedback"
+
+# Bad: squash during active review
+git commit --amend --no-edit && git push --force-with-lease  # ← hides iteration
+```
+
+Squash happens later, at Step 6 (CLEAN), after review is complete.
+
+## Step 5: BLEED CHECK
+
+Run a bleed audit to verify no stowaway files. See `dina-bleed-check` for the full audit process.
+
+## Step 5.5: REBASE
+
+Before squashing for upstream, rebase the feature branch:
+```bash
+git fetch origin dev
+git rebase origin/dev
+```
+
+If rebase has conflicts on shared files:
+1. `git rebase --abort`
+2. Reset shared files to dev: `git checkout origin/dev -- {file}`
+3. Re-add only this PR's surgical changes
+4. `git commit --amend --no-edit`
+5. Continue with Step 6 CLEAN
+
+## Step 6: CLEAN
+
+Prepare for upstream PR:
+- Squash commits into a single commit
+- Clean up commit message: `type(scope): description (#{issue})`
+- Remove any `.squad/` or `.copilot/skills/` files if present
+- Check for stale TDD comments ("RED PHASE", "TODO: implement", "WIP")
+- Remove double blank lines from description
+
+## Step 6.5: DEDUP CHECK
+
+**Mandatory gate.** See `dina-dedup-check` for the full dedup process. If overlap is found, STOP and report to Dina before proceeding.
+
+## Step 7: UPSTREAM
+
+Open PR on bradygaster/squad targeting dev:
+```bash
+gh pr create --repo bradygaster/squad --base dev --fill
+gh pr ready {pr-number} --repo bradygaster/squad
+```
+
+The upstream PR is the **final presentation** — it should not remain in draft. See `dina-pr-lifecycle` for the full upstream PR requirements (description, team review summary, file audit).
+
+## Step 8: DONE
+
+Upstream PR is merged. Close fork PR, remove all lifecycle labels, close linked issue.
+
+## Pre-Upstream Gate Checklist
+
+Before opening the upstream PR, verify:
+
+- [ ] **Preflight tests pass**: `npm run build && npm test` run locally
+- [ ] **Test attestation in PR description**: Preflight section with results
+- [ ] **All reviewers approved**: Full team + Copilot approved on latest commit
+- [ ] **Dina approved**: Human gate passed
+- [ ] **Bleed check pass**: Zero stowaway files
+- [ ] **Dedup check pass**: No overlap with upstream
+- [ ] **Single commit**: Squashed to 1 commit
+- [ ] **Clean file list**: Only files directly related to the PR
+- [ ] **No `.squad/` or `.copilot/skills/` files**: Excluded from commit
+- [ ] **Clean description**: No double blank lines, clear problem/solution
+
+## Anti-Patterns
+
+| Anti-Pattern | Why It Fails | Better Way |
+|---|---|---|
+| Open upstream PR before fork review complete | Public iteration, messy history | Complete review cycle on fork first |
+| Force-push to upstream branch | Breaks links, confuses reviewers | Squash locally, push once |
+| Open multiple PRs per feature | Fragmented review, merge chaos | One upstream PR per feature |
+| Skip rebase before upstream | Diverged branch creates full-file diffs | Always rebase against origin/dev |
+| Leave upstream PR in draft | Signals incomplete work | Undraft — it's presentation-ready |
+| Skip preflight test run | Sub-2-minute run catches failures before CI round-trips | Always run `npm run build && npm test` |
+| Squash-amend-force-push during review | Hides fix iteration history | Additive commits during review, squash only at merge time |
+
+## Commit Hygiene
+
+- **Additive commits during review**: Descriptive messages for each fix iteration
+- **Squash at merge time only**: After all reviews approve, squash to 1 commit
+- **Force-push safely**: Use `--force-with-lease`
+- **Always verify before push**:
+  ```
+  git diff --cached --stat            # File count must match intent
+  git diff --cached --diff-filter=D   # Zero unintended deletions
+  ```
+
+## Related Skills
+
+- `dina-review-protocol` — Review gates and lockout rules
+- `dina-bleed-check` — Stowaway file audit and branch segregation
+- `dina-dedup-check` — Upstream dedup gate
+- `dina-fork-sync` — Layered sync model
+- `dina-pr-lifecycle` — Label-driven PR state machine
+- `dina-pr-screenshots` — Visual documentation for PRs
