@@ -11,6 +11,10 @@ import {
   addAgentToConfig,
 } from '@bradygaster/squad-sdk';
 import {
+  syncRosterToAgentDoc,
+  type RosterMember,
+} from '@bradygaster/squad-sdk/config';
+import {
   CastingEngine,
   type CastMember as EngineCastMember,
   type AgentRole as EngineAgentRole,
@@ -642,6 +646,19 @@ export async function createTeam(teamRoot: string, proposal: CastProposal): Prom
   // Sync new agents into squad.config.ts (if present)
   for (const member of allMembers) {
     await addAgentToConfig(teamRoot, member.name.toLowerCase(), member.role);
+  }
+
+  // Sync roster into .github/agents/squad.agent.md (#83)
+  const agentMdPath = join(teamRoot, '.github', 'agents', 'squad.agent.md');
+  if (storage.existsSync(agentMdPath)) {
+    const agentMdContent = await storage.read(agentMdPath) ?? '';
+    const rosterMembers: RosterMember[] = allMembers.map((m) => ({
+      name: m.name,
+      role: m.role,
+    }));
+    const updated = syncRosterToAgentDoc(agentMdContent, rosterMembers);
+    await storage.write(agentMdPath, updated);
+    filesCreated.push(agentMdPath);
   }
 
   return { teamRoot, membersCreated, filesCreated };
