@@ -12,11 +12,16 @@ tools:
 
 ## Context
 
-Complex PR workflows (review + rebase + upstream) exceed a single Copilot session's
-context window when attempted all at once. This skill breaks PR lifecycle into
-label-driven stages. Ralph processes ONE stage per PR per round. Labels are the
-state machine — the PR advances through the pipeline across multiple Ralph cycles
-without requiring a mega-prompt.
+All planning, implementation, TDD, code review, and iteration happen on **diberry/squad** (the fork).
+By the time a PR reaches bradygaster/squad, the code is **done**. The upstream PR is a
+delivery vehicle, not a workspace. The only work on the upstream side is mechanical:
+CI green, clean rebase, single commit, no conflicts, no stray files.
+
+This skill breaks the fork-side PR lifecycle into label-driven stages. Ralph processes
+ONE stage per PR per round. Labels are the state machine — the PR advances through
+the pipeline across multiple Ralph cycles without requiring a mega-prompt.
+
+For upstream PR maintenance after the fork PR is closed, see `dina-upstream-pr-maintenance`.
 
 ## Repos & Worksurface
 
@@ -34,7 +39,7 @@ Work happens on the fork (diberry/squad) until the PR is ready to be opened agai
 ## Label State Machine
 
 ```
-Non-draft PR (no lifecycle label)
+Non-draft PR on diberry/squad (no lifecycle label)
     │
     ▼
 squad:pr-needs-preparation  ← Ralph adds when scanning non-draft PRs
@@ -53,12 +58,11 @@ squad:pr-reviewed           ← Ralph adds after ALL reviewers approve
     ▼
 squad:pr-dina-approved      ← Dina adds manually after her review
     │  Ralph round: fresh rebase against bradygaster/squad dev,
-    │  re-squash to single commit, open upstream PR
+    │  re-squash, pre-flight checks, open upstream PR,
+    │  CLOSE fork PR (it's done)
     ▼
-squad:pr-upstream           ← Ralph adds after upstream PR opened
-    │  (waiting for upstream merge)
-    ▼
-(PR closed/merged)          ← Remove all squad:pr-* labels
+(Fork PR closed)            ← Fork PR served its purpose
+                               Upstream PR maintained by dina-upstream-pr-maintenance
 ```
 
 ## Ralph's PR Scan (every round)
@@ -129,21 +133,15 @@ For each: add `squad:pr-needs-preparation` label.
   - **Team review summary** — a section summarizing key findings, decisions, and fixes from the team review process (who reviewed, what issues were raised, how they were resolved)
   - **Link back** to the fork PR for full review thread context
 - Post comment on fork PR linking to upstream PR.
-- After upstream PR opened: remove `squad:pr-dina-approved`, add `squad:pr-upstream`
+- **Close the fork PR** (see `dina-fork-pr-close`): the fork PR has served its purpose. Do NOT merge — just close. Keep the branch for potential upstream fixes.
+- Remove all `squad:pr-*` labels from the fork PR.
+- Upstream PR is now tracked by `dina-upstream-pr-maintenance` — no lifecycle label needed on the closed fork PR.
 
-**Stage: squad:pr-upstream**
-- This stage manages the upstream PR on bradygaster/squad. We do NOT control labels on that repo — validation is done by inspecting the PR directly.
-- Every round, check the upstream PR state:
-  ```bash
-  gh pr view {upstream-number} --repo bradygaster/squad --json state,mergeable,statusCheckRollup,commits
-  ```
-- **CI check:** If any status checks are failing, diagnose and fix. Rebase, fix broken tests, push until all checks pass. Do not wait for maintainer review while CI is red.
-- **Merge conflicts:** If `mergeable` is `CONFLICTING`, rebase against bradygaster/squad dev, resolve conflicts, re-squash to a single commit, and force-push.
-- **Commit count:** If more than 1 commit (from fix pushes), squash back to a single commit and force-push.
-- **File audit:** Every round, verify no stray files have crept in. Run `gh pr view {upstream-number} --repo bradygaster/squad --json files --jq '.files[].path'` and confirm every file is directly relevant to the PR. Remove any that aren't.
-- **Upstream reviewer feedback:** If the upstream maintainer requests changes, address them, re-squash to 1 commit, and push. Post a comment summarizing what was changed.
-- **Ready state:** PR is ready when: CI green + mergeable + single commit + clean file list + no outstanding change requests. Skip until maintainer merges.
-- If merged: close fork PR, remove all `squad:pr-*` labels, close linked issue.
+**Stage: squad:pr-upstream** — REMOVED
+
+Upstream PR maintenance is handled by `dina-upstream-pr-maintenance`, not by the fork PR lifecycle.
+Once the fork PR is closed and the upstream PR is opened, this pipeline is complete.
+The upstream PR is a delivery vehicle maintained separately.
 
 ## Label Commands
 
@@ -155,10 +153,9 @@ gh pr edit {number} --add-label "squad:pr-needs-preparation"
 gh pr edit {number} --remove-label "squad:pr-needs-preparation" --add-label "squad:pr-needs-review"
 gh pr edit {number} --remove-label "squad:pr-needs-review" --add-label "squad:pr-reviewed"
 gh pr edit {number} --remove-label "squad:pr-reviewed" --add-label "squad:pr-dina-approved"
-gh pr edit {number} --remove-label "squad:pr-dina-approved" --add-label "squad:pr-upstream"
 
-# Clean up after completion
-gh pr edit {number} --remove-label "squad:pr-upstream"
+# Final transition: close fork PR after upstream opens (see dina-fork-pr-close)
+gh pr close {number} --comment "Promoted to upstream PR bradygaster/squad#{upstream-number}"
 ```
 
 ## Rules
