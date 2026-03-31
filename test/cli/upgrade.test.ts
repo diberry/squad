@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync }
 import { randomBytes } from 'crypto';
 import { runInit } from '@bradygaster/squad-cli/core/init';
 import { runUpgrade, ensureGitattributes, ensureGitignore, ensureDirectories } from '@bradygaster/squad-cli/core/upgrade';
-import { getPackageVersion } from '@bradygaster/squad-cli/core/version';
+import { getPackageVersion, stampConfigVersion, readConfigVersion, discoverSquadConfig } from '@bradygaster/squad-cli/core/version';
 
 const TEST_ROOT = join(process.cwd(), `.test-cli-upgrade-${randomBytes(4).toString('hex')}`);
 
@@ -331,5 +331,107 @@ describe('CLI: upgrade command', () => {
     // or it processes the full manifest)
     expect(forceResult.filesUpdated.length).toBeGreaterThan(0);
     expect(forceResult.filesUpdated).toContain('squad.agent.md');
+  });
+
+  /* ── squad.config.ts version stamping (#84) ───────────────── */
+
+  it('should stamp config version in squad.config.ts during upgrade', async () => {
+    const configPath = join(TEST_ROOT, 'squad.config.ts');
+    const currentVersion = getPackageVersion();
+
+    writeFileSync(configPath, [
+      "import { defineSquad } from '@bradygaster/squad-sdk';",
+      '',
+      'export default defineSquad({',
+      "  version: '0.1.0',",
+      "  team: { name: 'test', members: [] },",
+      '});',
+      '',
+    ].join('\n'));
+
+    const agentPath = join(TEST_ROOT, '.github', 'agents', 'squad.agent.md');
+    let agentContent = readFileSync(agentPath, 'utf-8');
+    agentContent = agentContent.replace(/<!-- version: [^>]+ -->/m, '<!-- version: 0.1.0 -->');
+    writeFileSync(agentPath, agentContent);
+
+    const result = await runUpgrade(TEST_ROOT);
+
+    const configContent = readFileSync(configPath, 'utf-8');
+    expect(configContent).toContain(`version: '${currentVersion}'`);
+    expect(result.filesUpdated).toContain('squad.config.ts');
+  });
+
+  it('should stamp config version on "already current" path', async () => {
+    const configPath = join(TEST_ROOT, 'squad.config.ts');
+    const currentVersion = getPackageVersion();
+
+    writeFileSync(configPath, [
+      "import { defineSquad } from '@bradygaster/squad-sdk';",
+      '',
+      'export default defineSquad({',
+      "  version: '0.1.0',",
+      "  team: { name: 'test', members: [] },",
+      '});',
+      '',
+    ].join('\n'));
+
+    const result = await runUpgrade(TEST_ROOT);
+
+    const configContent = readFileSync(configPath, 'utf-8');
+    expect(configContent).toContain(`version: '${currentVersion}'`);
+    expect(result.filesUpdated).toContain('squad.config.ts');
+  });
+
+  it('should skip config version stamp when no config file exists', async () => {
+    const result = await runUpgrade(TEST_ROOT);
+
+    expect(result.filesUpdated).not.toContain('squad.config.ts');
+    expect(result.filesUpdated).not.toContain('squad.config.js');
+  });
+
+  it('should preserve double-quoted version strings in config', () => {
+    const configPath = join(TEST_ROOT, 'squad.config.ts');
+    const currentVersion = getPackageVersion();
+
+    writeFileSync(configPath, [
+      'export default {',
+      '  version: "0.5.0",',
+      '  name: "my-squad",',
+      '};',
+      '',
+    ].join('\n'));
+
+    stampConfigVersion(configPath, currentVersion);
+
+    const content = readFileSync(configPath, 'utf-8');
+    expect(content).toContain(`version: "${currentVersion}"`);
+  });
+
+  it('readConfigVersion reads version from squad.config.ts', () => {
+    const configPath = join(TEST_ROOT, 'squad.config.ts');
+
+    writeFileSync(configPath, [
+      'export default defineSquad({',
+      "  version: '2.3.4',",
+      '});',
+      '',
+    ].join('\n'));
+
+    expect(readConfigVersion(configPath)).toBe('2.3.4');
+  });
+
+  it('readConfigVersion returns null for missing file', () => {
+    expect(readConfigVersion(join(TEST_ROOT, 'nonexistent.ts'))).toBeNull();
+  });
+
+  it('discoverSquadConfig finds squad.config.ts', () => {
+    const configPath = join(TEST_ROOT, 'squad.config.ts');
+    writeFileSync(configPath, "export default { version: '1.0.0' };\n");
+
+    expect(discoverSquadConfig(TEST_ROOT)).toBe(configPath);
+  });
+
+  it('discoverSquadConfig returns null when no config exists', () => {
+    expect(discoverSquadConfig(TEST_ROOT)).toBeNull();
   });
 });

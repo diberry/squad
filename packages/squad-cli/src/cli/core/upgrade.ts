@@ -4,30 +4,15 @@
  * @module cli/core/upgrade
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
-import { FSStorageProvider } from '@bradygaster/squad-sdk';
 import { success, warn, info, dim, bold } from './output.js';
 import { fatal } from './errors.js';
 import { detectSquadDir } from './detect-squad-dir.js';
 import { TEMPLATE_MANIFEST, getTemplatesDir } from './templates.js';
 import { runMigrations } from './migrations.js';
 import { scrubEmails } from './email-scrub.js';
-import { getPackageVersion, stampVersion, readInstalledVersion } from './version.js';
-
-const storage = new FSStorageProvider();
-
-function copyDirRecursive(src: string, dest: string, force = true): void {
-  storage.mkdirSync(dest, { recursive: true });
-  for (const entry of storage.listSync(src)) {
-    const srcEntry = path.join(src, entry);
-    const destEntry = path.join(dest, entry);
-    if (storage.isDirectorySync(srcEntry)) {
-      copyDirRecursive(srcEntry, destEntry, force);
-    } else if (force || !storage.existsSync(destEntry)) {
-      storage.copySync(srcEntry, destEntry);
-    }
-  }
-}
+import { getPackageVersion, stampVersion, readInstalledVersion, discoverSquadConfig, stampConfigVersion } from './version.js';
 
 export interface UpgradeOptions {
   migrateDirectory?: boolean;
@@ -68,16 +53,16 @@ function compareSemver(a: string, b: string): number {
  * Detect project type by checking marker files
  */
 function detectProjectType(dir: string): string {
-  if (storage.existsSync(path.join(dir, 'package.json'))) return 'npm';
-  if (storage.existsSync(path.join(dir, 'go.mod'))) return 'go';
-  if (storage.existsSync(path.join(dir, 'requirements.txt')) ||
-      storage.existsSync(path.join(dir, 'pyproject.toml'))) return 'python';
-  if (storage.existsSync(path.join(dir, 'pom.xml')) ||
-      storage.existsSync(path.join(dir, 'build.gradle')) ||
-      storage.existsSync(path.join(dir, 'build.gradle.kts'))) return 'java';
+  if (fs.existsSync(path.join(dir, 'package.json'))) return 'npm';
+  if (fs.existsSync(path.join(dir, 'go.mod'))) return 'go';
+  if (fs.existsSync(path.join(dir, 'requirements.txt')) ||
+      fs.existsSync(path.join(dir, 'pyproject.toml'))) return 'python';
+  if (fs.existsSync(path.join(dir, 'pom.xml')) ||
+      fs.existsSync(path.join(dir, 'build.gradle')) ||
+      fs.existsSync(path.join(dir, 'build.gradle.kts'))) return 'java';
   
   try {
-    const entries = storage.listSync(dir);
+    const entries = fs.readdirSync(dir);
     if (entries.some(e => e.endsWith('.csproj') || e.endsWith('.sln') || 
                          e.endsWith('.slnx') || e.endsWith('.fsproj') || 
                          e.endsWith('.vbproj'))) return 'dotnet';
@@ -254,11 +239,11 @@ function writeWorkflowFile(file: string, srcPath: string, destPath: string, proj
   if (projectType !== 'npm' && PROJECT_TYPE_SENSITIVE_WORKFLOWS.has(file)) {
     const stub = generateProjectWorkflowStub(file, projectType);
     if (stub) {
-      storage.writeSync(destPath, stub);
+      fs.writeFileSync(destPath, stub);
       return;
     }
   }
-  storage.copySync(srcPath, destPath);
+  fs.copyFileSync(srcPath, destPath);
 }
 
 /* ── Infrastructure ensure functions ────────────────────────────── */
@@ -293,8 +278,8 @@ const ENSURE_DIRECTORIES = [
 export function ensureGitattributes(dest: string): string[] {
   const filePath = path.join(dest, '.gitattributes');
   let content = '';
-  if (storage.existsSync(filePath)) {
-    content = storage.readSync(filePath) ?? '';
+  if (fs.existsSync(filePath)) {
+    content = fs.readFileSync(filePath, 'utf8');
   }
   const added: string[] = [];
   for (const rule of GITATTRIBUTES_RULES) {
@@ -305,7 +290,7 @@ export function ensureGitattributes(dest: string): string[] {
   if (added.length > 0) {
     const suffix = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
     try {
-      storage.writeSync(filePath, content + suffix + added.join('\n') + '\n');
+      fs.writeFileSync(filePath, content + suffix + added.join('\n') + '\n');
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && ['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code ?? '')) {
         warn('Could not update .gitattributes (read-only). Add merge=union entries manually.');
@@ -340,8 +325,8 @@ function isAlreadyCoveredByParent(entry: string, lines: string[]): boolean {
 export function ensureGitignore(dest: string): string[] {
   const filePath = path.join(dest, '.gitignore');
   let content = '';
-  if (storage.existsSync(filePath)) {
-    content = storage.readSync(filePath) ?? '';
+  if (fs.existsSync(filePath)) {
+    content = fs.readFileSync(filePath, 'utf8');
   }
   const existingLines = content.split('\n');
   const added: string[] = [];
@@ -352,7 +337,7 @@ export function ensureGitignore(dest: string): string[] {
   }
   if (added.length > 0) {
     const suffix = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
-    storage.writeSync(filePath, content + suffix + added.join('\n') + '\n');
+    fs.writeFileSync(filePath, content + suffix + added.join('\n') + '\n');
   }
   return added;
 }
@@ -364,8 +349,8 @@ export function ensureDirectories(dest: string): string[] {
   const created: string[] = [];
   for (const dir of ENSURE_DIRECTORIES) {
     const fullPath = path.join(dest, dir);
-    if (!storage.existsSync(fullPath)) {
-      storage.mkdirSync(fullPath, { recursive: true });
+    if (!fs.existsSync(fullPath)) {
+      fs.mkdirSync(fullPath, { recursive: true });
       created.push(dir);
     }
   }
@@ -378,13 +363,13 @@ export function ensureDirectories(dest: string): string[] {
 function syncAllSkills(dest: string, templatesDir: string): number {
   const skillsSrc = path.join(templatesDir, 'skills');
   const skillsDest = path.join(dest, '.copilot', 'skills');
-  if (!storage.existsSync(skillsSrc)) return 0;
-  storage.mkdirSync(skillsDest, { recursive: true });
-  copyDirRecursive(skillsSrc, skillsDest, false);
+  if (!fs.existsSync(skillsSrc)) return 0;
+  fs.mkdirSync(skillsDest, { recursive: true });
+  fs.cpSync(skillsSrc, skillsDest, { recursive: true, force: false });
   // Count skill directories synced
   try {
-    return storage.listSync(skillsSrc).filter(e =>
-      storage.isDirectorySync(path.join(skillsSrc, e))
+    return fs.readdirSync(skillsSrc).filter(e =>
+      fs.statSync(path.join(skillsSrc, e)).isDirectory()
     ).length;
   } catch { return 0; }
 }
@@ -394,17 +379,18 @@ function syncAllSkills(dest: string, templatesDir: string): number {
  */
 function refreshSquadTemplatesDir(dest: string, templatesDir: string): void {
   const squadTemplatesDest = path.join(dest, '.squad', 'templates');
-  storage.mkdirSync(squadTemplatesDest, { recursive: true });
+  fs.mkdirSync(squadTemplatesDest, { recursive: true });
   // Copy everything except workflows and skills (those have dedicated handling)
-  const entries = storage.listSync(templatesDir);
+  const entries = fs.readdirSync(templatesDir);
   for (const entry of entries) {
     if (entry === 'workflows' || entry === 'skills') continue;
     const srcPath = path.join(templatesDir, entry);
     const destPath = path.join(squadTemplatesDest, entry);
-    if (storage.isDirectorySync(srcPath)) {
-      copyDirRecursive(srcPath, destPath);
+    const stat = fs.statSync(srcPath);
+    if (stat.isDirectory()) {
+      fs.cpSync(srcPath, destPath, { recursive: true, force: true });
     } else {
-      storage.copySync(srcPath, destPath);
+      fs.copyFileSync(srcPath, destPath);
     }
   }
 }
@@ -443,6 +429,18 @@ function runEnsureChecks(dest: string, templatesDir: string, filesUpdated: strin
 }
 
 /**
+ * Stamp config version and log if a squad config file is present.
+ */
+function upgradeConfigVersion(dest: string, version: string, filesUpdated: string[]): void {
+  const configPath = discoverSquadConfig(dest);
+  if (configPath) {
+    stampConfigVersion(configPath, version);
+    success('upgraded config version in ' + path.basename(configPath));
+    filesUpdated.push(path.basename(configPath));
+  }
+}
+
+/**
  * Run the upgrade command
  */
 export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Promise<UpdateInfo> {
@@ -459,7 +457,7 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   }
   
   // Verify squad exists
-  if (!storage.existsSync(squadDirInfo.path)) {
+  if (!fs.existsSync(squadDirInfo.path)) {
     fatal('No squad found — run init first.');
   }
   
@@ -482,9 +480,9 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
     const workflowsSrc = path.join(templatesDir, 'workflows');
     const workflowsDest = path.join(dest, '.github', 'workflows');
     
-    if (storage.existsSync(workflowsSrc)) {
-      const wfFiles = storage.listSync(workflowsSrc).filter(f => f.endsWith('.yml'));
-      storage.mkdirSync(workflowsDest, { recursive: true });
+    if (fs.existsSync(workflowsSrc)) {
+      const wfFiles = fs.readdirSync(workflowsSrc).filter(f => f.endsWith('.yml'));
+      fs.mkdirSync(workflowsDest, { recursive: true });
       
       for (const file of wfFiles) {
         writeWorkflowFile(file, path.join(workflowsSrc, file), path.join(workflowsDest, file), projectType);
@@ -495,13 +493,15 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
     
     // Refresh squad.agent.md
     const agentSrc = path.join(templatesDir, 'squad.agent.md.template');
-    if (storage.existsSync(agentSrc)) {
-      storage.mkdirSync(path.dirname(agentDest), { recursive: true });
-      storage.copySync(agentSrc, agentDest);
+    if (fs.existsSync(agentSrc)) {
+      fs.mkdirSync(path.dirname(agentDest), { recursive: true });
+      fs.copyFileSync(agentSrc, agentDest);
       stampVersion(agentDest, cliVersion);
       success('upgraded squad.agent.md');
       filesUpdated.push('squad.agent.md');
     }
+    
+    upgradeConfigVersion(dest, cliVersion, filesUpdated);
     
     // Run infrastructure ensure checks even when already current
     runEnsureChecks(dest, templatesDir, filesUpdated);
@@ -518,17 +518,19 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   const templatesDir = getTemplatesDir();
   const agentSrc = path.join(templatesDir, 'squad.agent.md.template');
   
-  if (!storage.existsSync(agentSrc)) {
+  if (!fs.existsSync(agentSrc)) {
     fatal('squad.agent.md.template not found in templates — installation may be corrupted');
   }
   
-  storage.mkdirSync(path.dirname(agentDest), { recursive: true });
-  storage.copySync(agentSrc, agentDest);
+  fs.mkdirSync(path.dirname(agentDest), { recursive: true });
+  fs.copyFileSync(agentSrc, agentDest);
   stampVersion(agentDest, cliVersion);
   
   const fromLabel = oldVersion === '0.0.0' || !oldVersion ? 'unknown' : oldVersion;
   success(`upgraded coordinator from ${fromLabel} to ${cliVersion}`);
   filesUpdated.push('squad.agent.md');
+  
+  upgradeConfigVersion(dest, cliVersion, filesUpdated);
   
   // Upgrade squad-owned files from template manifest
   // Exclude squad.agent.md — already copied and version-stamped above
@@ -538,10 +540,10 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
     const srcPath = path.join(templatesDir, file.source);
     const destPath = path.join(squadDirInfo.path, file.destination);
     
-    if (!storage.existsSync(srcPath)) continue;
+    if (!fs.existsSync(srcPath)) continue;
     
-    storage.mkdirSync(path.dirname(destPath), { recursive: true });
-    storage.copySync(srcPath, destPath);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(srcPath, destPath);
     
     filesUpdated.push(file.destination);
   }
@@ -554,9 +556,9 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   const workflowsSrc = path.join(templatesDir, 'workflows');
   const workflowsDest = path.join(dest, '.github', 'workflows');
   
-  if (storage.existsSync(workflowsSrc)) {
-    const wfFiles = storage.listSync(workflowsSrc).filter(f => f.endsWith('.yml'));
-    storage.mkdirSync(workflowsDest, { recursive: true });
+  if (fs.existsSync(workflowsSrc)) {
+    const wfFiles = fs.readdirSync(workflowsSrc).filter(f => f.endsWith('.yml'));
+    fs.mkdirSync(workflowsDest, { recursive: true });
     
     for (const file of wfFiles) {
       writeWorkflowFile(file, path.join(workflowsSrc, file), path.join(workflowsDest, file), projectType);
@@ -574,13 +576,13 @@ export async function runUpgrade(dest: string, options: UpgradeOptions = {}): Pr
   const copilotInstructionsDest = path.join(dest, '.github', 'copilot-instructions.md');
   const teamMdPath = path.join(squadDirInfo.path, 'team.md');
   
-  if (storage.existsSync(teamMdPath)) {
-    const teamContent = storage.readSync(teamMdPath) ?? '';
+  if (fs.existsSync(teamMdPath)) {
+    const teamContent = fs.readFileSync(teamMdPath, 'utf8');
     const copilotEnabled = teamContent.includes('🤖 Coding Agent');
     
-    if (copilotEnabled && storage.existsSync(copilotInstructionsSrc)) {
-      storage.mkdirSync(path.dirname(copilotInstructionsDest), { recursive: true });
-      storage.copySync(copilotInstructionsSrc, copilotInstructionsDest);
+    if (copilotEnabled && fs.existsSync(copilotInstructionsSrc)) {
+      fs.mkdirSync(path.dirname(copilotInstructionsDest), { recursive: true });
+      fs.copyFileSync(copilotInstructionsSrc, copilotInstructionsDest);
       success('upgraded .github/copilot-instructions.md');
       filesUpdated.push('copilot-instructions.md');
     }

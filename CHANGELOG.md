@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Config version** (#84) — `squad upgrade` now auto-updates config version field when schema changes are detected
+
 ### Added — Full Work Monitor for squad watch (#708)
 - `--execute` flag spawns Copilot sessions to work on actionable issues autonomously
 - Multi-platform support — auto-detects GitHub vs Azure DevOps from git remote URL
@@ -277,6 +280,9 @@ All notable changes to this project will be documented in this file.
 - 25 regression tests fixed
 
 ## [Unreleased]
+
+### Fixed
+- **Config version** (#84) — `squad upgrade` now auto-updates config version field when schema changes are detected
 
 ## [0.8.20] - 2025-01-08
 
