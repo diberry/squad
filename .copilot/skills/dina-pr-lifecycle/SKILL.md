@@ -132,6 +132,19 @@ For each: add `squad:pr-needs-preparation` label.
   - **Full PR description** from the fork PR (copy it verbatim, don't summarize the description itself)
   - **Team review summary** — a section summarizing key findings, decisions, and fixes from the team review process (who reviewed, what issues were raised, how they were resolved)
   - **Link back** to the fork PR for full review thread context
+  - **DO NOT add any labels** to the upstream PR. Labels like `squad:pr-*` are fork-only. The upstream repo is not ours to label.
+- **Post team approval as a PR comment** on the upstream PR:
+  ```
+  ## Fork Review Complete
+  
+  This PR was reviewed and approved by the full team on the fork (diberry/squad#{fork-pr-number}).
+  
+  **Reviewers:** {list of reviewers who approved}
+  **Review rounds:** {number of review iterations}
+  **Key findings addressed:** {brief summary of major items fixed during review}
+  
+  All feedback (including nits) was addressed. CI green on fork. Ready for upstream review.
+  ```
 - Post comment on fork PR linking to upstream PR.
 - **Close the fork PR** (see `dina-fork-pr-close`): the fork PR has served its purpose. Do NOT merge — just close. Keep the branch for potential upstream fixes.
 - Remove all `squad:pr-*` labels from the fork PR.

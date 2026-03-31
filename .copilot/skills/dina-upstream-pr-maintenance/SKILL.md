@@ -111,6 +111,7 @@ If the upstream maintainer requests changes that go beyond mechanical fixes:
 ## Anti-Patterns
 
 - **Don't** add features to upstream PRs — they're delivery vehicles, not workspaces
+- **Don't** add labels to upstream PRs — `squad:pr-*` labels are fork-only. We don't own bradygaster/squad's label space.
 - **Don't** leave CI red — fix it every round, don't wait for maintainer
 - **Don't** let merge conflicts accumulate — rebase every round if upstream advanced
 - **Don't** leave multi-commit PRs — always squash back to 1
