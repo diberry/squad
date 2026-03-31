@@ -28,6 +28,10 @@ squad:pr-needs-review     ← Ralph adds this when scanning non-draft PRs
     │  Ralph round: post team comment reviews
     ▼
 squad:pr-reviewed         ← Ralph adds after all reviews posted
+    │  HUMAN GATE: Dina reviews. Ralph STOPS here.
+    │  Dina adds squad:pr-dina-approved when satisfied.
+    ▼
+squad:pr-dina-approved    ← Dina adds manually after her review
     │  Ralph round: rebase against dev
     ▼
 squad:pr-rebased          ← Ralph adds after successful rebase
@@ -58,10 +62,17 @@ For each: add `squad:pr-needs-review` label.
 - Post a comment review covering: architecture, code quality, test coverage, edge cases
 - After review posted: remove `squad:pr-needs-review`, add `squad:pr-reviewed`
 
-**Stage: squad:pr-reviewed**
+**Stage: squad:pr-reviewed** (HUMAN GATE — Ralph does NOT advance this)
+- Ralph SKIPS this stage. It is waiting for Dina's review.
+- Ralph posts a comment: "Team review complete. Waiting for Dina's review. Add `squad:pr-dina-approved` when ready to proceed."
+- Dina reviews the PR and the squad's comments.
+- When satisfied, Dina runs: `gh pr edit {number} --remove-label "squad:pr-reviewed" --add-label "squad:pr-dina-approved"`
+- If Dina requests changes, she comments and leaves `squad:pr-reviewed` in place. Squad addresses feedback, re-reviews, and the label stays until Dina approves.
+
+**Stage: squad:pr-dina-approved**
 - Rebase the PR branch against dev: `git rebase origin/dev`
 - Push rebased branch: `git push --force-with-lease`
-- After rebase: remove `squad:pr-reviewed`, add `squad:pr-rebased`
+- After rebase: remove `squad:pr-dina-approved`, add `squad:pr-rebased`
 
 **Stage: squad:pr-rebased**
 - Read `.copilot/skills/diberry-squad-fork-first-pipeline/SKILL.md` Steps 6-7
