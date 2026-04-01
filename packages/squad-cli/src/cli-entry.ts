@@ -321,6 +321,14 @@ async function main(): Promise<void> {
       force: forceUpgrade
     });
     
+    // Check for newer CLI version after upgrade
+    try {
+      const { notifyIfUpdateAvailable } = await import('./cli/self-update.js');
+      await notifyIfUpdateAvailable(VERSION, { bypassCache: true });
+    } catch {
+      // Never fail the upgrade command for an update check
+    }
+    
     return;
   }
 
