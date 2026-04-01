@@ -84,11 +84,46 @@ For each unresolved Copilot suggestion:
 - Read the suggestion carefully — Copilot suggestions are code-level improvements (error handling, edge cases, type safety)
 - Apply the fix in the source code
 - If the suggestion includes a `suggestion` code block, apply it verbatim unless it would make the code worse
-- **Reply in the comment thread** explaining what was done (e.g., "Fixed — added retry with backoff for null mergeable state")
-- Re-squash to 1 commit after all suggestions are applied
-- Push
 
-**Always reply in the thread.** Silent fixes are not acceptable — the thread must show the conversation between Copilot's suggestion and the fix applied. This creates an audit trail and lets reviewers verify each suggestion was addressed.
+**Thread workflow (resolve BEFORE push):**
+
+This order matters — force-push marks threads as "outdated" instead of "resolved". Do it in this order:
+
+1. **Apply all fixes** in the source code (don't commit yet)
+2. **Reply in each thread** explaining what was done (e.g., "Fixed — added retry with backoff")
+3. **Resolve each thread** via the GraphQL API:
+   ```bash
+   # Get thread IDs
+   gh api graphql -f query='
+     query {
+       repository(owner: "{owner}", name: "{repo}") {
+         pullRequest(number: {number}) {
+           reviewThreads(first: 100) {
+             nodes {
+               id
+               isResolved
+               comments(first: 1) {
+                 nodes { body }
+               }
+             }
+           }
+         }
+       }
+     }
+   '
+
+   # Resolve each thread
+   gh api graphql -f query='
+     mutation {
+       resolveReviewThread(input: { threadId: "{thread_node_id}" }) {
+         thread { isResolved }
+       }
+     }
+   '
+   ```
+4. **Squash and force-push** — threads stay "resolved" (not "outdated") because they were resolved before the code changed
+
+**Always reply AND resolve.** Silent fixes are not acceptable — the thread must show the conversation between Copilot's suggestion and the fix applied.
 
 **Do NOT skip Copilot suggestions.** They are part of the readiness criteria. The `squad:pr-reviewed` label cannot be applied while unresolved Copilot comments exist.
 
