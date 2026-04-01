@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — npm version check for squad upgrade (#46)
+- `squad upgrade` now checks npm registry for available updates before proceeding
+- Adds self-update detection to the upgrade command
+
 ## [0.9.0] - 2026-03-23
 
 ### Added — Personal Squad Governance Layer
@@ -249,8 +253,6 @@ All notable changes to this project will be documented in this file.
 - 4 CLI commands wired
 - 1 critical crash fix (OTel dependency)
 - 25 regression tests fixed
-
-## [Unreleased]
 
 ## [0.8.20] - 2025-01-08
 

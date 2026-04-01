@@ -179,9 +179,9 @@ describe('compareSemver pre-release handling', () => {
     const result = runSquad(['upgrade'], tmpDir);
     assert.equal(result.exitCode, 0, `upgrade should succeed: ${result.stdout}`);
     
-    // Should NOT say "Already up to date" (meaning compareSemver detected older version)
+    // Should NOT say "Project files up to date" (meaning compareSemver detected older version)
     assert.ok(
-      !result.stdout.includes('Already up to date'),
+      !result.stdout.includes('Project files up to date'),
       'upgrade should proceed when installed version (0.4.0) is older than current'
     );
     
@@ -205,10 +205,10 @@ describe('compareSemver pre-release handling', () => {
     const result = runSquad(['upgrade'], tmpDir);
     assert.equal(result.exitCode, 0, `upgrade should succeed: ${result.stdout}`);
     
-    // Should say "Already up to date" (compareSemver detected same version)
+    // Should say "Project files up to date" (compareSemver detected same version)
     assert.ok(
-      result.stdout.includes('Already up to date'),
-      'upgrade should report "Already up to date" when versions match'
+      result.stdout.includes('Project files up to date'),
+      'upgrade should report "Project files up to date" when versions match'
     );
   });
 
@@ -235,7 +235,7 @@ describe('compareSemver pre-release handling', () => {
     const currentVersion = getPackageVersion();
     if (currentVersion !== '0.5.2') {
       assert.ok(
-        !result.stdout.includes('Already up to date'),
+        !result.stdout.includes('Project files up to date'),
         `upgrade should proceed when upgrading from 0.5.2 to ${currentVersion}`
       );
     }
@@ -267,7 +267,7 @@ describe('compareSemver pre-release handling', () => {
     if (currentVersion === '0.5.3' || currentBase === '0.5.3') {
       // Pre-release should be considered less than release
       assert.ok(
-        !result.stdout.includes('Already up to date'),
+        !result.stdout.includes('Project files up to date'),
         'upgrade should proceed when upgrading from 0.5.3-insiders to 0.5.3 release'
       );
     }

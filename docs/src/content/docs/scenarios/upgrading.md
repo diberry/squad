@@ -130,7 +130,7 @@ squad upgrade
 ```
 
 ```
-✅ Already up to date (v0.2.0)
+✅ Project files up to date (v0.2.0)
 ```
 
 Squad still runs any missing migrations in case a prior upgrade was interrupted.
