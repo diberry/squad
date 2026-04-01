@@ -16,6 +16,10 @@
       "types": "./dist/cli/upgrade.d.ts",
       "import": "./dist/cli/upgrade.js"
     },
+    "./self-update": {
+      "types": "./dist/cli/self-update.d.ts",
+      "import": "./dist/cli/self-update.js"
+    },
     "./copilot-install": {
       "types": "./dist/cli/copilot-install.d.ts",
       "import": "./dist/cli/copilot-install.js"

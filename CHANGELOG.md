@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — npm version check for squad upgrade (#46)
+- `squad upgrade` now checks npm registry for available updates before proceeding
+- Adds self-update detection to the upgrade command
+
+
+
 ### Added — Full Work Monitor for squad watch (#708)
 - `--execute` flag spawns Copilot sessions to work on actionable issues autonomously
 - Multi-platform support — auto-detects GitHub vs Azure DevOps from git remote URL
@@ -277,6 +283,12 @@ All notable changes to this project will be documented in this file.
 - 25 regression tests fixed
 
 ## [Unreleased]
+
+### Fixed — npm version check for squad upgrade (#46)
+- `squad upgrade` now checks npm registry for available updates before proceeding
+- Adds self-update detection to the upgrade command
+
+
 
 ## [0.8.20] - 2025-01-08
 
