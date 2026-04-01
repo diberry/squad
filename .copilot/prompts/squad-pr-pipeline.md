@@ -15,16 +15,27 @@ git show origin/diberry/squad:.copilot/skills/dina-dev-sync/SKILL.md
 git show origin/diberry/squad:.copilot/skills/dina-fork-pr-close/SKILL.md
 ```
 
-## Two Separate Loops
+## Three Separate Loops
+
+### Loop 0: Research (go:needs-research issues)
+
+Investigate issues before they enter the build pipeline:
+
+1. Scan open issues with `go:needs-research` label (skip `squad:archive`)
+2. For each: read the issue, check upstream for overlap, assess feasibility
+3. Post a research comment with findings and recommendation
+4. Apply verdict: `go:yes` (approved) or `go:no` (rejected + `release:backlog`)
+5. `priority:p0` issues auto-imply `go:yes` — skip research, go straight to build
 
 ### Loop 1: Fork PRs (diberry/squad)
 
 Process label-driven pipeline per `dina-pr-lifecycle`:
 
 1. Sync dev branch first (`dina-dev-sync`)
-2. Scan non-draft PRs for lifecycle labels (skip `diberry/*` branches)
-3. Process ONE stage per PR per round: preparation → review → reviewed (human gate) → dina-approved → close fork PR + open upstream
-4. Enforce: single commit, CI green, naming convention (`dina-pr-naming`), file audit (`dina-bleed-check`), all team + Copilot reviews approved
+2. Scan `go:yes` issues with no linked PR — pick up and implement (`dina-issue-to-pr`)
+3. Scan non-draft PRs for lifecycle labels (skip `diberry/*` branches)
+4. Process ONE stage per PR per round: preparation → review → reviewed (human gate) → dina-approved → close fork PR + open upstream
+5. Enforce: single commit, CI green, naming convention (`dina-pr-naming`), file audit (`dina-bleed-check`), all team + Copilot reviews approved
 
 ### Loop 2: Upstream PRs (bradygaster/squad)
 

@@ -21,6 +21,11 @@ This skill breaks the fork-side PR lifecycle into label-driven stages. Ralph pro
 ONE stage per PR per round. Labels are the state machine — the PR advances through
 the pipeline across multiple Ralph cycles without requiring a mega-prompt.
 
+**Pre-pipeline gate:** Before any issue enters this lifecycle, it must pass the `go:` verdict
+gate (see `dina-issue-to-pr` → Verdict Gate). Only issues with `go:yes` produce PRs that
+enter this state machine. Issues with `go:needs-research` are in the research loop —
+they need investigation before coding starts.
+
 For upstream PR maintenance after the fork PR is closed, see `dina-upstream-pr-maintenance`.
 
 ## Repos & Worksurface

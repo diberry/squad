@@ -16,9 +16,55 @@ All work happens on **diberry/squad** (the fork). This skill covers everything f
 - When Dina assigns an issue to the squad
 - When starting any new feature, fix, or docs work
 
+## Verdict Gate (go: labels)
+
+Before doing ANY work on an issue, check its `go:` verdict label. The `go:` namespace is a
+three-state triage machine — only ONE `go:*` label per issue at a time:
+
+| Label | Meaning | Action |
+|-------|---------|--------|
+| `go:needs-research` | Needs investigation before coding | Investigate, then move to `go:yes` or `go:no` |
+| `go:yes` | Approved — ready to implement | Proceed to Pre-Work Checks |
+| `go:no` | Rejected — not pursuing | Skip. Do NOT start work. |
+| (no `go:` label) | Not yet triaged | Treat as `go:needs-research` — investigate first |
+
+### Processing `go:needs-research`
+
+When Ralph finds an issue with `go:needs-research` (or no `go:` label):
+
+1. **Read the issue** — understand the problem, scope, and any discussion
+2. **Check upstream** — has this already been fixed or addressed in bradygaster/squad?
+   ```bash
+   gh pr list --repo bradygaster/squad --state merged --limit 30 --json number,title
+   git log --oneline upstream/dev -30
+   ```
+3. **Assess feasibility** — can the squad handle this? Is the scope clear enough to implement?
+4. **Post a research comment** on the issue summarizing findings:
+   - What was investigated
+   - Whether it's feasible and scoped
+   - Recommendation: `go:yes` or `go:no`
+5. **Update the verdict label**:
+   ```bash
+   # If approved:
+   gh issue edit {number} --remove-label "go:needs-research" --add-label "go:yes"
+   # If rejected:
+   gh issue edit {number} --remove-label "go:needs-research" --add-label "go:no"
+   ```
+
+### Cascading behaviors
+
+- `go:no` → also add `release:backlog` and remove other `release:*` targets
+- `go:yes` → add `release:backlog` if no `release:*` target exists
+- `priority:p0` → auto-implies `go:yes` (P0 issues are always approved)
+
+### STOP condition
+
+**Do NOT proceed past this gate** until the issue has `go:yes`. Issues with `go:needs-research`
+or `go:no` must NOT have branches created, PRs opened, or code written.
+
 ## Pre-Work Checks
 
-Before writing any code, run these checks:
+Before writing any code, the issue MUST have `go:yes`. Then run these checks:
 
 ### 1. Dedup check
 Run `dina-dedup-check` to verify the work hasn't already been done upstream:
@@ -141,16 +187,24 @@ You don't need to manually undraft or add labels.
 
 Ralph should scan for workable issues each round:
 ```bash
-# Open issues with no linked PR
-gh issue list --repo diberry/squad --state open --json number,title,labels \
+# Open issues approved for work (go:yes) with no linked PR
+gh issue list --repo diberry/squad --state open --label "go:yes" --json number,title,labels \
   --jq '[.[] | select(.labels | map(.name) | any(test("squad:archive")) | not)]'
 
-# Cross-reference with open PRs to find issues with no PR yet
+# Open issues needing research (go:needs-research) — investigate, don't code
+gh issue list --repo diberry/squad --state open --label "go:needs-research" --json number,title,labels \
+  --jq '[.[] | select(.labels | map(.name) | any(test("squad:archive")) | not)]'
+
+# Cross-reference with open PRs to find go:yes issues with no PR yet
 gh pr list --repo diberry/squad --state all --json number,title,body \
   --jq '[.[] | .body] | join("\n")' | grep -oP "Closes #\K\d+"
 ```
 
-Prioritize by labels:
+Process in this order:
+1. `go:needs-research` issues — investigate and verdict (research loop)
+2. `go:yes` issues with no linked PR — pick up and implement (build loop)
+
+Prioritize within each group by labels:
 1. `priority:p0` — blocking release
 2. `priority:p1` — this sprint
 3. `priority:p2` — next sprint
@@ -158,6 +212,8 @@ Prioritize by labels:
 
 ## Anti-Patterns
 
+- **Don't** start coding on `go:needs-research` issues — investigate and verdict first
+- **Don't** start coding on `go:no` issues — they're rejected
 - **Don't** start coding without running the dedup check — may duplicate upstream work
 - **Don't** branch from a stale dev — always sync dev first
 - **Don't** open a non-draft PR — always start as draft, let the pipeline promote it
