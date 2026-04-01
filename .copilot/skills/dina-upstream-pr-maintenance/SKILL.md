@@ -75,14 +75,28 @@ git checkout upstream/dev -- {stray-file}
 # Re-squash
 ```
 
-### 6. Respond to maintainer feedback
+### 6. Address Copilot review suggestions
+Check for unresolved Copilot review comments:
+```bash
+gh pr view {number} --repo bradygaster/squad --json reviewThreads --jq '[.reviewThreads[] | select(.isResolved == false) | {path: .comments[0].path, body: .comments[0].body[0:100], author: .comments[0].author.login}]'
+```
+For each unresolved Copilot suggestion:
+- Read the suggestion carefully — Copilot suggestions are code-level improvements (error handling, edge cases, type safety)
+- Apply the fix in the source code
+- If the suggestion includes a `suggestion` code block, apply it verbatim unless it would make the code worse
+- Re-squash to 1 commit after all suggestions are applied
+- Push, then verify the review thread is marked outdated (force-push invalidates old suggestions)
+
+**Do NOT skip Copilot suggestions.** They are part of the readiness criteria. The `squad:pr-reviewed` label cannot be applied while unresolved Copilot comments exist.
+
+### 7. Respond to maintainer feedback
 If the upstream maintainer requests changes:
 - Address the feedback (mechanical fixes only — no scope expansion)
 - Re-squash to 1 commit
 - Post a comment summarizing what was changed
 - Push
 
-### 7. Report status
+### 8. Report status
 After processing all upstream PRs, post a summary:
 
 | PR | CI | Mergeable | Commits | Files Clean | Label | Action Taken |
@@ -133,6 +147,7 @@ After completing the maintenance loop for each upstream PR, evaluate whether it 
 | Single commit | `commits` count is exactly 1 |
 | Clean file list | Every file in the diff is directly related to the PR's purpose |
 | Team approval | Fork PR had full team + Copilot approval before upstream was opened |
+| Copilot suggestions addressed | No unresolved Copilot review threads on the upstream PR |
 | No outstanding feedback | No unaddressed review comments from the upstream maintainer |
 
 ### Label logic
