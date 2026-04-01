@@ -85,9 +85,11 @@ If the upstream maintainer requests changes:
 ### 7. Report status
 After processing all upstream PRs, post a summary:
 
-| PR | CI | Mergeable | Commits | Action Taken |
-|---|---|---|---|---|
-| #{number} | ✅/❌ | ✅/❌ | N | {what you did} |
+| PR | CI | Mergeable | Commits | Files Clean | Label | Action Taken |
+|---|---|---|---|---|---|---|
+| #{number} | ✅/❌ | ✅/❌ | N | ✅/❌ | 🟢/🔴 | {what you did} |
+
+Label column: 🟢 = `squad:pr-reviewed` added/kept, 🔴 = removed or not applied.
 
 ## What This Skill Does NOT Cover
 
@@ -111,9 +113,56 @@ If the upstream maintainer requests changes that go beyond mechanical fixes:
 ## Anti-Patterns
 
 - **Don't** add features to upstream PRs — they're delivery vehicles, not workspaces
-- **Don't** add labels to upstream PRs — `squad:pr-*` labels are fork-only. We don't own bradygaster/squad's label space.
 - **Don't** leave CI red — fix it every round, don't wait for maintainer
 - **Don't** let merge conflicts accumulate — rebase every round if upstream advanced
 - **Don't** leave multi-commit PRs — always squash back to 1
 - **Don't** ignore maintainer feedback — address it promptly, mechanically
 - **Don't** expand scope based on maintainer suggestions — close and re-do from fork if scope changes
+- **Don't** add `squad:pr-reviewed` when any readiness check fails — remove it instead
+
+## Readiness Gate: squad:pr-reviewed Label
+
+After completing the maintenance loop for each upstream PR, evaluate whether it meets **all** readiness criteria. The `squad:pr-reviewed` label on the upstream PR signals to the maintainer: "this is fully ready for your review."
+
+### Readiness criteria (ALL must be true)
+
+| Check | How to verify |
+|-------|---------------|
+| CI green | All status checks in `statusCheckRollup` have `conclusion: SUCCESS` |
+| Mergeable | `mergeable` is `MERGEABLE` (no conflicts) |
+| Single commit | `commits` count is exactly 1 |
+| Clean file list | Every file in the diff is directly related to the PR's purpose |
+| Team approval | Fork PR had full team + Copilot approval before upstream was opened |
+| No outstanding feedback | No unaddressed review comments from the upstream maintainer |
+
+### Label logic
+
+```bash
+# Check readiness
+HEALTH=$(gh pr view {number} --repo bradygaster/squad --json mergeable,statusCheckRollup,commits,reviews)
+
+# Parse: all checks green, mergeable, 1 commit, no changes-requested reviews
+ALL_GREEN=true  # set false if any check fails
+
+if ALL_GREEN:
+    # Ensure label exists on the repo
+    gh label create "squad:pr-reviewed" --color "0E8A16" --description "Fully reviewed and ready for maintainer" --repo bradygaster/squad --force 2>/dev/null
+
+    # Add label if not already present
+    gh pr edit {number} --repo bradygaster/squad --add-label "squad:pr-reviewed"
+
+else:
+    # Remove label if present (PR is no longer ready)
+    gh pr edit {number} --repo bradygaster/squad --remove-label "squad:pr-reviewed" 2>/dev/null
+```
+
+### When to remove the label
+
+Remove `squad:pr-reviewed` if ANY of these happen after it was added:
+- CI starts failing (new upstream changes broke something)
+- Merge conflicts appear (upstream dev advanced)
+- Multiple commits appear (from fix pushes — needs re-squash)
+- Maintainer requests changes (feedback must be addressed first)
+- Stray files detected in file audit
+
+The label is a **live signal** — it reflects current state, not a one-time stamp. Every maintenance round re-evaluates it.
