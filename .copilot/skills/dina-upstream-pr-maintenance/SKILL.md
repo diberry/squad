@@ -84,8 +84,11 @@ For each unresolved Copilot suggestion:
 - Read the suggestion carefully — Copilot suggestions are code-level improvements (error handling, edge cases, type safety)
 - Apply the fix in the source code
 - If the suggestion includes a `suggestion` code block, apply it verbatim unless it would make the code worse
+- **Reply in the comment thread** explaining what was done (e.g., "Fixed — added retry with backoff for null mergeable state")
 - Re-squash to 1 commit after all suggestions are applied
-- Push, then verify the review thread is marked outdated (force-push invalidates old suggestions)
+- Push
+
+**Always reply in the thread.** Silent fixes are not acceptable — the thread must show the conversation between Copilot's suggestion and the fix applied. This creates an audit trail and lets reviewers verify each suggestion was addressed.
 
 **Do NOT skip Copilot suggestions.** They are part of the readiness criteria. The `squad:pr-reviewed` label cannot be applied while unresolved Copilot comments exist.
 
