@@ -49,13 +49,14 @@ Maintain open upstream PRs per `dina-upstream-pr-maintenance`:
 
 | Skill | Purpose |
 |-------|---------|
-| `dina-pr-lifecycle` | Label-driven PR state machine (preparation → review → approved → upstream) |
+| `dina-issue-to-pr` | Issue pickup, dedup, TDD implementation, draft PR creation |
+| `dina-pr-lifecycle` | Label-driven PR state machine (draft promotion → preparation → review → approved → upstream) |
 | `dina-upstream-pr-maintenance` | Maintain open upstream PRs (CI, rebase, conflicts, single commit) |
 | `dina-pr-naming` | Product vs devops scope prefixes for titles and commits |
-| `dina-bleed-check` | Stowaway file audit, branch segregation rules |
+| `dina-bleed-check` | Stowaway file audit, branch segregation, branch cleanup |
 | `dina-dev-sync` | Keep fork dev in sync with upstream dev |
 | `dina-fork-pr-close` | Close fork PRs when upstream PR opens |
-| `dina-fork-pipeline` | Core 9-step pipeline (branch → upstream → done) |
+| `dina-fork-pipeline` | Full pipeline (issue → branch → upstream → done) |
 | `dina-review-protocol` | Review gates, lockout rules, migration PR protocol |
 | `dina-dedup-check` | Upstream dedup gate before opening upstream PRs |
 | `dina-fork-sync` | Layered sync model for .squad/ config |

@@ -41,12 +41,14 @@ Each step maps to a label in `dina-pr-lifecycle`:
 
 | Steps | Lifecycle Label |
 |---|---|
-| BRANCH + FORK PR | (no label yet — PR is draft) |
-| PREFLIGHT + REBASE | `squad:pr-needs-preparation` |
-| REVIEW + FIX | `squad:pr-needs-review` |
-| (human gate) | `squad:pr-reviewed` |
-| CLEAN + DEDUP + UPSTREAM | `squad:pr-dina-approved` |
-| DONE | Fork PR closed, upstream tracked by `dina-upstream-pr-maintenance` |
+| ISSUE PICKUP | (no PR yet) | Dedup, sync dev, plan (`dina-issue-to-pr`) |
+| BRANCH + FORK PR | (draft, no label) | Create branch, implement with TDD, open draft PR |
+| (auto-promotion) | (draft → undrafted) | Ralph promotes when CI green + linked issue |
+| PREFLIGHT + REBASE | `squad:pr-needs-preparation` | Rebase, squash, CI green, naming check |
+| REVIEW + FIX | `squad:pr-needs-review` | Full team + Copilot review, iterate on all feedback |
+| (human gate) | `squad:pr-reviewed` | Dina reviews, team waits |
+| CLEAN + DEDUP + UPSTREAM | `squad:pr-dina-approved` | Preflight, file audit, dedup, open upstream, close fork PR |
+| DONE | Fork PR closed | Upstream tracked by `dina-upstream-pr-maintenance` |
 
 For detailed guidance, see companion skills:
 - `dina-pr-lifecycle` — Label-driven state machine for PR progression
@@ -55,17 +57,27 @@ For detailed guidance, see companion skills:
 - `dina-dedup-check` — Upstream dedup gate before opening upstream PR
 - `dina-fork-sync` — Layered sync model for keeping fork current with upstream
 - `dina-pr-naming` — Product vs devops scope prefixes
+- `dina-issue-to-pr` — Issue pickup, dedup, TDD implementation, draft PR creation
+
+## Step 0: ISSUE PICKUP
+
+Before creating a branch, see `dina-issue-to-pr` for the full pre-work flow:
+- Run dedup check (don't duplicate upstream work)
+- Sync dev with upstream
+- Check for existing branches/PRs for the issue
+- Plan the scope and naming convention
 
 ## Step 1: BRANCH
 
-Create a feature branch locally on diberry/squad:
+Create a feature branch from latest dev on diberry/squad:
 ```bash
+git checkout dev
 git checkout -b squad/{issue-number}-{slug}
 ```
 
 ## Step 2: FORK PR
 
-Push to fork and open PR **against your fork's dev branch**:
+Push to fork and open **draft** PR **against your fork's dev branch**:
 ```bash
 git push origin {branch-name}
 gh pr create --base dev --draft  # Opens on diberry/squad, not upstream
