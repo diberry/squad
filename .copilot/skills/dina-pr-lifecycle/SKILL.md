@@ -197,25 +197,25 @@ If a PR needs to go backward (e.g., scope change, Dina rejects after review, ups
 
 - If a PR has been at the same stage for more than 3 Ralph rounds with no progress, Ralph posts a status comment: "PR #{number} has been at `{label}` for {N} rounds. Blocker: {reason}."
 - If blocked on Dina (at `squad:pr-reviewed`), Ralph reminds once then stops nagging.
-- If blocked on upstream maintainer (at `squad:pr-upstream` with CI green), Ralph checks once per round silently — no repeated comments.
 
 ## Label Setup
 
-These labels must exist on diberry/squad. Create them if missing:
+These labels must exist on **diberry/squad only**. Never create these on bradygaster/squad.
 
 ```bash
-gh label create "squad:pr-needs-preparation" --color "FBCA04" --description "PR lifecycle: needs rebase and squash" --force
-gh label create "squad:pr-needs-review" --color "FBCA04" --description "PR lifecycle: awaiting team review" --force
-gh label create "squad:pr-reviewed" --color "0E8A16" --description "PR lifecycle: team approved, awaiting Dina" --force
-gh label create "squad:pr-dina-approved" --color "0E8A16" --description "PR lifecycle: Dina approved, ready for upstream" --force
-gh label create "squad:pr-upstream" --color "1D76DB" --description "PR lifecycle: upstream PR opened" --force
+gh label create "squad:pr-needs-preparation" --color "FBCA04" --description "PR lifecycle: needs rebase and squash" --repo diberry/squad --force
+gh label create "squad:pr-needs-review" --color "FBCA04" --description "PR lifecycle: awaiting team review" --repo diberry/squad --force
+gh label create "squad:pr-reviewed" --color "0E8A16" --description "PR lifecycle: team approved, awaiting Dina" --repo diberry/squad --force
+gh label create "squad:pr-dina-approved" --color "0E8A16" --description "PR lifecycle: Dina approved, ready for upstream" --repo diberry/squad --force
 ```
+
+The only label that belongs on bradygaster/squad is `squad:pr-reviewed` (managed by `dina-upstream-pr-maintenance` readiness gate).
 
 ## Fork vs Non-Fork Repos
 
 | Repo type | Stages used |
 |-----------|-------------|
-| Fork (e.g., diberry/squad → bradygaster/squad) | All stages including preparation, upstream rebase, and squad:pr-upstream |
+| Fork (e.g., diberry/squad → bradygaster/squad) | All stages: preparation → review → reviewed → dina-approved → close fork PR + open upstream |
 | Own repo (e.g., diberry/cosmos-plus-ai-squad) | Skip preparation rebase and upstream stages — go from squad:pr-reviewed directly to merge |
 
 Ralph should check if the repo has a fork-first-pipeline skill. If yes, use full pipeline. If no, skip to merge after review.

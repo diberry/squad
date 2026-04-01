@@ -18,7 +18,6 @@ Fork PRs on diberry/squad are staging vehicles for iteration. Once an upstream P
 ## When to Run
 
 - Immediately after opening an upstream PR on bradygaster/squad (during the `squad:pr-dina-approved` stage of `dina-pr-lifecycle`)
-- During Ralph's PR scan when processing PRs at the `squad:pr-upstream` stage
 - On-demand when Dina asks to clean up fork PRs
 
 ## Close Procedure
@@ -50,12 +49,11 @@ gh pr edit {fork-pr-number} --repo diberry/squad --remove-label "squad:pr-dina-a
 Periodically check for fork PRs that have corresponding upstream PRs but weren't closed:
 
 ```bash
-# Find all open fork PRs with squad:pr-upstream label
-gh pr list --repo diberry/squad --state open --label "squad:pr-upstream" --json number,title,body
+# Find open fork PRs that reference upstream PRs in comments but are still open
+gh pr list --repo diberry/squad --state open --json number,title,body --jq '[.[] | select(.body | test("bradygaster/squad/pull"))]'
 
 # For each, check if the upstream PR is still open or already merged
 # If merged: close fork PR, remove labels, close linked issue
-# If open: leave fork PR closed (it was already closed when upstream opened)
 ```
 
 ### 3. Bulk cleanup
@@ -86,12 +84,11 @@ A closed fork PR should only be re-opened if:
 
 ## Integration with dina-pr-lifecycle
 
-This skill modifies the `squad:pr-dina-approved` → `squad:pr-upstream` transition:
+This skill runs during the `squad:pr-dina-approved` stage:
 
-**Before (old):** Open upstream PR → add `squad:pr-upstream` label → keep fork PR open
-**After (new):** Open upstream PR → close fork PR → track upstream PR via the closed fork PR's comments
+Open upstream PR → close fork PR → track upstream PR via `dina-upstream-pr-maintenance`
 
-The `squad:pr-upstream` label is no longer needed on fork PRs since they're closed. Track upstream PR status by checking bradygaster/squad directly.
+No lifecycle labels are added to bradygaster/squad. The only upstream label is `squad:pr-reviewed` (managed by the readiness gate).
 
 ## Anti-Patterns
 
