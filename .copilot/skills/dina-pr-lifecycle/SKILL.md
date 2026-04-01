@@ -69,7 +69,33 @@ squad:pr-dina-approved      ← Dina adds manually after her review
 
 When Ralph scans for work, check PRs in this order:
 
-### 1. Find PRs needing lifecycle labels
+### 0. Promote draft PRs that are ready
+
+Draft PRs are staging areas for incomplete work. Ralph checks if any drafts are ready to enter the pipeline:
+
+```bash
+# Find draft PRs on squad/* branches (exclude diberry/* infrastructure branches)
+gh pr list --state open --json number,title,labels,isDraft,headRefName \
+  --jq '[.[] | select(.isDraft == true) | select(.headRefName | startswith("diberry/") | not)]'
+```
+
+For each draft PR, check readiness criteria:
+- **CI passing:** `gh pr checks {number}` — all checks green (or no checks yet if CI hasn't run)
+- **Linked issue:** PR description contains `Closes #N` or `Fixes #N`
+- **At least 1 commit:** PR has code changes (not an empty shell)
+- **Build compiles:** If CI has run, the build step passed
+
+If ALL criteria are met:
+```bash
+# Undraft the PR
+gh pr ready {number}
+# Add the first lifecycle label
+gh pr edit {number} --add-label "squad:pr-needs-preparation"
+```
+
+If any criteria fail, leave the PR as a draft. Don't comment — drafts are expected to be incomplete.
+
+### 1. Find non-draft PRs needing lifecycle labels
 ```bash
 # Non-draft PRs with no squad:pr-* label = new to pipeline
 # EXCLUDE branches prefixed with diberry/ — those are infrastructure branches, not feature PRs
@@ -163,7 +189,8 @@ The `dina-fork-pipeline` skill uses step names; this skill uses label names. Her
 
 | Fork Pipeline Step | Lifecycle Label | What happens |
 |---|---|---|
-| BRANCH + FORK PR | (no label yet) | Create branch, open draft PR |
+| BRANCH + FORK PR | (draft, no label) | Create branch, open draft PR |
+| (auto-promotion) | (draft → undrafted) | Ralph promotes when CI green + linked issue |
 | PREFLIGHT + REBASE | `squad:pr-needs-preparation` | Rebase, squash, CI green, naming check |
 | REVIEW + FIX | `squad:pr-needs-review` | Full team + Copilot review, iterate on all feedback |
 | (human gate) | `squad:pr-reviewed` | Dina reviews, team waits |
@@ -190,7 +217,7 @@ gh pr close {number} --comment "Promoted to upstream PR bradygaster/squad#{upstr
 1. **ONE stage per PR per round.** Never do preparation + review + upstream in one session.
 2. **Labels are the state.** If Ralph crashes mid-stage, the label stays and Ralph retries next round.
 3. **Skip PRs at stages you can't complete.** If rebase has unresolvable conflicts, post a comment and leave the label (don't advance).
-4. **Draft PRs are excluded.** Only non-draft PRs enter the pipeline.
+4. **Draft PRs are auto-promoted.** Ralph checks drafts for readiness (CI green, linked issue, has commits). Ready drafts are undrafted and enter the pipeline. Incomplete drafts stay as drafts.
 5. **Multiple PRs advance in parallel.** If 3 PRs are at different stages, do all 3 (one stage each) in the same round.
 6. **All feedback must be addressed.** During review, every comment — including nits — must be fixed before advancing. No exceptions.
 7. **All reviewers must approve.** The PR cannot leave `squad:pr-needs-review` until every team member and Copilot have approved on the latest commit.
