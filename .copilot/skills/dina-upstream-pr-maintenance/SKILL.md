@@ -11,6 +11,7 @@ source: "Dina directive — upstream PRs must stay green, rebased, and single-co
 - **Upstream PRs live on:** `bradygaster/squad`
 - **Code fixes happen on:** `diberry/squad` (push to the upstream PR branch from the fork)
 - **No new feature work happens here.** By the time a PR is on bradygaster/squad, the code is done. The only work is mechanical: CI, rebase, conflicts, commit hygiene.
+- **Labels:** The only label this skill manages on upstream is `squad:pr-reviewed` (readiness gate). No other `squad:pr-*` labels belong on bradygaster/squad.
 
 ## Purpose
 

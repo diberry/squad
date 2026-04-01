@@ -37,12 +37,24 @@ Any branch prefixed with `diberry/` is a personal/infrastructure branch. The PR 
 BRANCH → FORK PR → PREFLIGHT → REVIEW → FIX → BLEED CHECK → CLEAN → DEDUP CHECK → UPSTREAM → DONE
 ```
 
-Each step has a dedicated purpose. For detailed guidance on review, bleed check, dedup, and sync, see the companion skills:
+Each step maps to a label in `dina-pr-lifecycle`:
+
+| Steps | Lifecycle Label |
+|---|---|
+| BRANCH + FORK PR | (no label yet — PR is draft) |
+| PREFLIGHT + REBASE | `squad:pr-needs-preparation` |
+| REVIEW + FIX | `squad:pr-needs-review` |
+| (human gate) | `squad:pr-reviewed` |
+| CLEAN + DEDUP + UPSTREAM | `squad:pr-dina-approved` |
+| DONE | Fork PR closed, upstream tracked by `dina-upstream-pr-maintenance` |
+
+For detailed guidance, see companion skills:
+- `dina-pr-lifecycle` — Label-driven state machine for PR progression
 - `dina-review-protocol` — Review gates, lockout rules, migration PR protocol
-- `dina-bleed-check` — Stowaway file audit, branch segregation
+- `dina-bleed-check` — Stowaway file audit, branch segregation, branch cleanup
 - `dina-dedup-check` — Upstream dedup gate before opening upstream PR
 - `dina-fork-sync` — Layered sync model for keeping fork current with upstream
-- `dina-pr-lifecycle` — Label-driven state machine for PR progression
+- `dina-pr-naming` — Product vs devops scope prefixes
 
 ## Step 1: BRANCH
 
@@ -119,8 +131,8 @@ If rebase has conflicts on shared files:
 
 Prepare for upstream PR:
 - Squash commits into a single commit
-- Clean up commit message: `type(scope): description (#{issue})`
-- Remove any `.squad/` or `.copilot/skills/` files if present
+- Clean up commit message using `dina-pr-naming` convention: `type(scope): description (#{issue})`
+- Remove any `.squad/` or `.copilot/skills/` files if present (see `dina-bleed-check`)
 - Check for stale TDD comments ("RED PHASE", "TODO: implement", "WIP")
 - Remove double blank lines from description
 
@@ -140,7 +152,9 @@ The upstream PR is the **final presentation** — it should not remain in draft.
 
 ## Step 8: DONE
 
-Upstream PR is merged. Close fork PR, remove all lifecycle labels, close linked issue.
+Upstream PR is merged. See `dina-bleed-check` for the full cleanup procedure:
+- Close fork PR, remove all lifecycle labels, close linked issue
+- Delete the fork branch (only after upstream PR is merged)
 
 ## Pre-Upstream Gate Checklist
 

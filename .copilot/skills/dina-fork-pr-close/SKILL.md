@@ -71,7 +71,7 @@ gh pr list --repo bradygaster/squad --state all --author diberry --json number,t
 ## What Gets Preserved
 
 When closing a fork PR:
-- **Keep the branch** — don't delete it, in case upstream PR needs fixes
+- **Keep the branch temporarily** — in case the upstream PR needs fixes. Delete after upstream merges (see `dina-bleed-check` branch cleanup).
 - **Keep all comments and reviews** — they're the review history
 - **Link to upstream** — always comment with the upstream PR URL before closing
 

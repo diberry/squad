@@ -2,7 +2,7 @@
 name: "pr-lifecycle"
 description: "Label-driven PR pipeline: one stage per Ralph round, context-safe chaining"
 domain: "PR workflow, code review, fork-upstream"
-confidence: "low"
+confidence: "high"
 source: "project-dina HQ directive — context overflow fix for multi-step PR workflows"
 tools:
   - name: "gh"
@@ -29,8 +29,8 @@ For upstream PR maintenance after the fork PR is closed, see `dina-upstream-pr-m
 - **Upstream (read-only unless explicitly told):** `bradygaster/squad`
 
 All development, reviews, and iteration happen on diberry/squad. The only time you touch
-bradygaster/squad is during the `squad:pr-dina-approved` and `squad:pr-upstream` stages
-of this pipeline — and only after Dina has approved.
+bradygaster/squad is during the `squad:pr-dina-approved` stage when opening the upstream PR —
+and only after Dina has approved. After that, `dina-upstream-pr-maintenance` handles the upstream PR.
 
 ## Workflow
 
@@ -123,9 +123,9 @@ For each: add `squad:pr-needs-preparation` label.
   - Verify exactly 1 commit on the branch ahead of upstream/dev: `git rev-list --count upstream/dev..HEAD` must equal 1
   - Verify no merge conflicts with upstream dev: `git merge-tree $(git merge-base upstream/dev HEAD) upstream/dev HEAD` shows no conflicts
   - Run the build and tests locally to confirm CI will pass
-  - **File audit:** Review every file in the diff (`git diff --name-only upstream/dev..HEAD`). Remove any files that are NOT directly related to the PR's purpose:
+  - **File audit** (see `dina-bleed-check` for full protocol): Review every file in the diff (`git diff --name-only upstream/dev..HEAD`). Remove any files that are NOT directly related to the PR's purpose:
     - No `.squad/` files unless the PR specifically changes squad configuration
-    - No `.copilot/skills/` files unless the PR is about skills
+    - No `.copilot/skills/` files — these are fork-personal and never go upstream
     - No unrelated test fixtures, docs, or config changes that crept in during development
     - If stray files are found, use `git checkout upstream/dev -- {file}` to revert them, then re-squash
   - If any check fails, fix and re-squash before proceeding
@@ -133,7 +133,8 @@ For each: add `squad:pr-needs-preparation` label.
   - **Full PR description** from the fork PR (copy it verbatim, don't summarize the description itself)
   - **Team review summary** — a section summarizing key findings, decisions, and fixes from the team review process (who reviewed, what issues were raised, how they were resolved)
   - **Link back** to the fork PR for full review thread context
-  - **DO NOT add any labels** to the upstream PR. Labels like `squad:pr-*` are fork-only. The upstream repo is not ours to label.
+  - **DO NOT add fork lifecycle labels** (`squad:pr-*`) to the upstream PR. Those are fork-only.
+  - The only label allowed on upstream is `squad:pr-reviewed`, managed automatically by the readiness gate in `dina-upstream-pr-maintenance`.
 - **Post team approval as a PR comment** on the upstream PR:
   ```
   ## Fork Review Complete
@@ -153,9 +154,21 @@ For each: add `squad:pr-needs-preparation` label.
 
 **Stage: squad:pr-upstream** — REMOVED
 
-Upstream PR maintenance is handled by `dina-upstream-pr-maintenance`, not by the fork PR lifecycle.
+Upstream PR maintenance is handled by `dina-upstream-pr-maintenance`, not by this pipeline.
 Once the fork PR is closed and the upstream PR is opened, this pipeline is complete.
-The upstream PR is a delivery vehicle maintained separately.
+
+## Stage Mapping
+
+The `dina-fork-pipeline` skill uses step names; this skill uses label names. Here's the mapping:
+
+| Fork Pipeline Step | Lifecycle Label | What happens |
+|---|---|---|
+| BRANCH + FORK PR | (no label yet) | Create branch, open draft PR |
+| PREFLIGHT + REBASE | `squad:pr-needs-preparation` | Rebase, squash, CI green, naming check |
+| REVIEW + FIX | `squad:pr-needs-review` | Full team + Copilot review, iterate on all feedback |
+| (human gate) | `squad:pr-reviewed` | Dina reviews, team waits |
+| CLEAN + DEDUP + UPSTREAM | `squad:pr-dina-approved` | Preflight, file audit, dedup, open upstream, close fork PR |
+| (post-pipeline) | — | Tracked by `dina-upstream-pr-maintenance` |
 
 ## Label Commands
 

@@ -20,13 +20,14 @@ All bleed checks run on **diberry/squad** (the fork). The goal is to ensure feat
 
 Check for stowaway files that don't belong in the PR:
 
-- `.squad/` files (should not be in feature PRs)
-- `.copilot/skills/` files (should not be in feature or upstream PRs)
+- `.squad/` files (should not be in feature PRs — these belong on `diberry/squad` branch)
+- `.copilot/skills/` files (fork-personal, never in feature PRs, never in upstream PRs)
 - Navigation entries for a different PR
 - Test expectations for a different PR
 - Full-file rewrites (should be surgical edits)
 - Build artifacts
 - Root-level strays
+- Product template files in devops PRs (see `dina-pr-naming` for scope rules)
 
 If bleed is detected, fix on the feature branch before proceeding.
 
@@ -90,12 +91,34 @@ git checkout upstream/dev -- {file}  # Revert the stray file
 # Then re-squash
 ```
 
+## Branch Cleanup After Upstream Merge
+
+After the upstream maintainer merges the PR on bradygaster/squad:
+
+1. Verify the upstream PR is merged: `gh pr view {upstream-number} --repo bradygaster/squad --json state`
+2. Close the fork PR if still open (should already be closed by `dina-fork-pr-close`)
+3. Close the linked issue on diberry/squad
+4. **Delete the fork branch** — it's no longer needed:
+   ```bash
+   git push origin --delete squad/{issue-number}-{slug}
+   git branch -D squad/{issue-number}-{slug}  # delete local copy
+   ```
+5. Don't delete the branch until the upstream PR is **merged** (not just closed)
+
+## Parallel vs Serial PR Processing
+
+- **Parallel (OK):** Processing multiple PRs at different pipeline stages in one Ralph round — each PR gets one stage advanced. This is label-level work (reading diffs, posting comments, changing labels).
+- **Serial (required):** Any git operations that change branches (checkout, rebase, push). Multiple agents switching branches in the same working tree causes conflicts. Use `git worktree` for true parallelism.
+
+**Rule:** Label operations are parallel-safe. Branch operations are serial-only (unless using worktrees).
+
 ## Anti-Patterns
 
-- **Don't** commit `.squad/` files in feature PRs — repo pollution, merge conflicts
-- **Don't** commit `.copilot/skills/` in upstream PRs — personal skills bleed into upstream
+- **Don't** commit `.squad/` files in feature PRs — they belong on `diberry/squad` branch
+- **Don't** commit `.copilot/skills/` in any PR — fork-personal, never goes upstream
 - **Don't** skip the bleed check — stowaways merge upstream silently
 - **Don't** make full-file changes on shared files — causes merge conflicts across PRs
 - **Don't** `git add .` or `git add -A` — stage only the specific files you intend
-- **Don't** commit infrastructure work to feature branches — creates stowaways that contaminate PRs
-- **Don't** run parallel branch checkouts in same repo without worktrees — causes working tree conflicts
+- **Don't** commit infrastructure work to feature branches — creates stowaways
+- **Don't** run parallel branch checkouts in same repo without worktrees
+- **Don't** mix product templates with devops workflows in the same PR (see `dina-pr-naming`)

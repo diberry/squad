@@ -47,11 +47,12 @@ These files accumulate content from both sides. Sync merges, never overwrites.
 
 ### Layer 3: Personal (never sync upstream, never bleed into PRs)
 
-These files are fork-specific. They never travel to upstream.
+These files are fork-specific. They live on the `diberry/squad` branch and never travel to upstream or feature branches.
 
 | Path | Description |
 |---|---|
-| `.copilot/skills/**` | Personal copilot-level skills |
+| `.copilot/skills/**` | Personal Copilot-level skills (fork-only) |
+| `.copilot/prompts/**` | Squad dispatch prompts (fork-only) |
 | `.squad/decisions/inbox/**` | Fork-specific pending decisions |
 
 ### Layer 4: Ignored (fork-local, never sync)

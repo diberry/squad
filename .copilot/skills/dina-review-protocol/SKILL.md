@@ -66,7 +66,7 @@ PRs touching more than 20 files follow a stricter protocol:
 3. **Test verification** — Confirm author's test attestation before reviewing anything else
 
 ### Squash timing
-Squash to a single commit **only at merge time**, after all reviewers approve. During review, the full commit history must be preserved.
+Squash to a single commit at **Step 6 (CLEAN)** in `dina-fork-pipeline`, after all reviewers approve and before the dedup check. During active review, the full commit history must be preserved. "Merge time" = the CLEAN step, not the upstream merge.
 
 ## Review Comments Format
 

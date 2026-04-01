@@ -8,11 +8,11 @@ source: "Dina directive — fork dev must track upstream dev to prevent drift"
 
 ## Worksurface
 
-- **Local repo:** `C:\Users\diberry\project-dina\repos\squad-diberry`
+- **Local repo:** The local clone of diberry/squad (the fork)
 - **Fork remote (origin):** `diberry/squad` on github.com
 - **Upstream remote:** `bradygaster/squad` on github.com
 
-All sync flows pull FROM upstream. Never push TO upstream.
+All sync flows pull FROM upstream (bradygaster/squad). Never push TO upstream.
 
 ## Purpose
 
