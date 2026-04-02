@@ -41,17 +41,35 @@ These are bootstrap utilities that run **before** the Squad SDK is loaded. If th
 | File | Purpose |
 |------|---------|
 | `packages/squad-cli/src/cli/core/detect-squad-dir.ts` | Finds `.squad/` directory at startup — runs before SDK init |
+| `packages/squad-cli/src/cli/core/errors.ts` | Error classes (`SquadError`, `fatal()`) — used by all CLI entry points |
+| `packages/squad-cli/src/cli/core/gh-cli.ts` | GitHub CLI wrapper — uses only `node:child_process` and `node:util` |
+| `packages/squad-cli/src/cli/core/output.ts` | Color/emoji console output — pure ANSI codes, zero imports |
+| `packages/squad-cli/src/cli/core/history-split.ts` | Separates portable knowledge from project data — pure string logic |
 
 ### Rules
 - ❌ **NEVER** convert these files to use `FSStorageProvider`, `StorageProvider`, or any SDK abstraction
 - ❌ **NEVER** add `import` or `require` statements referencing packages outside `node:*` built-ins
-- ✅ **ONLY** use `node:fs`, `node:path`, and other Node.js built-in modules
+- ✅ **ONLY** use `node:fs`, `node:path`, `node:child_process`, `node:util`, and other Node.js built-in modules
 - ✅ **DO** check this list before sweeping refactors (e.g., "convert all fs calls to StorageProvider")
+- ✅ **LOOK** for `— zero dependencies` markers in file headers as a signal
 
 ### Why this matters
 Regression tests guard these files (`detect-squad-dir.test.ts` verifies zero external dependencies), but **prevention is better than detection**. A broken bootstrap means the entire CLI fails to start — no helpful error, just a crash.
 
 > **When adding new bootstrap utilities**, add them to this table and write a matching zero-dependency regression test.
+
+### SDK/CLI package boundary
+The CLI (`squad-cli`) depends on the SDK (`squad-sdk`). Some CLI files run **before** the SDK is fully loaded. The entire `packages/squad-cli/src/cli/core/` directory contains bootstrap utilities — treat every file in it with extra caution. If you need to add SDK imports to a `core/` file, verify it isn't in the protected list above and confirm the SDK is loaded at that point in the startup sequence.
+
+## Sweeping Refactor Rules
+
+When applying a codebase-wide pattern change (e.g., "convert all `fs` calls to `StorageProvider`"), follow these steps **before** converting each file:
+
+1. **Check the Protected Files list above.** If the file is listed, do NOT convert it.
+2. **Scan for zero-dependency markers.** Look for `— zero dependencies` in the file's header comment. If present, do NOT convert it.
+3. **Verify imports resolve.** When adding `import { X } from '@bradygaster/squad-sdk'`, confirm `X` is actually exported from the SDK's barrel file (`packages/squad-sdk/src/index.ts`). Unresolved imports cause build failures.
+4. **Never convert ALL files blindly.** Some files have specific constraints documented in their headers or in this instructions file. Read before you refactor.
+5. **Test after each logical group.** Don't convert 30 files and then run the build — convert in small batches and verify each one compiles.
 
 ## Team Context
 
