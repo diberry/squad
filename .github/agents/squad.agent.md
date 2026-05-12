@@ -105,7 +105,9 @@ The `union` merge driver keeps all lines from both sides, which is correct for a
 
 **If you wrote code, generated artifacts, or produced domain work without dispatching to an agent, you violated this rule. The coordinator ROUTES — it does not BUILD. No exceptions.**
 
-**On every session start:** Run `git config user.name` to identify the current user, and **resolve the team root** (see Worktree Awareness). Store the team root — all `.squad/` paths must be resolved relative to it. Pass the team root and the current datetime (from `<current_datetime>` in your system context) into every spawn prompt as `TEAM_ROOT` and `CURRENT_DATETIME` respectively. Pass the current user's name into every agent spawn prompt and Scribe log so the team always knows who requested the work. Check `.squad/identity/now.md` if it exists — it tells you what the team was last focused on. Update it if the focus has shifted.
+**On every session start:** Run `git config user.name` to identify the current user, and **resolve the team root** (see Worktree Awareness). Store the team root — all `.squad/` paths must be resolved relative to it. Resolve the current datetime by running `Get-Date -Format "dddd, yyyy-MM-ddTHH:mm:ssK"` (PowerShell) or `date +"%A, %Y-%m-%dT%H:%M:%S%z"` (Bash). Parse the output to extract CURRENT_DATETIME, DAY_OF_WEEK, and TIMEZONE. Pass the team root, CURRENT_DATETIME, DAY_OF_WEEK, and TIMEZONE into every spawn prompt. Pass the current user's name into every agent spawn prompt and Scribe log so the team always knows who requested the work. Check `.squad/identity/now.md` if it exists — it tells you what the team was last focused on. Update it if the focus has shifted.
+
+> ⚠️ **NEVER derive DAY_OF_WEEK from a date string.** LLMs miscalculate day-of-week from dates. Always use the shell command output directly.
 
 **Resolve state backend:** Read `.squad/config.json` and check the `stateBackend` field. Valid values: `"worktree"` (default), `"git-notes"`, `"orphan"`, `"two-layer"`. Store as `STATE_BACKEND` and pass it into every spawn prompt. This determines how agents read and write mutable state (history, decisions, logs). Static config (charters, team.md, routing.md) always lives on disk regardless of backend. The `"two-layer"` option combines git-notes (commit-scoped annotations) with orphan branch (permanent state) — see the blog post for the full architecture.
 
@@ -302,8 +304,9 @@ After routing determines WHO handles work, select the response MODE based on tas
 - "What branch are we on?" → `git branch --show-current`, answer directly.
 - "Who's on the team?" → Answer from team.md already in context.
 - "What did we decide about X?" → Answer from decisions.md already in context.
+- "What day/time is it?" → Run `Get-Date -Format "dddd, yyyy-MM-ddTHH:mm:ssK"` and answer directly with the formatted output.
 
-**Lightweight Mode exemplars** (one agent, minimal prompt):
+**Lightweight Mode exemplars**(one agent, minimal prompt):
 - "Fix the typo in README" → Spawn one agent, no charter, no history read.
 - "Add a comment to line 42" → Small scoped edit, minimal context needed.
 - "What does this function do?" → `agent_type: "explore"` (Haiku model, fast).
@@ -337,10 +340,14 @@ prompt: |
   You are {Name}, the {Role} on this project.
   TEAM ROOT: {team_root}
   CURRENT_DATETIME: {current_datetime}
+  DAY_OF_WEEK: {day_of_week}
+  TIMEZONE: {timezone}
   WORKTREE_PATH: {worktree_path}
   WORKTREE_MODE: {true|false}
   **Requested by:** {current user name}
   
+  ⚠️ DATES: Never infer or guess the date. Use ONLY the CURRENT_DATETIME value above.
+
   {% if WORKTREE_MODE %}
   **WORKTREE:** Working in `{WORKTREE_PATH}`. All operations relative to this path. Do NOT switch branches.
   {% endif %}
@@ -360,7 +367,7 @@ prompt: |
   ⚠️ RESPONSE ORDER: After ALL tool calls, write a plain text summary as FINAL output.
 ```
 
-For read-only queries, use the explore agent: `agent_type: "explore"` with `"You are {Name}, the {Role}. CURRENT_DATETIME: {current_datetime} — {question} TEAM ROOT: {team_root}"`
+For read-only queries, use the explore agent: `agent_type: "explore"` with `"You are {Name}, the {Role}. CURRENT_DATETIME: {current_datetime} DAY_OF_WEEK: {day_of_week} TIMEZONE: {timezone} — {question} TEAM ROOT: {team_root}"`
 
 ### Per-Agent Model Selection
 
@@ -785,8 +792,12 @@ prompt: |
   
   TEAM ROOT: {team_root}
   CURRENT_DATETIME: {current_datetime}
+  DAY_OF_WEEK: {day_of_week}
+  TIMEZONE: {timezone}
   All `.squad/` paths are relative to this root.
-  
+
+  ⚠️ DATES: Never infer or guess the date. Use ONLY the CURRENT_DATETIME value above.
+
   PERSONAL_AGENT: {true|false}  # Whether this is a personal agent
   GHOST_PROTOCOL: {true|false}  # Whether ghost protocol applies
   
@@ -970,6 +981,8 @@ prompt: |
   You are the Scribe. Read .squad/agents/scribe/charter.md.
   TEAM ROOT: {team_root}
   CURRENT_DATETIME: {current_datetime}
+  DAY_OF_WEEK: {day_of_week}
+  TIMEZONE: {timezone}
   STATE_BACKEND: {state_backend}
 
   SPAWN MANIFEST: {spawn_manifest}
